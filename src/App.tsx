@@ -13,6 +13,10 @@ import { FinancialList } from './components/financial/FinancialList';
 import { DocumentList } from './components/documents/DocumentList';
 import { DexAIAssistant } from './components/ai-assistant/DexAIAssistant';
 import { LGPDCompliance } from './components/lgpd/LGPDCompliance';
+import { TeamWall } from './components/team-wall/TeamWall';
+import { ReportsView } from './components/reports/ReportsView';
+import { NotificationsView } from './components/notifications/NotificationsView';
+import { SettingsView } from './components/settings/SettingsView';
 import { CaseModal } from './components/cases/CaseModal';
 import { DeadlineModal } from './components/deadlines/DeadlineModal';
 import { ClientModal } from './components/clients/ClientModal';
@@ -51,6 +55,14 @@ export const App: React.FC = () => {
         return <ClientList />;
       case 'lawyers':
         return <LawyerList />;
+      case 'team-wall':
+        return <TeamWall />;
+      case 'reports':
+        return <ReportsView />;
+      case 'notifications':
+        return <NotificationsView />;
+      case 'settings':
+        return <SettingsView />;
       case 'financial':
         return <FinancialList />;
       case 'documents':
