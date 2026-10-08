@@ -79,6 +79,7 @@ export const Header: React.FC<HeaderProps> = ({
     notifications: { title: 'Central de Notificações', subtitle: 'Alertas de prazos, movimentações e comunicados' },
     settings: { title: 'Configurações do Sistema', subtitle: 'Preferências do escritório, segurança e governança' },
     lgpd: { title: 'Conformidade & Governança LGPD', subtitle: 'Inventário de dados, registro de acessos e segurança da informação' },
+    landing: { title: 'Página de Apresentação', subtitle: 'Visão pública e institucional da plataforma DEX' },
   };
 
   const currentInfo = titles[activeTab] || { title: 'Dex', subtitle: 'Sistema Jurídico' };

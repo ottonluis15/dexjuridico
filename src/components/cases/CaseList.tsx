@@ -10,7 +10,8 @@ import {
   Scale, 
   User, 
   Calendar,
-  DollarSign
+  DollarSign,
+  Sparkles
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -22,7 +23,7 @@ import { ConfirmDialog } from '../common/ConfirmDialog';
 import { EmptyState } from '../common/EmptyState';
 
 export const CaseList: React.FC = () => {
-  const { userCases, clients, lawyers, deleteCase } = useData();
+  const { userCases, clients, lawyers, deleteCase, pendingAiDraft, clearPendingAiDraft } = useData();
   const { isAdmin } = useAuth();
 
   const [search, setSearch] = useState('');
@@ -34,6 +35,13 @@ export const CaseList: React.FC = () => {
   const [editingCase, setEditingCase] = useState<LegalCase | null>(null);
   const [viewingCase, setViewingCase] = useState<LegalCase | null>(null);
   const [caseToDelete, setCaseToDelete] = useState<LegalCase | null>(null);
+
+  // Abrir automaticamente o modal caso haja rascunho pendente da IA
+  React.useEffect(() => {
+    if (pendingAiDraft) {
+      setIsNewModalOpen(true);
+    }
+  }, [pendingAiDraft]);
 
   // Filtragem
   const filteredCases = userCases.filter(c => {
@@ -86,6 +94,43 @@ export const CaseList: React.FC = () => {
           Novo Processo
         </button>
       </div>
+
+      {/* Banner de Rascunho do Dex AI Pronto */}
+      {pendingAiDraft && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-cyan-950/80 via-slate-900 to-brand-950/80 border border-cyan-500/50 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center justify-center shrink-0">
+              <Sparkles className="w-5 h-5 text-cyan-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                  Triagem Dex AI
+                </span>
+                <h4 className="text-xs font-bold text-white">Análise pronta para virar Processo!</h4>
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Ação sugerida: <strong className="text-cyan-300">{pendingAiDraft.analysis.suggestedActionType}</strong> • Área: {pendingAiDraft.analysis.suggestedLegalArea}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <button
+              onClick={() => setIsNewModalOpen(true)}
+              className="px-3.5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-cyan-950/50 transition-all"
+            >
+              Completar e Salvar
+            </button>
+            <button
+              onClick={clearPendingAiDraft}
+              className="px-3 py-2 text-slate-400 hover:text-white text-xs transition-colors"
+            >
+              Descartar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800/80 space-y-3">

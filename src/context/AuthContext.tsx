@@ -3,12 +3,24 @@ import { User, UserRole } from '../types';
 import { INITIAL_USERS } from '../mock/initialData';
 import { storageService } from '../services/storageService';
 
+export interface RegisterUserData {
+  name: string;
+  email: string;
+  password?: string;
+  role: UserRole;
+  oab?: string;
+  phone?: string;
+  firmName?: string;
+  plan?: string;
+}
+
 interface AuthContextType {
   currentUser: User | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
   isLawyer: boolean;
   login: (email: string, role?: UserRole) => boolean;
+  registerUser: (userData: RegisterUserData) => User;
   switchUser: (userId: string) => void;
   logout: () => void;
   availableUsers: User[];
@@ -22,7 +34,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return storageService.getCurrentUser();
   });
 
-  const availableUsers = INITIAL_USERS;
+  const [availableUsers, setAvailableUsers] = useState<User[]>(() => storageService.getUsers());
 
   const login = (email: string, role?: UserRole): boolean => {
     const foundUser = availableUsers.find(
@@ -44,6 +56,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     }
     return false;
+  };
+
+  const registerUser = (userData: RegisterUserData): User => {
+    const newUser: User = {
+      id: `usr_${Date.now()}`,
+      name: userData.name,
+      email: userData.email,
+      role: userData.role,
+      oab: userData.oab || 'OAB Não Informada',
+      phone: userData.phone || '(11) 99999-0000',
+      status: 'ACTIVE',
+      avatarUrl: userData.role === 'ADMIN'
+        ? 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=256&auto=format&fit=crop'
+        : 'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=256&auto=format&fit=crop'
+    };
+
+    const updatedUsers = [newUser, ...availableUsers];
+    setAvailableUsers(updatedUsers);
+    storageService.saveUsers(updatedUsers);
+
+    // Cadastrar também no corpo de advogados do escritório
+    const currentLawyers = storageService.getLawyers();
+    const newLawyer = {
+      id: `law_${Date.now()}`,
+      userId: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+      phone: newUser.phone || '(11) 99999-0000',
+      oab: newUser.oab || 'OAB Sob Consulta',
+      specialties: ['Direito Geral', 'Contencioso Cível'],
+      status: 'ACTIVE' as const,
+      roleTitle: userData.role === 'ADMIN' ? `Sócio Fundador • ${userData.firmName || 'Banca'}` : 'Advogado Associado',
+      assignedCasesCount: 0
+    };
+    storageService.saveLawyers([newLawyer, ...currentLawyers]);
+
+    // Autenticar imediatamente
+    setCurrentUser(newUser);
+    storageService.saveCurrentUser(newUser);
+
+    storageService.addAuditLog({
+      userId: newUser.id,
+      userName: newUser.name,
+      userRole: newUser.role,
+      action: 'CADASTRO_CONTA',
+      entity: `Escritório: ${userData.firmName || 'Nova Conta'}`,
+      details: `Novo cadastro de escritório jurídico realizado. OAB: ${newUser.oab}, Plano: ${userData.plan || 'Escritório Pro'}.`,
+      ipAddress: '187.54.12.90'
+    });
+
+    return newUser;
   };
 
   const switchUser = (userId: string) => {
@@ -91,6 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAdmin,
         isLawyer,
         login,
+        registerUser,
         switchUser,
         logout,
         availableUsers

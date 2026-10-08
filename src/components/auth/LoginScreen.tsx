@@ -1,8 +1,16 @@
 import React, { useState } from 'react';
-import { Scale, Lock, Mail, ArrowRight, ShieldCheck, UserCheck, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Scale, Lock, Mail, ArrowRight, ShieldCheck, UserCheck, Sparkles, CheckCircle2, ArrowLeft, UserPlus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-export const LoginScreen: React.FC = () => {
+interface LoginScreenProps {
+  onNavigateToRegister?: () => void;
+  onNavigateToLanding?: () => void;
+}
+
+export const LoginScreen: React.FC<LoginScreenProps> = ({
+  onNavigateToRegister,
+  onNavigateToLanding
+}) => {
   const { login, availableUsers } = useAuth();
 
   const [email, setEmail] = useState('');
@@ -160,13 +168,41 @@ export const LoginScreen: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-3 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-brand-600/30 transition-all flex items-center justify-center gap-2"
+              className="w-full py-3 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-brand-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <span>Acessar o Dex</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
+
+          {/* Cadastro Link */}
+          {onNavigateToRegister && (
+            <div className="pt-3 border-t border-slate-800 text-center">
+              <span className="text-xs text-slate-400">Não possui uma conta? </span>
+              <button
+                type="button"
+                onClick={onNavigateToRegister}
+                className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+              >
+                Cadastre seu escritório (14 dias grátis)
+              </button>
+            </div>
+          )}
         </div>
+
+        {/* Back to Landing Page */}
+        {onNavigateToLanding && (
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={onNavigateToLanding}
+              className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Voltar para a Página Inicial / Apresentação</span>
+            </button>
+          </div>
+        )}
 
         {/* Security & LGPD Footer */}
         <div className="text-center space-y-1">

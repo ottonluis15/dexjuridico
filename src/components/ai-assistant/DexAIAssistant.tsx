@@ -14,19 +14,25 @@ import {
   AlertTriangle,
   Lightbulb,
   BookOpen,
-  Cpu
+  Cpu,
+  Zap,
+  CheckCircle2,
+  DollarSign,
+  Calendar,
+  Building2
 } from 'lucide-react';
 import { aiService, SAMPLE_CASE_TEMPLATES } from '../../services/aiService';
-import { AIAnalysisResult } from '../../types';
+import { AIAnalysisResult, LegalArea } from '../../types';
 import { useData } from '../../context/DataContext';
 import { PriorityBadge } from '../common/Badge';
+import { Modal } from '../common/Modal';
 
 interface DexAIAssistantProps {
   onNavigateToCases: () => void;
 }
 
 export const DexAIAssistant: React.FC<DexAIAssistantProps> = ({ onNavigateToCases }) => {
-  const { prefillCaseFromAI, showToast } = useData();
+  const { clients, lawyers, addCase, prefillCaseFromAI, clearPendingAiDraft, showToast } = useData();
 
   const [promptText, setPromptText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -35,6 +41,16 @@ export const DexAIAssistant: React.FC<DexAIAssistantProps> = ({ onNavigateToCase
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [selectedModel, setSelectedModel] = useState('claude-3-5-sonnet');
+
+  // Estados do Modal de Criação e Salvamento do Processo
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState('');
+  const [selectedLawyerId, setSelectedLawyerId] = useState('');
+  const [customCNJ, setCustomCNJ] = useState('');
+  const [customCourt, setCustomCourt] = useState('Foro Central Cível / Especializado');
+  const [customValue, setCustomValue] = useState('50000');
+  const [customActionType, setCustomActionType] = useState('');
+  const [customLegalArea, setCustomLegalArea] = useState<LegalArea>('Cível');
 
   const handleAnalyze = async () => {
     if (!promptText.trim()) {
@@ -65,9 +81,73 @@ export const DexAIAssistant: React.FC<DexAIAssistantProps> = ({ onNavigateToCase
     setTimeout(() => setCopiedSection(null), 2000);
   };
 
-  const handleCreateProcessFromAI = () => {
+  // Abrir Modal com campos da IA prontos para revisão
+  const openCreateModal = () => {
     if (!analysisResult) return;
-    prefillCaseFromAI(analysisResult, promptText);
+    const randomCNJ = `10${Math.floor(10000 + Math.random() * 90000)}-${Math.floor(10 + Math.random() * 89)}.2026.8.26.0100`;
+    setCustomCNJ(randomCNJ);
+    setSelectedClientId(clients[0]?.id || '');
+    setSelectedLawyerId(lawyers[0]?.id || '');
+    setCustomActionType(analysisResult.suggestedActionType);
+    setCustomLegalArea(analysisResult.suggestedLegalArea);
+    setCustomValue((analysisResult.estimatedValue || 50000).toString());
+    setCustomCourt('Foro Central da Comarca da Capital / SP');
+    setIsCreateModalOpen(true);
+  };
+
+  // Salvar Processo revisado no sistema
+  const handleSaveProcessFromModal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!analysisResult) return;
+
+    if (!customCNJ.trim() || !selectedClientId || !selectedLawyerId || !customActionType.trim()) {
+      showToast('Por favor, selecione cliente, advogado e preencha os campos obrigatórios (*).', 'warning');
+      return;
+    }
+
+    const newCase = addCase({
+      caseNumber: customCNJ.trim(),
+      court: customCourt.trim() || 'Vara Cível / Especializada',
+      clientId: selectedClientId,
+      lawyerId: selectedLawyerId,
+      legalArea: customLegalArea,
+      actionType: customActionType.trim(),
+      status: 'INICIAL',
+      value: parseFloat(customValue) || 0,
+      distributionDate: new Date().toISOString().substring(0, 10),
+      description: analysisResult.factsSummary,
+      notes: `[Triagem Dex AI]\nEnquadramento: ${analysisResult.legalFraming}\n\nPerguntas pendentes:\n- ${analysisResult.clarificationQuestions.join('\n- ')}\n\nChecklist Documental:\n- ${analysisResult.requiredDocuments.join('\n- ')}`
+    });
+
+    clearPendingAiDraft();
+    setIsCreateModalOpen(false);
+    showToast(`Processo ${newCase.caseNumber} salvo com sucesso no banco de dados!`, 'success');
+    onNavigateToCases();
+  };
+
+  // Salvar Imediatamente com 1 clique usando padrões da IA
+  const handleQuickSaveProcess = () => {
+    if (!analysisResult) return;
+    const randomCNJ = `10${Math.floor(10000 + Math.random() * 90000)}-${Math.floor(10 + Math.random() * 89)}.2026.8.26.0100`;
+    const defaultClientId = clients[0]?.id || '';
+    const defaultLawyerId = lawyers[0]?.id || '';
+
+    const newCase = addCase({
+      caseNumber: randomCNJ,
+      court: 'Foro Central da Comarca da Capital / SP',
+      clientId: defaultClientId,
+      lawyerId: defaultLawyerId,
+      legalArea: analysisResult.suggestedLegalArea,
+      actionType: analysisResult.suggestedActionType,
+      status: 'INICIAL',
+      value: analysisResult.estimatedValue || 50000,
+      distributionDate: new Date().toISOString().substring(0, 10),
+      description: analysisResult.factsSummary,
+      notes: `[Triagem Dex AI]\nEnquadramento: ${analysisResult.legalFraming}\n\nPerguntas pendentes:\n- ${analysisResult.clarificationQuestions.join('\n- ')}\n\nChecklist Documental:\n- ${analysisResult.requiredDocuments.join('\n- ')}`
+    });
+
+    clearPendingAiDraft();
+    showToast(`Processo ${newCase.caseNumber} gerado e salvo com sucesso!`, 'success');
     onNavigateToCases();
   };
 
@@ -250,24 +330,42 @@ export const DexAIAssistant: React.FC<DexAIAssistantProps> = ({ onNavigateToCase
             </div>
           </div>
 
-          {/* Action Bar: Create Process Directly */}
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-brand-950/50 border border-brand-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                Ação Sugerida: {analysisResult.suggestedActionType}
-              </h4>
+          {/* Action Bar: Create Process Directly with Instant & Modal options */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-brand-950/50 to-cyan-950/40 border border-brand-500/40 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-brand-500/20 text-brand-300 border border-brand-500/30">
+                  Triagem Finalizada
+                </span>
+                <h4 className="text-xs sm:text-sm font-bold text-white tracking-tight">
+                  Ação: {analysisResult.suggestedActionType}
+                </h4>
+              </div>
               <p className="text-xs text-slate-300">
-                Área: <strong className="text-brand-300">{analysisResult.suggestedLegalArea}</strong> • Estimativa da Causa: <strong className="text-emerald-400">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(analysisResult.estimatedValue || 50000)}</strong>
+                Área: <strong className="text-brand-300">{analysisResult.suggestedLegalArea}</strong> • Estimativa: <strong className="text-emerald-400">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(analysisResult.estimatedValue || 50000)}</strong>
               </p>
             </div>
 
-            <button
-              onClick={handleCreateProcessFromAI}
-              className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-brand-600/30 transition-all self-start sm:self-auto hover:scale-105"
-            >
-              <FolderPlus className="w-4 h-4" />
-              <span>Criar Processo a partir desta Análise</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={handleQuickSaveProcess}
+                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-950/60 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                title="Salva automaticamente o processo no sistema com 1 clique"
+              >
+                <Zap className="w-4 h-4 text-emerald-200 fill-emerald-200" />
+                <span>⚡ Salvar Processo (1 Clique)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={openCreateModal}
+                className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-brand-600/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                <FolderPlus className="w-4 h-4" />
+                <span>Revisar & Salvar</span>
+              </button>
+            </div>
           </div>
 
           {/* Grid of 4 Structured Blocks */}
@@ -399,6 +497,193 @@ export const DexAIAssistant: React.FC<DexAIAssistantProps> = ({ onNavigateToCase
           </div>
         </div>
       )}
+
+      {/* Modal Interativo para Revisão e Salvamento do Processo da IA */}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Salvar Novo Processo no Sistema"
+        subtitle="Confirme os detalhes da petição e vincule o cliente e advogado responsável"
+        maxWidth="3xl"
+        icon={<Sparkles className="w-5 h-5 text-cyan-400" />}
+      >
+        <form onSubmit={handleSaveProcessFromModal} className="space-y-4">
+          <div className="p-3 rounded-xl bg-cyan-950/40 border border-cyan-500/30 flex items-center justify-between text-xs text-cyan-200">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
+              <span>Dados estruturados automaticamente a partir da triagem do <strong>Dex AI</strong>.</span>
+            </div>
+            <span className="text-[11px] font-mono text-cyan-300">Pronto para cadastro</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* CNJ */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Número do Processo (CNJ) *
+              </label>
+              <input
+                type="text"
+                required
+                value={customCNJ}
+                onChange={e => setCustomCNJ(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs font-mono text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+              />
+            </div>
+
+            {/* Ação */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Ação / Tipo de Demanda *
+              </label>
+              <input
+                type="text"
+                required
+                value={customActionType}
+                onChange={e => setCustomActionType(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+              />
+            </div>
+
+            {/* Cliente */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Cliente Vinculado *
+              </label>
+              <select
+                required
+                value={selectedClientId}
+                onChange={e => setSelectedClientId(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+              >
+                <option value="">Selecione o cliente...</option>
+                {clients.map(client => (
+                  <option key={client.id} value={client.id}>
+                    {client.name} ({client.document})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Advogado */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Advogado(a) Responsável *
+              </label>
+              <select
+                required
+                value={selectedLawyerId}
+                onChange={e => setSelectedLawyerId(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+              >
+                <option value="">Selecione o advogado...</option>
+                {lawyers.map(lawyer => (
+                  <option key={lawyer.id} value={lawyer.id}>
+                    {lawyer.name} ({lawyer.oab})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Área */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Área do Direito *
+              </label>
+              <select
+                value={customLegalArea}
+                onChange={e => setCustomLegalArea(e.target.value as LegalArea)}
+                className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+              >
+                {([
+                  'Trabalhista',
+                  'Cível',
+                  'Tributário',
+                  'Família e Sucessões',
+                  'Penal',
+                  'Empresarial',
+                  'Previdenciário',
+                  'Consumidor',
+                  'Imobiliário'
+                ] as LegalArea[]).map(area => (
+                  <option key={area} value={area}>{area}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Tribunal / Vara */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Tribunal / Foro
+              </label>
+              <input
+                type="text"
+                value={customCourt}
+                onChange={e => setCustomCourt(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+              />
+            </div>
+
+            {/* Valor da Causa */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Valor da Causa (R$)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={customValue}
+                onChange={e => setCustomValue(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+              />
+            </div>
+
+            {/* Status Inicial */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Fase Processual Inicial
+              </label>
+              <input
+                type="text"
+                disabled
+                value="Fase Inicial (Distribuição)"
+                className="w-full px-3.5 py-2.5 bg-slate-800/40 border border-slate-700/50 rounded-xl text-xs text-slate-400 cursor-not-allowed"
+              />
+            </div>
+          </div>
+
+          {/* Síntese dos Fatos */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              Síntese Fática Estruturada pela IA
+            </label>
+            <textarea
+              rows={3}
+              readOnly
+              value={analysisResult?.factsSummary || ''}
+              className="w-full px-3.5 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-xs text-slate-300 focus:outline-none"
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(false)}
+              className="px-4 py-2.5 text-xs text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2.5 bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 hover:to-cyan-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-brand-600/30 transition-all flex items-center gap-2"
+            >
+              <Check className="w-4 h-4" />
+              <span>Salvar Processo no Sistema</span>
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

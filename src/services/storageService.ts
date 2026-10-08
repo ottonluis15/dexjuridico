@@ -20,6 +20,7 @@ import {
 } from '../mock/initialData';
 
 const STORAGE_KEYS = {
+  USERS: 'dex_users',
   CLIENTS: 'dex_clients',
   LAWYERS: 'dex_lawyers',
   CASES: 'dex_cases',
@@ -34,6 +35,9 @@ const STORAGE_KEYS = {
 export const storageService = {
   // Inicialização com dados padrão caso o storage esteja vazio
   init() {
+    if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+    }
     if (!localStorage.getItem(STORAGE_KEYS.CLIENTS)) {
       localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(INITIAL_CLIENTS));
     }
@@ -62,6 +66,7 @@ export const storageService = {
 
   // Reset para estado inicial
   resetToDefaults() {
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
     localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(INITIAL_CLIENTS));
     localStorage.setItem(STORAGE_KEYS.LAWYERS, JSON.stringify(INITIAL_LAWYERS));
     localStorage.setItem(STORAGE_KEYS.CASES, JSON.stringify(INITIAL_CASES));
@@ -70,6 +75,15 @@ export const storageService = {
     localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(INITIAL_DOCUMENTS));
     localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(INITIAL_AUDIT_LOGS));
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(INITIAL_USERS[0]));
+  },
+
+  // Usuários do Sistema
+  getUsers(): User[] {
+    const data = localStorage.getItem(STORAGE_KEYS.USERS);
+    return data ? JSON.parse(data) : INITIAL_USERS;
+  },
+  saveUsers(users: User[]) {
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
   },
 
   // Clientes

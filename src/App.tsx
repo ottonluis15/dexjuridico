@@ -3,6 +3,8 @@ import { useAuth } from './context/AuthContext';
 import { Layout } from './components/layout/Layout';
 import { TabType } from './components/layout/Sidebar';
 import { LoginScreen } from './components/auth/LoginScreen';
+import { RegisterScreen } from './components/auth/RegisterScreen';
+import { LandingPage } from './components/landing/LandingPage';
 import { DashboardView } from './components/dashboard/DashboardView';
 import { LawyerWorkbench } from './components/lawyer-workbench/LawyerWorkbench';
 import { CaseList } from './components/cases/CaseList';
@@ -22,16 +24,46 @@ import { DeadlineModal } from './components/deadlines/DeadlineModal';
 import { ClientModal } from './components/clients/ClientModal';
 
 export const App: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, login } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [authView, setAuthView] = useState<'landing' | 'login' | 'register'>('landing');
+  const [selectedPlanForRegister, setSelectedPlanForRegister] = useState<string>('Escritório Pro');
 
   const [isCaseModalOpen, setIsCaseModalOpen] = useState(false);
   const [isDeadlineModalOpen, setIsDeadlineModalOpen] = useState(false);
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
 
-  // Se não estiver autenticado, exibe a tela de login
+  // Se não estiver autenticado, controla navegação pública entre Landing, Login e Cadastro
   if (!isAuthenticated) {
-    return <LoginScreen />;
+    if (authView === 'landing') {
+      return (
+        <LandingPage
+          onNavigateToLogin={() => setAuthView('login')}
+          onNavigateToRegister={(plan) => {
+            if (plan) setSelectedPlanForRegister(plan);
+            setAuthView('register');
+          }}
+          onQuickDemo={() => login('helena.moreira@dexjuridico.adv.br')}
+        />
+      );
+    }
+
+    if (authView === 'register') {
+      return (
+        <RegisterScreen
+          onNavigateToLogin={() => setAuthView('login')}
+          onNavigateToLanding={() => setAuthView('landing')}
+          initialPlan={selectedPlanForRegister}
+        />
+      );
+    }
+
+    return (
+      <LoginScreen
+        onNavigateToRegister={() => setAuthView('register')}
+        onNavigateToLanding={() => setAuthView('landing')}
+      />
+    );
   }
 
   const renderContent = () => {
@@ -71,6 +103,15 @@ export const App: React.FC = () => {
         return <DexAIAssistant onNavigateToCases={() => setActiveTab('cases')} />;
       case 'lgpd':
         return <LGPDCompliance />;
+      case 'landing':
+        return (
+          <LandingPage
+            onNavigateToLogin={() => {}}
+            onNavigateToRegister={() => {}}
+            onBackToApp={() => setActiveTab('dashboard')}
+            isLoggedIn={true}
+          />
+        );
       default:
         return (
           <DashboardView

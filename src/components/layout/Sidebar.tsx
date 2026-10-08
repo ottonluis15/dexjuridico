@@ -12,7 +12,8 @@ import {
   BarChart3, 
   Bell, 
   Settings, 
-  LogOut
+  LogOut,
+  Globe
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -31,7 +32,8 @@ export type TabType =
   | 'notifications'
   | 'settings'
   | 'lawyer-workbench'
-  | 'lgpd';
+  | 'lgpd'
+  | 'landing';
 
 interface SidebarProps {
   activeTab: TabType;
@@ -133,6 +135,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           id: 'settings',
           label: 'Configurações',
           icon: Settings,
+        },
+        {
+          id: 'landing',
+          label: 'Página Inicial (Web)',
+          icon: Globe,
         },
       ]
     }
