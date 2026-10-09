@@ -1,38 +1,30 @@
 import React, { useState } from 'react';
-import { FileUp, FileText, CheckCircle2, AlertTriangle, Lock } from 'lucide-react';
+import { FileUp, FileText, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Modal } from '../common/Modal';
-import { DocumentCategory } from '../../types';
+import { TemplateCategory } from '../../types';
 import { useData } from '../../context/DataContext';
-import { useAuth } from '../../context/AuthContext';
 
 interface DocumentUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  defaultCaseId?: string;
-  defaultClientId?: string;
 }
 
 export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   isOpen,
-  onClose,
-  defaultCaseId,
-  defaultClientId
+  onClose
 }) => {
-  const { clients, cases, addDocument } = useData();
-  const { currentUser } = useAuth();
+  const { addTemplate, showToast } = useData();
 
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState<DocumentCategory>('PETICAO');
-  const [clientId, setClientId] = useState(defaultClientId || '');
-  const [caseId, setCaseId] = useState(defaultCaseId || '');
-  const [isConfidential, setIsConfidential] = useState(true);
-  const [fileSize, setFileSize] = useState<number>(1450000); // 1.45 MB
-  const [fileType, setFileType] = useState('application/pdf');
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState<TemplateCategory>('PETICAO_INICIAL');
+  const [description, setDescription] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [selectedFileObj, setSelectedFileObj] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
-  const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.xlsx', '.png', '.jpg', '.jpeg'];
-  const MAX_SIZE_BYTES = 25 * 1024 * 1024; // 25MB
+  // Extensões permitidas para modelos jurídicos
+  const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.odt', '.txt'];
+  const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFileError(null);
@@ -42,51 +34,85 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
 
       if (!ALLOWED_EXTENSIONS.includes(extension)) {
         setFileError(`Formato "${extension}" não suportado. Extensões permitidas: ${ALLOWED_EXTENSIONS.join(', ')}.`);
+        setSelectedFile(null);
         return;
       }
 
       if (file.size > MAX_SIZE_BYTES) {
-        setFileError(`Arquivo excede o limite máximo permitido de 25MB (Tamanho: ${(file.size / (1024 * 1024)).toFixed(2)} MB).`);
+        setFileError(`O arquivo excede o limite máximo permitido de 10 MB (Tamanho atual: ${(file.size / (1024 * 1024)).toFixed(2)} MB).`);
+        setSelectedFile(null);
         return;
       }
 
-      setSelectedFileObj(file);
-      setName(file.name);
-      setFileSize(file.size);
-      setFileType(file.type || 'application/pdf');
+      setSelectedFile(file);
+      if (!title.trim()) {
+        // Sugere o nome do arquivo limpo como título
+        const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+        setTitle(nameWithoutExt.replace(/[-_]/g, ' '));
+      }
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim()) {
-      alert('Por favor, informe o nome do documento.');
+    if (!title.trim()) {
+      setFileError('Por favor, informe o título do modelo.');
       return;
     }
 
-    addDocument({
-      name: name.trim(),
-      category,
-      clientId: clientId || undefined,
-      caseId: caseId || undefined,
-      uploadedByLawyerId: currentUser?.id || 'usr_1',
-      fileSize: fileSize || 1024 * 500,
-      fileType,
-      isConfidential
-    });
+    if (!selectedFile) {
+      setFileError('Por favor, selecione um arquivo do seu computador.');
+      return;
+    }
 
-    onClose();
+    setIsUploading(true);
+
+    try {
+      // Leitura e codificação em Data URL para persistência e download funcional
+      const reader = new FileReader();
+      reader.onload = () => {
+        const fileData = reader.result as string;
+
+        addTemplate({
+          title: title.trim(),
+          category,
+          description: description.trim() || undefined,
+          fileName: selectedFile.name,
+          fileType: selectedFile.type || 'application/octet-stream',
+          fileSize: selectedFile.size,
+          fileData
+        });
+
+        setIsUploading(false);
+        onClose();
+        // Reset form
+        setTitle('');
+        setDescription('');
+        setSelectedFile(null);
+        setFileError(null);
+      };
+
+      reader.onerror = () => {
+        setFileError('Falha ao processar o arquivo. Tente novamente.');
+        setIsUploading(false);
+      };
+
+      reader.readAsDataURL(selectedFile);
+    } catch {
+      setFileError('Ocorreu um erro inesperado ao fazer upload.');
+      setIsUploading(false);
+    }
   };
 
-  const categories: { label: string; value: DocumentCategory }[] = [
+  const categories: { label: string; value: TemplateCategory }[] = [
+    { label: 'Petição Inicial', value: 'PETICAO_INICIAL' },
+    { label: 'Contestação / Defesa', value: 'CONTESTACAO' },
+    { label: 'Recurso / Apelação', value: 'RECURSO' },
+    { label: 'Contrato de Honorários / Prestação', value: 'CONTRATO' },
     { label: 'Procuração Ad Judicia', value: 'PROCURACAO' },
-    { label: 'Contrato de Honorários', value: 'CONTRATO_HONORARIOS' },
-    { label: 'Petição / Recurso', value: 'PETICAO' },
-    { label: 'Sentença / Decisão Judicial', value: 'SENTENCA_DECISAO' },
-    { label: 'Laudo Pericial / Técnico', value: 'LAUDO_PERICIAL' },
-    { label: 'Comprovante / Extrato', value: 'COMPROVANTE' },
-    { label: 'Documento Pessoal (RG/CPF)', value: 'DOCUMENTO_PESSOAL' },
+    { label: 'Notificação Extrajudicial', value: 'NOTIFICACAO' },
+    { label: 'Parecer Jurídico', value: 'PARECER' },
     { label: 'Outros Documentos', value: 'OUTROS' },
   ];
 
@@ -94,34 +120,35 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Upload de Documento"
-      subtitle="Armazenamento criptografado e vinculado ao processo/cliente"
+      title="Novo Modelo Jurídico"
+      subtitle="Envie minutas e peças processuais para a base do escritório"
       maxWidth="2xl"
       icon={<FileUp className="w-5 h-5 text-brand-400" />}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Upload Dropzone */}
+        {/* Dropzone de Upload */}
         <div className="border-2 border-dashed border-slate-700 hover:border-brand-500 rounded-2xl p-6 text-center bg-slate-800/40 transition-colors">
           <input
             type="file"
-            id="fileInput"
+            id="templateFileInput"
             className="hidden"
-            accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg"
+            accept=".pdf,.doc,.docx,.odt,.txt"
             onChange={handleFileChange}
           />
-          <label htmlFor="fileInput" className="cursor-pointer block">
+          <label htmlFor="templateFileInput" className="cursor-pointer block">
             <div className="w-12 h-12 rounded-xl bg-brand-500/10 text-brand-400 flex items-center justify-center mx-auto mb-3">
               <FileUp className="w-6 h-6" />
             </div>
             <p className="text-xs font-semibold text-white">
-              {selectedFileObj ? selectedFileObj.name : 'Clique para selecionar arquivo do computador'}
+              {selectedFile ? selectedFile.name : 'Clique para selecionar arquivo do computador'}
             </p>
             <p className="text-[11px] text-slate-400 mt-1">
-              Extensões: PDF, DOCX, XLSX, PNG, JPG (Máx. 25MB)
+              Formatos aceitos: PDF, DOC, DOCX, ODT e TXT (Tamanho máximo: 10 MB)
             </p>
-            {selectedFileObj && (
-              <span className="inline-block mt-2 text-[10px] text-emerald-400 font-mono">
-                ✓ {(selectedFileObj.size / 1024).toFixed(1)} KB carregados
+            {selectedFile && (
+              <span className="inline-flex items-center gap-1.5 mt-2 text-xs text-emerald-400 font-medium">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                {(selectedFile.size / 1024).toFixed(1)} KB carregados
               </span>
             )}
           </label>
@@ -134,85 +161,49 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
           </div>
         )}
 
-        {/* Nome do Documento */}
+        {/* Título do Modelo */}
         <div>
           <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-            Nome do Arquivo / Título *
+            Título do Modelo *
           </label>
           <input
             type="text"
             required
-            placeholder="Ex: Peticao_Inicial_Assinada.pdf"
-            value={name}
-            onChange={e => setName(e.target.value)}
+            placeholder="Ex: Petição Inicial - Reclamatória Trabalhista com Horas Extras"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
             className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Categoria */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Categoria do Documento *
-            </label>
-            <select
-              value={category}
-              onChange={e => setCategory(e.target.value as DocumentCategory)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
-            >
-              {categories.map(cat => (
-                <option key={cat.value} value={cat.value}>{cat.label}</option>
-              ))}
-            </select>
-          </div>
+        {/* Categoria */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+            Categoria da Peça / Documento *
+          </label>
+          <select
+            value={category}
+            onChange={e => setCategory(e.target.value as TemplateCategory)}
+            className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+          >
+            {categories.map(cat => (
+              <option key={cat.value} value={cat.value}>{cat.label}</option>
+            ))}
+          </select>
+        </div>
 
-          {/* Processo Vinculado */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Processo Vinculado (Opcional)
-            </label>
-            <select
-              value={caseId}
-              onChange={e => setCaseId(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50 font-mono"
-            >
-              <option value="">Sem vínculo direto com processo</option>
-              {cases.map(c => (
-                <option key={c.id} value={c.id}>{c.caseNumber} - {c.actionType}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Cliente Vinculado */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Cliente Vinculado (Opcional)
-            </label>
-            <select
-              value={clientId}
-              onChange={e => setClientId(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
-            >
-              <option value="">Selecione o cliente titular...</option>
-              {clients.map(cl => (
-                <option key={cl.id} value={cl.id}>{cl.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Confidencialidade */}
-          <div className="flex items-center pt-6">
-            <label className="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isConfidential}
-                onChange={e => setIsConfidential(e.target.checked)}
-                className="rounded bg-slate-800 border-slate-700 text-brand-500 focus:ring-brand-500/40"
-              />
-              <Lock className="w-3.5 h-3.5 text-amber-400" />
-              Documento sob Sigilo / Confidencial
-            </label>
-          </div>
+        {/* Descrição */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+            Descrição e Orientações de Uso (Opcional)
+          </label>
+          <textarea
+            rows={3}
+            placeholder="Ex: Utilizar preferencialmente em demandas que envolvam cargo de confiança e ausência de controle biométrico..."
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50 resize-none"
+          />
         </div>
 
         {/* Actions */}
@@ -220,15 +211,16 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 rounded-xl transition-colors"
+            className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 rounded-xl transition-colors cursor-pointer"
           >
             Cancelar
           </button>
           <button
             type="submit"
-            className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-brand-600/30 transition-all"
+            disabled={isUploading}
+            className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-brand-600/30 transition-all cursor-pointer disabled:opacity-50"
           >
-            Enviar Documento
+            {isUploading ? 'Processando envio...' : 'Salvar Modelo'}
           </button>
         </div>
       </form>

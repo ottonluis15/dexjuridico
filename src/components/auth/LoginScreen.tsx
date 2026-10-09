@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Scale, Lock, Mail, ArrowRight, ShieldCheck, UserCheck, Sparkles, CheckCircle2, ArrowLeft, UserPlus } from 'lucide-react';
+import { Scale, Lock, Mail, ArrowRight, ShieldCheck, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 interface LoginScreenProps {
@@ -11,29 +11,35 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   onNavigateToRegister,
   onNavigateToLanding
 }) => {
-  const { login, availableUsers } = useAuth();
+  const { login } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleCustomLogin = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!email.trim() || !password.trim()) {
-      setError('Por favor, informe seu e-mail institucional e senha.');
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !password.trim()) {
+      setError('Por favor, informe seu e-mail institucional e a sua senha de acesso.');
       return;
     }
 
-    const success = login(email.trim());
-    if (!success) {
-      setError('Credenciais não reconhecidas. Utilize um dos botões de acesso rápido abaixo para demonstração.');
+    setIsLoading(true);
+    try {
+      const res = await login(cleanEmail, password);
+      if (!res.success) {
+        setError(res.error || 'Não foi possível autenticar. Verifique suas credenciais.');
+      }
+    } catch {
+      setError('Ocorreu um erro ao processar o login. Tente novamente em instantes.');
+    } finally {
+      setIsLoading(false);
     }
-  };
-
-  const handleQuickLogin = (userEmail: string) => {
-    login(userEmail);
   };
 
   return (
@@ -62,129 +68,92 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
         {/* Main Card */}
         <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800/80 shadow-2xl backdrop-blur-xl space-y-6">
-          {/* Quick Access Simulation Buttons */}
-          <div className="space-y-2">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 text-center">
-              Acesso Rápido para Demonstração (RBAC)
-            </div>
-
-            <div className="grid grid-cols-1 gap-2.5">
-              {/* Admin Button */}
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('helena.moreira@dexjuridico.adv.br')}
-                className="p-3 rounded-2xl bg-gradient-to-r from-brand-950/60 to-slate-800/80 hover:from-brand-900/60 hover:to-slate-700/80 border border-brand-500/40 text-left transition-all group flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3">
-                  <img
-                    src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=120"
-                    alt="Dra. Helena"
-                    className="w-10 h-10 rounded-xl object-cover border border-brand-400/40"
-                  />
-                  <div>
-                    <span className="text-xs font-bold text-white group-hover:text-brand-300 transition-colors block">
-                      Entrar como Administradora
-                    </span>
-                    <span className="text-[11px] text-slate-400 block">
-                      Dra. Helena Moreira (Sócia • Visão Total)
-                    </span>
-                  </div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-brand-400 group-hover:translate-x-1 transition-transform" />
-              </button>
-
-              {/* Lawyer Button */}
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('lucas.mendes@dexjuridico.adv.br')}
-                className="p-3 rounded-2xl bg-gradient-to-r from-slate-800/60 to-slate-800/80 hover:from-slate-700/60 hover:to-slate-700/80 border border-slate-700 text-left transition-all group flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3">
-                  <img
-                    src="https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=120"
-                    alt="Dr. Lucas"
-                    className="w-10 h-10 rounded-xl object-cover border border-slate-600"
-                  />
-                  <div>
-                    <span className="text-xs font-bold text-white group-hover:text-cyan-300 transition-colors block">
-                      Entrar como Advogado Associado
-                    </span>
-                    <span className="text-[11px] text-slate-400 block">
-                      Dr. Lucas Mendes (Visão Filtrada de Casos)
-                    </span>
-                  </div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 border-t border-slate-800" />
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">ou autentique com senha</span>
-            <div className="flex-1 border-t border-slate-800" />
+          <div className="text-center space-y-1">
+            <h2 className="text-base font-bold text-white">Acesse sua Conta</h2>
+            <p className="text-xs text-slate-400">
+              Informe suas credenciais profissionais para entrar no sistema
+            </p>
           </div>
 
           {/* Login Form */}
-          <form onSubmit={handleCustomLogin} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-800 text-rose-200 text-xs">
+              <div className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-200 text-xs leading-relaxed animate-in fade-in">
                 {error}
               </div>
             )}
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                E-mail Institucional
+                E-mail Institucional *
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
                   type="email"
-                  placeholder="usuario@dexjuridico.adv.br"
+                  required
+                  placeholder="usuario@escritorio.adv.br"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="w-full pl-9 pr-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+                  className="w-full pl-9 pr-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
                 />
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Senha de Acesso
+                Senha de Acesso *
               </label>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
                   placeholder="••••••••••••"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className="w-full pl-9 pr-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+                  className="w-full pl-9 pr-10 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-white cursor-pointer"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
             <button
               type="submit"
-              className="w-full py-3 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-brand-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              disabled={isLoading}
+              className="w-full py-3 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-brand-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
             >
-              <span>Acessar o Dex</span>
-              <ArrowRight className="w-4 h-4" />
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Validando credenciais...</span>
+                </>
+              ) : (
+                <>
+                  <span>Entrar no Sistema</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </form>
 
           {/* Cadastro Link */}
           {onNavigateToRegister && (
-            <div className="pt-3 border-t border-slate-800 text-center">
-              <span className="text-xs text-slate-400">Não possui uma conta? </span>
+            <div className="pt-4 border-t border-slate-800 text-center">
+              <span className="text-xs text-slate-400">Ainda não tem cadastro? </span>
               <button
                 type="button"
                 onClick={onNavigateToRegister}
                 className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
               >
-                Cadastre seu escritório (14 dias grátis)
+                Criar uma conta no DEX
               </button>
             </div>
           )}
@@ -199,7 +168,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Voltar para a Página Inicial / Apresentação</span>
+              <span>Voltar para a Página Inicial</span>
             </button>
           </div>
         )}
@@ -210,8 +179,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
             <span>Ambiente Seguro com Criptografia e Conformidade LGPD</span>
           </div>
-          <p className="text-[11px] text-slate-400">
-            TCC • Dex — Sistema de Gestão Jurídica Modularizado com IA
+          <p className="text-[11px] text-slate-500">
+            Dex — Sistema de Gestão Jurídica Inteligente com IA
           </p>
         </div>
       </div>

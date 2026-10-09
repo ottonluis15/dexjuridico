@@ -10,6 +10,12 @@ export interface User {
   phone?: string;
   specialties?: string[];
   status: 'ACTIVE' | 'INACTIVE';
+  officeId?: string; // ID do escritório ao qual pertence (se houver)
+  officeName?: string; // Nome do escritório
+  officeCode?: string; // Código para convite/vínculo do escritório
+  isIndependent?: boolean; // Verdadeiro se for advogado autônomo sem vínculo
+  passwordHash?: string; // Hash seguro com salt da senha
+  salt?: string; // Salt criptográfico
 }
 
 export type ClientType = 'PF' | 'PJ';
@@ -35,6 +41,7 @@ export interface Client {
   createdAt: string;
   status: ClientStatus;
   linkedLawyerId?: string;
+  officeId?: string;
 }
 
 export interface Lawyer {
@@ -48,6 +55,8 @@ export interface Lawyer {
   status: 'ACTIVE' | 'ON_LEAVE' | 'INACTIVE';
   roleTitle: string; // Sócio Fundador, Advogado Associado, etc.
   assignedCasesCount?: number;
+  officeId?: string;
+  avatarUrl?: string;
 }
 
 export type LegalArea = 
@@ -84,6 +93,7 @@ export interface LegalCase {
   description: string;
   notes?: string;
   updatedAt: string;
+  officeId?: string;
 }
 
 export type DeadlinePriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'NORMAL';
@@ -112,6 +122,7 @@ export interface Deadline {
   status: DeadlineStatus;
   completedAt?: string;
   notes?: string;
+  officeId?: string;
 }
 
 export type FinancialType = 'HONORARIOS_INICIAIS' | 'HONORARIOS_EXITO' | 'MENSALIDADE' | 'CUSTAS' | 'DESPESA';
@@ -133,6 +144,7 @@ export interface FinancialEntry {
   paymentMethod: PaymentMethod;
   hasReceipt?: boolean;
   receiptName?: string;
+  officeId?: string;
 }
 
 export type DocumentCategory = 
@@ -156,6 +168,33 @@ export interface DocumentItem {
   fileType: string; // application/pdf, etc.
   createdAt: string;
   isConfidential: boolean;
+  officeId?: string;
+}
+
+// Tipo específico para a Aba "Modelos" de Documentos Jurídicos
+export type TemplateCategory = 
+  | 'PETICAO_INICIAL'
+  | 'CONTESTACAO'
+  | 'RECURSO'
+  | 'CONTRATO'
+  | 'PROCURACAO'
+  | 'NOTIFICACAO'
+  | 'PARECER'
+  | 'OUTROS';
+
+export interface TemplateDocument {
+  id: string;
+  title: string;
+  category: TemplateCategory;
+  description?: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number; // bytes
+  fileData: string; // Data URL Base64 para persistência e download funcional
+  uploadedByUserId: string;
+  uploadedByName: string;
+  officeId?: string; // Se vinculado a escritório
+  createdAt: string;
 }
 
 export interface AIAnalysisResult {
@@ -180,4 +219,5 @@ export interface AuditLog {
   entity: string;
   details: string;
   ipAddress: string;
+  officeId?: string;
 }

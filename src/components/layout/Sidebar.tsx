@@ -225,9 +225,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* User Profile Footer */}
         <div className="p-4 border-t border-neutral-200/70 bg-[#FAFAFA]/80 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 rounded-full bg-[#C69255] text-white flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
-              {userInitial}
-            </div>
+            {currentUser?.avatarUrl ? (
+              <img
+                src={currentUser.avatarUrl}
+                alt={userName}
+                className="w-11 h-11 rounded-full object-cover shrink-0 border border-neutral-300 shadow-sm"
+              />
+            ) : (
+              <div className="w-11 h-11 rounded-full bg-[#C69255] text-white flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
+                {userInitial}
+              </div>
+            )}
             <div className="min-w-0">
               <p className="text-sm font-bold text-neutral-800 truncate leading-tight">
                 {userName}

@@ -92,9 +92,17 @@ export const LawyerList: React.FC = () => {
                 <div>
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-brand-600 to-slate-800 flex items-center justify-center text-white font-bold text-sm shadow-md border border-brand-400/30">
-                        {lawyer.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
-                      </div>
+                      {lawyer.avatarUrl ? (
+                        <img
+                          src={lawyer.avatarUrl}
+                          alt={lawyer.name}
+                          className="w-11 h-11 rounded-xl object-cover border border-brand-400/40 shadow-md"
+                        />
+                      ) : (
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-brand-600 to-slate-800 flex items-center justify-center text-white font-bold text-sm shadow-md border border-brand-400/30">
+                          {lawyer.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
+                        </div>
+                      )}
                       <div>
                         <h3 className="text-sm font-bold text-white leading-tight">{lawyer.name}</h3>
                         <p className="text-[11px] text-brand-300 font-mono mt-0.5">OAB: {lawyer.oab}</p>

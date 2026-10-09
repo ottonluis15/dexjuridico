@@ -8,7 +8,8 @@ import {
   FinancialEntry, 
   DocumentItem, 
   AuditLog, 
-  AIAnalysisResult 
+  AIAnalysisResult,
+  TemplateDocument 
 } from '../types';
 import { storageService } from '../services/storageService';
 import { useAuth } from './AuthContext';
@@ -27,15 +28,17 @@ interface DataContextType {
   deadlines: Deadline[];
   financial: FinancialEntry[];
   documents: DocumentItem[];
+  templates: TemplateDocument[];
   auditLogs: AuditLog[];
   toasts: ToastNotification[];
 
-  // Dados filtrados por perfil de usuário
+  // Dados filtrados por perfil e escritório
   userCases: LegalCase[];
   userDeadlines: Deadline[];
   userClients: Client[];
   userFinancial: FinancialEntry[];
   userDocuments: DocumentItem[];
+  userTemplates: TemplateDocument[];
 
   // Estatísticas de Dashboard
   stats: {
@@ -78,13 +81,24 @@ interface DataContextType {
   addDocument: (doc: Omit<DocumentItem, 'id' | 'createdAt'>) => DocumentItem;
   deleteDocument: (id: string) => void;
 
+  // Operações de Modelos (Aba Modelos Jurídicos)
+  addTemplate: (templateData: {
+    title: string;
+    category: any;
+    description?: string;
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+    fileData: string;
+  }) => TemplateDocument;
+  deleteTemplate: (id: string) => boolean;
+
   // Utilitários de UI e IA
   showToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
   removeToast: (id: string) => void;
   prefillCaseFromAI: (analysis: AIAnalysisResult, rawPrompt: string) => void;
   pendingAiDraft: { analysis: AIAnalysisResult; rawPrompt: string } | null;
   clearPendingAiDraft: () => void;
-  resetAllData: () => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -98,11 +112,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [deadlines, setDeadlines] = useState<Deadline[]>(() => storageService.getDeadlines());
   const [financial, setFinancial] = useState<FinancialEntry[]>(() => storageService.getFinancial());
   const [documents, setDocuments] = useState<DocumentItem[]>(() => storageService.getDocuments());
+  const [templates, setTemplates] = useState<TemplateDocument[]>(() => storageService.getTemplates());
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => storageService.getAuditLogs());
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
   const [pendingAiDraft, setPendingAiDraft] = useState<{ analysis: AIAnalysisResult; rawPrompt: string } | null>(null);
 
-  // Mapear o advogado correspondente ao usuário logado
+  // Recarregar dados quando o usuário muda (login/logout)
+  useEffect(() => {
+    setClients(storageService.getClients());
+    setLawyers(storageService.getLawyers());
+    setCases(storageService.getCases());
+    setDeadlines(storageService.getDeadlines());
+    setFinancial(storageService.getFinancial());
+    setDocuments(storageService.getDocuments());
+    setTemplates(storageService.getTemplates());
+    setAuditLogs(storageService.getAuditLogs());
+  }, [currentUser]);
+
+  // Mapear o perfil de advogado correspondente ao usuário logado
   const currentLawyer = useMemo(() => {
     if (!currentUser) return null;
     return lawyers.find(l => l.userId === currentUser.id) || null;
@@ -131,38 +158,62 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
-  // Filtragem de dados com base no perfil RBAC
+  // Filtragem de dados com base no isolamento de Escritório e Perfil RBAC
   const userCases = useMemo(() => {
-    if (isAdmin || !currentLawyer) return cases;
+    if (!currentUser) return [];
+    if (isAdmin) {
+      // Escritório vê apenas os processos pertencentes à sua banca
+      return cases.filter(c => !currentUser.officeId || c.officeId === currentUser.officeId);
+    }
+    if (!currentLawyer) return [];
+    // Advogado vê apenas os processos atribuídos a ele
     return cases.filter(c => c.lawyerId === currentLawyer.id);
-  }, [cases, isAdmin, currentLawyer]);
+  }, [cases, isAdmin, currentUser, currentLawyer]);
 
   const userDeadlines = useMemo(() => {
-    if (isAdmin || !currentLawyer) return deadlines;
-    // O advogado vê prazos dos seus processos ou atribuídos a ele
-    const myCaseIds = new Set(cases.filter(c => c.lawyerId === currentLawyer.id).map(c => c.id));
+    if (!currentUser) return [];
+    if (isAdmin) {
+      return deadlines.filter(d => !currentUser.officeId || d.officeId === currentUser.officeId);
+    }
+    if (!currentLawyer) return [];
+    const myCaseIds = new Set(userCases.map(c => c.id));
     return deadlines.filter(d => d.lawyerId === currentLawyer.id || myCaseIds.has(d.caseId));
-  }, [deadlines, cases, isAdmin, currentLawyer]);
+  }, [deadlines, userCases, isAdmin, currentUser, currentLawyer]);
 
   const userClients = useMemo(() => {
-    if (isAdmin || !currentLawyer) return clients;
-    const myCaseClientIds = new Set(cases.filter(c => c.lawyerId === currentLawyer.id).map(c => c.clientId));
+    if (!currentUser) return [];
+    if (isAdmin) {
+      return clients.filter(c => !currentUser.officeId || c.officeId === currentUser.officeId);
+    }
+    if (!currentLawyer) return [];
+    const myCaseClientIds = new Set(userCases.map(c => c.clientId));
     return clients.filter(c => c.linkedLawyerId === currentLawyer.id || myCaseClientIds.has(c.id));
-  }, [clients, cases, isAdmin, currentLawyer]);
+  }, [clients, userCases, isAdmin, currentUser, currentLawyer]);
 
   const userFinancial = useMemo(() => {
-    if (isAdmin) return financial;
+    if (!currentUser) return [];
+    if (isAdmin) {
+      return financial.filter(f => !currentUser.officeId || f.officeId === currentUser.officeId);
+    }
     if (!currentLawyer) return [];
-    // Advogado vê apenas registros vinculados aos seus processos
-    const myCaseIds = new Set(cases.filter(c => c.lawyerId === currentLawyer.id).map(c => c.id));
+    const myCaseIds = new Set(userCases.map(c => c.id));
     return financial.filter(f => (f.caseId && myCaseIds.has(f.caseId)) || f.lawyerId === currentLawyer.id);
-  }, [financial, cases, isAdmin, currentLawyer]);
+  }, [financial, userCases, isAdmin, currentUser, currentLawyer]);
 
   const userDocuments = useMemo(() => {
-    if (isAdmin || !currentLawyer) return documents;
-    const myCaseIds = new Set(cases.filter(c => c.lawyerId === currentLawyer.id).map(c => c.id));
+    if (!currentUser) return [];
+    if (isAdmin) {
+      return documents.filter(d => !currentUser.officeId || d.officeId === currentUser.officeId);
+    }
+    if (!currentLawyer) return [];
+    const myCaseIds = new Set(userCases.map(c => c.id));
     return documents.filter(d => (d.caseId && myCaseIds.has(d.caseId)) || d.uploadedByLawyerId === currentLawyer.id);
-  }, [documents, cases, isAdmin, currentLawyer]);
+  }, [documents, userCases, isAdmin, currentUser, currentLawyer]);
+
+  // Modelos visíveis para o usuário logado
+  const userTemplates = useMemo(() => {
+    return storageService.getTemplatesForUser(currentUser);
+  }, [templates, currentUser]);
 
   // Estatísticas do Dashboard
   const stats = useMemo(() => {
@@ -196,6 +247,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...clientData,
       id: `cli_${Date.now()}`,
       createdAt: new Date().toISOString().substring(0, 10),
+      officeId: currentUser?.officeId
     };
     const updated = [newClient, ...clients];
     setClients(updated);
@@ -205,13 +257,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       userId: currentUser?.id || 'sys',
       userName: currentUser?.name || 'Sistema',
       userRole: currentUser?.role || 'LAWYER',
-      action: 'CRIACAO_CLIENTE',
+      action: 'CADASTRO_CLIENTE',
       entity: `Cliente: ${newClient.name}`,
       details: `Novo cliente cadastrado com documento ${newClient.document}.`,
-      ipAddress: '187.54.12.90'
+      ipAddress: '187.54.12.90',
+      officeId: currentUser?.officeId
     });
     setAuditLogs(storageService.getAuditLogs());
-    showToast(`Cliente ${newClient.name} cadastrado com sucesso!`, 'success');
+    showToast(`Cliente "${newClient.name}" cadastrado com sucesso!`, 'success');
     return newClient;
   };
 
@@ -235,24 +288,38 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userRole: currentUser?.role || 'LAWYER',
         action: 'EXCLUSAO_CLIENTE',
         entity: `Cliente: ${target.name}`,
-        details: `Exclusão de cliente e dados cadastrais associados.`,
-        ipAddress: '187.54.12.90'
+        details: `Exclusão permanente de cadastro de cliente.`,
+        ipAddress: '187.54.12.90',
+        officeId: currentUser?.officeId
       });
       setAuditLogs(storageService.getAuditLogs());
     }
-    showToast('Cliente removido do sistema.', 'info');
+    showToast('Cliente removido.', 'info');
   };
 
   // CRUD Advogados
   const addLawyer = (lawyerData: Omit<Lawyer, 'id'>): Lawyer => {
     const newLawyer: Lawyer = {
       ...lawyerData,
-      id: `law_${Date.now()}`
+      id: `law_${Date.now()}`,
+      officeId: currentUser?.officeId
     };
-    const updated = [...lawyers, newLawyer];
+    const updated = [newLawyer, ...lawyers];
     setLawyers(updated);
     storageService.saveLawyers(updated);
-    showToast(`Advogado(a) ${newLawyer.name} cadastrado(a)!`, 'success');
+
+    storageService.addAuditLog({
+      userId: currentUser?.id || 'sys',
+      userName: currentUser?.name || 'Sistema',
+      userRole: currentUser?.role || 'ADMIN',
+      action: 'CADASTRO_ADVOGADO',
+      entity: `Advogado: ${newLawyer.name}`,
+      details: `Novo membro incluído no corpo jurídico com OAB ${newLawyer.oab}.`,
+      ipAddress: '187.54.12.90',
+      officeId: currentUser?.officeId
+    });
+    setAuditLogs(storageService.getAuditLogs());
+    showToast(`Advogado ${newLawyer.name} cadastrado!`, 'success');
     return newLawyer;
   };
 
@@ -260,14 +327,29 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = lawyers.map(l => l.id === id ? { ...l, ...updates } : l);
     setLawyers(updated);
     storageService.saveLawyers(updated);
-    showToast('Cadastro de advogado atualizado.', 'success');
+    showToast('Registro do advogado atualizado.', 'success');
   };
 
   const deleteLawyer = (id: string) => {
+    const target = lawyers.find(l => l.id === id);
     const updated = lawyers.filter(l => l.id !== id);
     setLawyers(updated);
     storageService.saveLawyers(updated);
-    showToast('Advogado removido da equipe.', 'info');
+
+    if (target) {
+      storageService.addAuditLog({
+        userId: currentUser?.id || 'sys',
+        userName: currentUser?.name || 'Sistema',
+        userRole: currentUser?.role || 'ADMIN',
+        action: 'EXCLUSAO_ADVOGADO',
+        entity: `Advogado: ${target.name}`,
+        details: `Remoção de advogado do corpo jurídico.`,
+        ipAddress: '187.54.12.90',
+        officeId: currentUser?.officeId
+      });
+      setAuditLogs(storageService.getAuditLogs());
+    }
+    showToast('Advogado desvinculado.', 'info');
   };
 
   // CRUD Processos
@@ -275,7 +357,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newCase: LegalCase = {
       ...caseData,
       id: `case_${Date.now()}`,
-      updatedAt: new Date().toISOString().substring(0, 10)
+      updatedAt: new Date().toISOString().substring(0, 10),
+      officeId: currentUser?.officeId
     };
     const updated = [newCase, ...cases];
     setCases(updated);
@@ -285,13 +368,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       userId: currentUser?.id || 'sys',
       userName: currentUser?.name || 'Sistema',
       userRole: currentUser?.role || 'LAWYER',
-      action: 'CRIACAO_PROCESSO',
+      action: 'CADASTRO_PROCESSO',
       entity: `Processo nº ${newCase.caseNumber}`,
-      details: `Distribuição de ação: ${newCase.actionType} na área ${newCase.legalArea}.`,
-      ipAddress: '187.54.12.90'
+      details: `Distribuição de ação (${newCase.actionType}) no valor de R$ ${newCase.value.toFixed(2)}.`,
+      ipAddress: '187.54.12.90',
+      officeId: currentUser?.officeId
     });
     setAuditLogs(storageService.getAuditLogs());
-    showToast(`Processo ${newCase.caseNumber} criado com sucesso!`, 'success');
+    showToast(`Processo ${newCase.caseNumber} cadastrado com sucesso!`, 'success');
     return newCase;
   };
 
@@ -316,7 +400,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         action: 'EXCLUSAO_PROCESSO',
         entity: `Processo nº ${target.caseNumber}`,
         details: `Exclusão definitiva de processo.`,
-        ipAddress: '187.54.12.90'
+        ipAddress: '187.54.12.90',
+        officeId: currentUser?.officeId
       });
       setAuditLogs(storageService.getAuditLogs());
     }
@@ -327,7 +412,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addDeadline = (deadlineData: Omit<Deadline, 'id'>): Deadline => {
     const newDeadline: Deadline = {
       ...deadlineData,
-      id: `ded_${Date.now()}`
+      id: `ded_${Date.now()}`,
+      officeId: currentUser?.officeId
     };
     const updated = [newDeadline, ...deadlines];
     setDeadlines(updated);
@@ -340,7 +426,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       action: 'CRIACAO_PRAZO',
       entity: `Prazo: ${newDeadline.type}`,
       details: `Vencimento fatal fixado para ${newDeadline.dueDate}.`,
-      ipAddress: '187.54.12.90'
+      ipAddress: '187.54.12.90',
+      officeId: currentUser?.officeId
     });
     setAuditLogs(storageService.getAuditLogs());
     showToast(`Prazo para ${newDeadline.dueDate} cadastrado!`, 'success');
@@ -372,7 +459,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       action: newStatus === 'COMPLETED' ? 'BAIXA_PRAZO' : 'REABERTURA_PRAZO',
       entity: `Prazo: ${target.type}`,
       details: `Status alterado para ${newStatus === 'COMPLETED' ? 'Concluído' : 'Pendente'}.`,
-      ipAddress: '187.54.12.90'
+      ipAddress: '187.54.12.90',
+      officeId: currentUser?.officeId
     });
     setAuditLogs(storageService.getAuditLogs());
     showToast(newStatus === 'COMPLETED' ? 'Prazo concluído e baixado!' : 'Prazo reaberto.', 'info');
@@ -389,7 +477,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addFinancial = (entryData: Omit<FinancialEntry, 'id'>): FinancialEntry => {
     const newEntry: FinancialEntry = {
       ...entryData,
-      id: `fin_${Date.now()}`
+      id: `fin_${Date.now()}`,
+      officeId: currentUser?.officeId
     };
     const updated = [newEntry, ...financial];
     setFinancial(updated);
@@ -402,7 +491,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       action: 'LANCAMENTO_FINANCEIRO',
       entity: `Financeiro: ${newEntry.title}`,
       details: `Lançamento de R$ ${newEntry.amount.toFixed(2)} com vencimento em ${newEntry.dueDate}.`,
-      ipAddress: '187.54.12.90'
+      ipAddress: '187.54.12.90',
+      officeId: currentUser?.officeId
     });
     setAuditLogs(storageService.getAuditLogs());
     showToast('Lançamento financeiro registrado.', 'success');
@@ -428,7 +518,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newDoc: DocumentItem = {
       ...docData,
       id: `doc_${Date.now()}`,
-      createdAt: new Date().toISOString().substring(0, 10)
+      createdAt: new Date().toISOString().substring(0, 10),
+      officeId: currentUser?.officeId
     };
     const updated = [newDoc, ...documents];
     setDocuments(updated);
@@ -441,7 +532,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       action: 'UPLOAD_DOCUMENTO',
       entity: `Documento: ${newDoc.name}`,
       details: `Upload de arquivo (${(newDoc.fileSize / 1024).toFixed(1)} KB) na categoria ${newDoc.category}.`,
-      ipAddress: '187.54.12.90'
+      ipAddress: '187.54.12.90',
+      officeId: currentUser?.officeId
     });
     setAuditLogs(storageService.getAuditLogs());
     showToast(`Documento ${newDoc.name} enviado com sucesso!`, 'success');
@@ -462,11 +554,84 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         action: 'EXCLUSAO_DOCUMENTO',
         entity: `Documento: ${target.name}`,
         details: `Exclusão permanente de arquivo.`,
-        ipAddress: '187.54.12.90'
+        ipAddress: '187.54.12.90',
+        officeId: currentUser?.officeId
       });
       setAuditLogs(storageService.getAuditLogs());
     }
     showToast('Documento excluído.', 'info');
+  };
+
+  // CRUD Modelos (Aba Modelos Jurídicos)
+  const addTemplate = (templateData: {
+    title: string;
+    category: any;
+    description?: string;
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+    fileData: string;
+  }): TemplateDocument => {
+    const newTemplate: TemplateDocument = {
+      id: `tpl_${Date.now()}`,
+      title: templateData.title,
+      category: templateData.category,
+      description: templateData.description,
+      fileName: templateData.fileName,
+      fileType: templateData.fileType,
+      fileSize: templateData.fileSize,
+      fileData: templateData.fileData,
+      uploadedByUserId: currentUser?.id || 'sys',
+      uploadedByName: currentUser?.name || 'Usuário',
+      officeId: currentUser?.officeId,
+      createdAt: new Date().toISOString().substring(0, 10)
+    };
+
+    const added = storageService.addTemplate(newTemplate);
+    setTemplates(storageService.getTemplates());
+
+    storageService.addAuditLog({
+      userId: currentUser?.id || 'sys',
+      userName: currentUser?.name || 'Sistema',
+      userRole: currentUser?.role || 'LAWYER',
+      action: 'UPLOAD_MODELO',
+      entity: `Modelo: ${newTemplate.title}`,
+      details: `Upload de modelo jurídico (${newTemplate.fileName}) na categoria ${newTemplate.category}.`,
+      ipAddress: '187.54.12.90',
+      officeId: currentUser?.officeId
+    });
+    setAuditLogs(storageService.getAuditLogs());
+    showToast(`Modelo "${newTemplate.title}" adicionado com sucesso!`, 'success');
+    return added;
+  };
+
+  const deleteTemplate = (id: string): boolean => {
+    const target = templates.find(t => t.id === id);
+    if (!target) return false;
+
+    // Apenas quem enviou ou o administrador/escritório pode excluir
+    const canDelete = isAdmin || (currentUser && target.uploadedByUserId === currentUser.id);
+    if (!canDelete) {
+      showToast('Você não tem permissão para excluir este modelo.', 'error');
+      return false;
+    }
+
+    storageService.deleteTemplate(id);
+    setTemplates(storageService.getTemplates());
+
+    storageService.addAuditLog({
+      userId: currentUser?.id || 'sys',
+      userName: currentUser?.name || 'Sistema',
+      userRole: currentUser?.role || 'LAWYER',
+      action: 'EXCLUSAO_MODELO',
+      entity: `Modelo: ${target.title}`,
+      details: `Exclusão permanente do modelo jurídico "${target.title}".`,
+      ipAddress: '187.54.12.90',
+      officeId: currentUser?.officeId
+    });
+    setAuditLogs(storageService.getAuditLogs());
+    showToast(`Modelo "${target.title}" excluído.`, 'info');
+    return true;
   };
 
   // Integração com Dex AI
@@ -479,19 +644,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPendingAiDraft(null);
   };
 
-  // Reset total dos dados (para demonstrações)
-  const resetAllData = () => {
-    storageService.resetToDefaults();
-    setClients(storageService.getClients());
-    setLawyers(storageService.getLawyers());
-    setCases(storageService.getCases());
-    setDeadlines(storageService.getDeadlines());
-    setFinancial(storageService.getFinancial());
-    setDocuments(storageService.getDocuments());
-    setAuditLogs(storageService.getAuditLogs());
-    showToast('Base de dados restaurada para o padrão inicial.', 'info');
-  };
-
   return (
     <DataContext.Provider
       value={{
@@ -501,6 +653,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deadlines,
         financial,
         documents,
+        templates,
         auditLogs,
         toasts,
         userCases,
@@ -508,6 +661,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userClients,
         userFinancial,
         userDocuments,
+        userTemplates,
         stats,
         addClient,
         updateClient,
@@ -527,12 +681,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteFinancial,
         addDocument,
         deleteDocument,
+        addTemplate,
+        deleteTemplate,
         showToast,
         removeToast,
         prefillCaseFromAI,
         pendingAiDraft,
-        clearPendingAiDraft,
-        resetAllData
+        clearPendingAiDraft
       }}
     >
       {children}

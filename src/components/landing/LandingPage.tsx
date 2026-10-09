@@ -29,7 +29,6 @@ import {
 interface LandingPageProps {
   onNavigateToLogin: () => void;
   onNavigateToRegister: (plan?: string) => void;
-  onQuickDemo?: () => void;
   onBackToApp?: () => void;
   isLoggedIn?: boolean;
 }
@@ -37,7 +36,6 @@ interface LandingPageProps {
 export const LandingPage: React.FC<LandingPageProps> = ({
   onNavigateToLogin,
   onNavigateToRegister,
-  onQuickDemo,
   onBackToApp,
   isLoggedIn = false
 }) => {
