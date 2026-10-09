@@ -144,9 +144,77 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </button>
           </form>
 
+          {/* Quick-fill para testes e acesso em qualquer dispositivo / guia anônima */}
+          <div className="pt-3 border-t border-slate-800/80 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-slate-300">
+                Acesso de Teste (Qualquer Computador / Anônima):
+              </span>
+              <span className="text-[10px] text-cyan-400 font-mono font-medium">Senha: Admin123!</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('admin@dexjuridico.adv.br');
+                  setPassword('Admin123!');
+                  setError(null);
+                }}
+                className="p-2 rounded-xl bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/60 text-left transition-colors cursor-pointer group"
+                title="Dra. Helena Moreira - Administradora do Escritório"
+              >
+                <div className="text-[11px] font-bold text-white group-hover:text-cyan-300">
+                  🛡️ Helena (Admin)
+                </div>
+                <div className="text-[9px] text-slate-400 truncate">
+                  admin@dexjuridico.adv.br
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('otton.luis.alcaraz@gmail.com');
+                  setPassword('Admin123!');
+                  setError(null);
+                }}
+                className="p-2 rounded-xl bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/60 text-left transition-colors cursor-pointer group"
+                title="Dr. Otton Luis - Sócio e Administrador"
+              >
+                <div className="text-[11px] font-bold text-white group-hover:text-cyan-300">
+                  ⚖️ Dr. Otton (Admin)
+                </div>
+                <div className="text-[9px] text-slate-400 truncate">
+                  otton.luis.alcaraz@...
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('beatriz.albuquerque@dexjuridico.adv.br');
+                  setPassword('Admin123!');
+                  setError(null);
+                }}
+                className="p-2 rounded-xl bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/60 text-left transition-colors cursor-pointer group"
+                title="Dra. Beatriz Albuquerque - Advogada Autônoma"
+              >
+                <div className="text-[11px] font-bold text-white group-hover:text-cyan-300">
+                  💼 Beatriz (Autônoma)
+                </div>
+                <div className="text-[9px] text-slate-400 truncate">
+                  beatriz.albuquerque@...
+                </div>
+              </button>
+            </div>
+            <p className="text-[10px] text-slate-400 text-center leading-relaxed">
+              💡 Clique em um dos perfis acima para preencher automaticamente ou crie uma conta personalizada abaixo.
+            </p>
+          </div>
+
           {/* Cadastro Link */}
           {onNavigateToRegister && (
-            <div className="pt-4 border-t border-slate-800 text-center">
+            <div className="pt-3 border-t border-slate-800 text-center">
               <span className="text-xs text-slate-400">Ainda não tem cadastro? </span>
               <button
                 type="button"

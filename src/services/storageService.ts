@@ -36,47 +36,67 @@ const STORAGE_KEYS = {
 };
 
 export const storageService = {
-  // Inicialização padrão segura
+  // Inicialização padrão segura e auto-recuperável
   init() {
-    if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
-      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+    try {
+      const rawUsers = localStorage.getItem(STORAGE_KEYS.USERS);
+      if (!rawUsers || rawUsers === '[]' || rawUsers === 'null') {
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+      }
+
+      const rawClients = localStorage.getItem(STORAGE_KEYS.CLIENTS);
+      if (!rawClients || rawClients === '[]' || rawClients === 'null') {
+        localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(INITIAL_CLIENTS));
+      }
+
+      const rawLawyers = localStorage.getItem(STORAGE_KEYS.LAWYERS);
+      if (!rawLawyers || rawLawyers === '[]' || rawLawyers === 'null') {
+        localStorage.setItem(STORAGE_KEYS.LAWYERS, JSON.stringify(INITIAL_LAWYERS));
+      }
+
+      const rawCases = localStorage.getItem(STORAGE_KEYS.CASES);
+      if (!rawCases || rawCases === '[]' || rawCases === 'null') {
+        localStorage.setItem(STORAGE_KEYS.CASES, JSON.stringify(INITIAL_CASES));
+      }
+
+      const rawDeadlines = localStorage.getItem(STORAGE_KEYS.DEADLINES);
+      if (!rawDeadlines || rawDeadlines === '[]' || rawDeadlines === 'null') {
+        localStorage.setItem(STORAGE_KEYS.DEADLINES, JSON.stringify(INITIAL_DEADLINES));
+      }
+
+      const rawFinancial = localStorage.getItem(STORAGE_KEYS.FINANCIAL);
+      if (!rawFinancial || rawFinancial === '[]' || rawFinancial === 'null') {
+        localStorage.setItem(STORAGE_KEYS.FINANCIAL, JSON.stringify(INITIAL_FINANCIAL));
+      }
+
+      const rawDocs = localStorage.getItem(STORAGE_KEYS.DOCUMENTS);
+      if (!rawDocs || rawDocs === '[]' || rawDocs === 'null') {
+        localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(INITIAL_DOCUMENTS));
+      }
+
+      const rawTemplates = localStorage.getItem(STORAGE_KEYS.TEMPLATES);
+      if (!rawTemplates || rawTemplates === '[]' || rawTemplates === 'null') {
+        localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(INITIAL_TEMPLATES));
+      }
+
+      const rawAudit = localStorage.getItem(STORAGE_KEYS.AUDIT_LOGS);
+      if (!rawAudit) {
+        localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(INITIAL_AUDIT_LOGS));
+      }
+    } catch {
+      // Ignora falhas de storage restrito
     }
-    if (!localStorage.getItem(STORAGE_KEYS.CLIENTS)) {
-      localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(INITIAL_CLIENTS));
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.LAWYERS)) {
-      localStorage.setItem(STORAGE_KEYS.LAWYERS, JSON.stringify(INITIAL_LAWYERS));
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.CASES)) {
-      localStorage.setItem(STORAGE_KEYS.CASES, JSON.stringify(INITIAL_CASES));
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.DEADLINES)) {
-      localStorage.setItem(STORAGE_KEYS.DEADLINES, JSON.stringify(INITIAL_DEADLINES));
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.FINANCIAL)) {
-      localStorage.setItem(STORAGE_KEYS.FINANCIAL, JSON.stringify(INITIAL_FINANCIAL));
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.DOCUMENTS)) {
-      localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(INITIAL_DOCUMENTS));
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.TEMPLATES)) {
-      localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(INITIAL_TEMPLATES));
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.AUDIT_LOGS)) {
-      localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(INITIAL_AUDIT_LOGS));
-    }
-    // Sem usuário inicial forçado: se não tiver sessão, inicia null
   },
 
-  // Reset para estado inicial limpo
+  // Reset para estado inicial limpo com as contas padrão
   resetToDefaults() {
-    localStorage.removeItem(STORAGE_KEYS.USERS);
-    localStorage.removeItem(STORAGE_KEYS.CLIENTS);
-    localStorage.removeItem(STORAGE_KEYS.LAWYERS);
-    localStorage.removeItem(STORAGE_KEYS.CASES);
-    localStorage.removeItem(STORAGE_KEYS.DEADLINES);
-    localStorage.removeItem(STORAGE_KEYS.FINANCIAL);
-    localStorage.removeItem(STORAGE_KEYS.DOCUMENTS);
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+    localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(INITIAL_CLIENTS));
+    localStorage.setItem(STORAGE_KEYS.LAWYERS, JSON.stringify(INITIAL_LAWYERS));
+    localStorage.setItem(STORAGE_KEYS.CASES, JSON.stringify(INITIAL_CASES));
+    localStorage.setItem(STORAGE_KEYS.DEADLINES, JSON.stringify(INITIAL_DEADLINES));
+    localStorage.setItem(STORAGE_KEYS.FINANCIAL, JSON.stringify(INITIAL_FINANCIAL));
+    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(INITIAL_DOCUMENTS));
     localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(INITIAL_TEMPLATES));
     localStorage.removeItem(STORAGE_KEYS.AUDIT_LOGS);
     localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
@@ -85,15 +105,59 @@ export const storageService = {
   // Usuários do Sistema
   getUsers(): User[] {
     const data = localStorage.getItem(STORAGE_KEYS.USERS);
-    return data ? JSON.parse(data) : [];
+    let users: User[] = [];
+    if (data) {
+      try {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          users = parsed;
+        }
+      } catch {
+        users = [];
+      }
+    }
+
+    if (users.length === 0) {
+      users = [...INITIAL_USERS];
+      this.saveUsers(users);
+      return users;
+    }
+
+    // Auto-recuperação: se as contas padrão não estiverem no array, adiciona-as
+    let updated = false;
+    for (const initUser of INITIAL_USERS) {
+      if (!users.some(u => u.email.toLowerCase() === initUser.email.toLowerCase())) {
+        users.push(initUser);
+        updated = true;
+      }
+    }
+    if (updated) {
+      this.saveUsers(users);
+    }
+
+    return users;
   },
+
   saveUsers(users: User[]) {
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
   },
+
   findUserByEmail(email: string): User | undefined {
+    const query = email.trim().toLowerCase();
     const users = this.getUsers();
-    return users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const found = users.find(u => u.email.toLowerCase() === query);
+    if (found) return found;
+
+    // Contingência direta nos usuários iniciais caso não esteja no storage
+    const fallback = INITIAL_USERS.find(u => u.email.toLowerCase() === query);
+    if (fallback) {
+      const merged = [...users, fallback];
+      this.saveUsers(merged);
+      return fallback;
+    }
+    return undefined;
   },
+
   findOfficeByCodeOrEmail(identifier: string): User | undefined {
     const users = this.getUsers();
     const query = identifier.trim().toLowerCase();
@@ -157,7 +221,13 @@ export const storageService = {
   // Clientes
   getClients(): Client[] {
     const data = localStorage.getItem(STORAGE_KEYS.CLIENTS);
-    return data ? JSON.parse(data) : [];
+    if (!data) return INITIAL_CLIENTS;
+    try {
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_CLIENTS;
+    } catch {
+      return INITIAL_CLIENTS;
+    }
   },
   saveClients(clients: Client[]) {
     localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(clients));
@@ -166,7 +236,13 @@ export const storageService = {
   // Advogados
   getLawyers(): Lawyer[] {
     const data = localStorage.getItem(STORAGE_KEYS.LAWYERS);
-    return data ? JSON.parse(data) : [];
+    if (!data) return INITIAL_LAWYERS;
+    try {
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_LAWYERS;
+    } catch {
+      return INITIAL_LAWYERS;
+    }
   },
   saveLawyers(lawyers: Lawyer[]) {
     localStorage.setItem(STORAGE_KEYS.LAWYERS, JSON.stringify(lawyers));
@@ -188,7 +264,13 @@ export const storageService = {
   // Processos
   getCases(): LegalCase[] {
     const data = localStorage.getItem(STORAGE_KEYS.CASES);
-    return data ? JSON.parse(data) : [];
+    if (!data) return INITIAL_CASES;
+    try {
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_CASES;
+    } catch {
+      return INITIAL_CASES;
+    }
   },
   saveCases(cases: LegalCase[]) {
     localStorage.setItem(STORAGE_KEYS.CASES, JSON.stringify(cases));
@@ -197,7 +279,13 @@ export const storageService = {
   // Prazos
   getDeadlines(): Deadline[] {
     const data = localStorage.getItem(STORAGE_KEYS.DEADLINES);
-    return data ? JSON.parse(data) : [];
+    if (!data) return INITIAL_DEADLINES;
+    try {
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_DEADLINES;
+    } catch {
+      return INITIAL_DEADLINES;
+    }
   },
   saveDeadlines(deadlines: Deadline[]) {
     localStorage.setItem(STORAGE_KEYS.DEADLINES, JSON.stringify(deadlines));
@@ -206,7 +294,13 @@ export const storageService = {
   // Financeiro
   getFinancial(): FinancialEntry[] {
     const data = localStorage.getItem(STORAGE_KEYS.FINANCIAL);
-    return data ? JSON.parse(data) : [];
+    if (!data) return INITIAL_FINANCIAL;
+    try {
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_FINANCIAL;
+    } catch {
+      return INITIAL_FINANCIAL;
+    }
   },
   saveFinancial(entries: FinancialEntry[]) {
     localStorage.setItem(STORAGE_KEYS.FINANCIAL, JSON.stringify(entries));
@@ -215,7 +309,13 @@ export const storageService = {
   // Documentos
   getDocuments(): DocumentItem[] {
     const data = localStorage.getItem(STORAGE_KEYS.DOCUMENTS);
-    return data ? JSON.parse(data) : [];
+    if (!data) return INITIAL_DOCUMENTS;
+    try {
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_DOCUMENTS;
+    } catch {
+      return INITIAL_DOCUMENTS;
+    }
   },
   saveDocuments(docs: DocumentItem[]) {
     localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(docs));
