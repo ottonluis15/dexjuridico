@@ -17,9 +17,10 @@ import {
   INITIAL_FINANCIAL, 
   INITIAL_DOCUMENTS, 
   INITIAL_AUDIT_LOGS, 
-  INITIAL_USERS,
+  INITIAL_USERS, 
   INITIAL_TEMPLATES 
 } from '../mock/initialData';
+import { cryptoService } from './cryptoService';
 
 const STORAGE_KEYS = {
   USERS: 'dex_users',
@@ -139,7 +140,70 @@ export const storageService = {
   },
 
   saveUsers(users: User[]) {
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    try {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    } catch {
+      // Falha silenciosa de cota ou storage bloqueado
+    }
+  },
+
+  async resetUserPassword(email: string, newPassword: string): Promise<boolean> {
+    const query = email.trim().toLowerCase();
+    const users = this.getUsers();
+    let index = users.findIndex(u => u.email.toLowerCase() === query);
+
+    // Se não estiver no storage, busca nos usuários padrão
+    if (index === -1) {
+      const initUser = INITIAL_USERS.find(u => u.email.toLowerCase() === query);
+      if (initUser) {
+        users.push({ ...initUser });
+        index = users.length - 1;
+      }
+    }
+
+    if (index !== -1) {
+      const salt = cryptoService.generateSalt();
+      const passwordHash = await cryptoService.hashPassword(newPassword, salt);
+      users[index].salt = salt;
+      users[index].passwordHash = passwordHash;
+      this.saveUsers(users);
+      return true;
+    }
+    return false;
+  },
+
+  // Exportação e Importação de Dados entre dispositivos
+  exportAllData(): string {
+    const backup = {
+      users: this.getUsers(),
+      clients: this.getClients(),
+      lawyers: this.getLawyers(),
+      cases: this.getCases(),
+      deadlines: this.getDeadlines(),
+      financial: this.getFinancial(),
+      documents: this.getDocuments(),
+      templates: this.getTemplates(),
+      version: '1.0',
+      exportedAt: new Date().toISOString()
+    };
+    return JSON.stringify(backup, null, 2);
+  },
+
+  importAllData(jsonString: string): boolean {
+    try {
+      const data = JSON.parse(jsonString);
+      if (Array.isArray(data.users)) this.saveUsers(data.users);
+      if (Array.isArray(data.clients)) this.saveClients(data.clients);
+      if (Array.isArray(data.lawyers)) this.saveLawyers(data.lawyers);
+      if (Array.isArray(data.cases)) this.saveCases(data.cases);
+      if (Array.isArray(data.deadlines)) this.saveDeadlines(data.deadlines);
+      if (Array.isArray(data.financial)) this.saveFinancial(data.financial);
+      if (Array.isArray(data.documents)) this.saveDocuments(data.documents);
+      if (Array.isArray(data.templates)) this.saveTemplates(data.templates);
+      return true;
+    } catch {
+      return false;
+    }
   },
 
   findUserByEmail(email: string): User | undefined {
