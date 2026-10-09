@@ -5,6 +5,13 @@ const STORAGE_KEYS = {
   SUPABASE_KEY: 'dex_supabase_key',
 };
 
+function cleanSupabaseUrl(rawUrl: string): string {
+  let clean = rawUrl.trim();
+  clean = clean.replace(/\/rest\/v1\/?$/, '');
+  clean = clean.replace(/\/+$/, '');
+  return clean;
+}
+
 /**
  * Obtém as credenciais do Supabase das variáveis de ambiente (VITE_) ou do localStorage
  */
@@ -16,8 +23,10 @@ export function getSupabaseCredentials(): { url: string; key: string } {
   const storedUrl = localStorage.getItem(STORAGE_KEYS.SUPABASE_URL) || '';
   const storedKey = localStorage.getItem(STORAGE_KEYS.SUPABASE_KEY) || '';
 
+  const resolvedUrl = (envUrl || storedUrl).trim();
+
   return {
-    url: (envUrl || storedUrl).trim(),
+    url: cleanSupabaseUrl(resolvedUrl),
     key: (envKey || storedKey).trim(),
   };
 }
