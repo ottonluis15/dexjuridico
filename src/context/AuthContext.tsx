@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useMemo } from '
 import { User, UserRole, Lawyer } from '../types';
 import { storageService } from '../services/storageService';
 import { cryptoService } from '../services/cryptoService';
+import { supabaseService } from '../services/supabaseService';
+import { isSupabaseConfigured } from '../services/supabaseClient';
 
 export interface RegisterUserData {
   name: string;
@@ -52,6 +54,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [allUsers, setAllUsers] = useState<User[]>(() => storageService.getUsers());
 
+  // Sincronização inicial com Supabase se configurado
+  useEffect(() => {
+    if (isSupabaseConfigured()) {
+      supabaseService.fetchUsers().then(remoteUsers => {
+        if (remoteUsers && remoteUsers.length > 0) {
+          storageService.saveUsers(remoteUsers);
+          setAllUsers(remoteUsers);
+        }
+      }).catch(console.warn);
+    }
+  }, []);
+
   // Atualizar lista geral quando houver mudanças
   const refreshUsers = () => {
     setAllUsers(storageService.getUsers());
@@ -64,7 +78,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password?: string): Promise<{ success: boolean; error?: string }> => {
     const cleanEmail = email.trim().toLowerCase();
-    const foundUser = storageService.findUserByEmail(cleanEmail);
+    let foundUser = storageService.findUserByEmail(cleanEmail);
+
+    // Se não encontrou no armazenamento local e o Supabase estiver configurado, tenta buscar na nuvem
+    if (!foundUser && isSupabaseConfigured()) {
+      try {
+        const remoteUsers = await supabaseService.fetchUsers();
+        if (remoteUsers && remoteUsers.length > 0) {
+          storageService.saveUsers(remoteUsers);
+          setAllUsers(remoteUsers);
+          foundUser = remoteUsers.find(u => u.email.toLowerCase() === cleanEmail);
+        }
+      } catch (err) {
+        console.warn('Erro ao consultar Supabase no login:', err);
+      }
+    }
 
     if (!foundUser) {
       return { 
@@ -212,6 +240,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     storageService.saveLawyers([newLawyer, ...currentLawyers]);
 
+    // Sincronizar na nuvem (Supabase) se configurado
+    if (isSupabaseConfigured()) {
+      supabaseService.upsertUser(newUser).catch(console.warn);
+      supabaseService.upsertLawyer(newLawyer).catch(console.warn);
+    }
+
     // Autenticar imediatamente o novo usuário
     setCurrentUser(newUser);
     storageService.saveCurrentUser(newUser);
@@ -289,6 +323,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const currentLawyers = storageService.getLawyers();
     storageService.saveLawyers([newLawyer, ...currentLawyers]);
+
+    // Sincronizar na nuvem (Supabase) se configurado
+    if (isSupabaseConfigured()) {
+      supabaseService.upsertUser(newUser).catch(console.warn);
+      supabaseService.upsertLawyer(newLawyer).catch(console.warn);
+    }
 
     refreshUsers();
 

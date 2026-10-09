@@ -12,6 +12,8 @@ import {
   TemplateDocument 
 } from '../types';
 import { storageService } from '../services/storageService';
+import { supabaseService } from '../services/supabaseService';
+import { isSupabaseConfigured, getSupabaseClient } from '../services/supabaseClient';
 import { useAuth } from './AuthContext';
 
 export interface ToastNotification {
@@ -127,6 +129,29 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setDocuments(storageService.getDocuments());
     setTemplates(storageService.getTemplates());
     setAuditLogs(storageService.getAuditLogs());
+
+    // Se o Supabase estiver configurado, busca dados atualizados na nuvem
+    if (isSupabaseConfigured()) {
+      Promise.all([
+        supabaseService.fetchClients(),
+        supabaseService.fetchLawyers(),
+        supabaseService.fetchCases(),
+        supabaseService.fetchDeadlines(),
+        supabaseService.fetchFinancial(),
+        supabaseService.fetchDocuments(),
+        supabaseService.fetchTemplates()
+      ]).then(([c, l, cs, d, f, docs, tpls]) => {
+        if (c && c.length > 0) { setClients(c); storageService.saveClients(c); }
+        if (l && l.length > 0) { setLawyers(l); storageService.saveLawyers(l); }
+        if (cs && cs.length > 0) { setCases(cs); storageService.saveCases(cs); }
+        if (d && d.length > 0) { setDeadlines(d); storageService.saveDeadlines(d); }
+        if (f && f.length > 0) { setFinancial(f); storageService.saveFinancial(f); }
+        if (docs && docs.length > 0) { setDocuments(docs); storageService.saveDocuments(docs); }
+        if (tpls && tpls.length > 0) { setTemplates(tpls); storageService.saveTemplates(tpls); }
+      }).catch(err => {
+        console.warn('Erro ao carregar dados remotos do Supabase:', err);
+      });
+    }
   }, [currentUser]);
 
   // Mapear o perfil de advogado correspondente ao usuário logado
@@ -253,6 +278,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setClients(updated);
     storageService.saveClients(updated);
 
+    if (isSupabaseConfigured()) {
+      supabaseService.upsertClient(newClient).catch(console.warn);
+    }
+
     storageService.addAuditLog({
       userId: currentUser?.id || 'sys',
       userName: currentUser?.name || 'Sistema',
@@ -272,6 +301,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = clients.map(c => c.id === id ? { ...c, ...updates } : c);
     setClients(updated);
     storageService.saveClients(updated);
+
+    if (isSupabaseConfigured()) {
+      const c = updated.find(x => x.id === id);
+      if (c) supabaseService.upsertClient(c).catch(console.warn);
+    }
+
     showToast('Dados do cliente atualizados com sucesso.', 'success');
   };
 
@@ -280,6 +315,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = clients.filter(c => c.id !== id);
     setClients(updated);
     storageService.saveClients(updated);
+
+    if (isSupabaseConfigured()) {
+      supabaseService.deleteClient(id).catch(console.warn);
+    }
 
     if (target) {
       storageService.addAuditLog({
@@ -308,6 +347,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLawyers(updated);
     storageService.saveLawyers(updated);
 
+    if (isSupabaseConfigured()) {
+      supabaseService.upsertLawyer(newLawyer).catch(console.warn);
+    }
+
     storageService.addAuditLog({
       userId: currentUser?.id || 'sys',
       userName: currentUser?.name || 'Sistema',
@@ -327,6 +370,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = lawyers.map(l => l.id === id ? { ...l, ...updates } : l);
     setLawyers(updated);
     storageService.saveLawyers(updated);
+
+    if (isSupabaseConfigured()) {
+      const l = updated.find(x => x.id === id);
+      if (l) supabaseService.upsertLawyer(l).catch(console.warn);
+    }
+
     showToast('Registro do advogado atualizado.', 'success');
   };
 
@@ -335,6 +384,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = lawyers.filter(l => l.id !== id);
     setLawyers(updated);
     storageService.saveLawyers(updated);
+
+    if (isSupabaseConfigured()) {
+      // Deletar ou inativar no Supabase se configurado
+      const client = getSupabaseClient();
+      if (client) client.from('dex_lawyers').delete().eq('id', id).then();
+    }
 
     if (target) {
       storageService.addAuditLog({
@@ -364,6 +419,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCases(updated);
     storageService.saveCases(updated);
 
+    if (isSupabaseConfigured()) {
+      supabaseService.upsertCase(newCase).catch(console.warn);
+    }
+
     storageService.addAuditLog({
       userId: currentUser?.id || 'sys',
       userName: currentUser?.name || 'Sistema',
@@ -383,6 +442,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = cases.map(c => c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString().substring(0, 10) } : c);
     setCases(updated);
     storageService.saveCases(updated);
+
+    if (isSupabaseConfigured()) {
+      const cs = updated.find(x => x.id === id);
+      if (cs) supabaseService.upsertCase(cs).catch(console.warn);
+    }
+
     showToast('Processo atualizado com sucesso.', 'success');
   };
 
@@ -391,6 +456,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = cases.filter(c => c.id !== id);
     setCases(updated);
     storageService.saveCases(updated);
+
+    if (isSupabaseConfigured()) {
+      supabaseService.deleteCase(id).catch(console.warn);
+    }
 
     if (target) {
       storageService.addAuditLog({
@@ -419,6 +488,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setDeadlines(updated);
     storageService.saveDeadlines(updated);
 
+    if (isSupabaseConfigured()) {
+      supabaseService.upsertDeadline(newDeadline).catch(console.warn);
+    }
+
     storageService.addAuditLog({
       userId: currentUser?.id || 'sys',
       userName: currentUser?.name || 'Sistema',
@@ -438,6 +511,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = deadlines.map(d => d.id === id ? { ...d, ...updates } : d);
     setDeadlines(updated);
     storageService.saveDeadlines(updated);
+
+    if (isSupabaseConfigured()) {
+      const d = updated.find(x => x.id === id);
+      if (d) supabaseService.upsertDeadline(d).catch(console.warn);
+    }
+
     showToast('Prazo atualizado.', 'success');
   };
 
@@ -451,6 +530,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated: Deadline[] = deadlines.map(d => d.id === id ? { ...d, status: newStatus, completedAt } : d);
     setDeadlines(updated);
     storageService.saveDeadlines(updated);
+
+    if (isSupabaseConfigured()) {
+      const d = updated.find(x => x.id === id);
+      if (d) supabaseService.upsertDeadline(d).catch(console.warn);
+    }
 
     storageService.addAuditLog({
       userId: currentUser?.id || 'sys',
@@ -470,6 +554,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = deadlines.filter(d => d.id !== id);
     setDeadlines(updated);
     storageService.saveDeadlines(updated);
+
+    if (isSupabaseConfigured()) {
+      supabaseService.deleteDeadline(id).catch(console.warn);
+    }
+
     showToast('Prazo removido da pauta.', 'info');
   };
 
@@ -483,6 +572,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = [newEntry, ...financial];
     setFinancial(updated);
     storageService.saveFinancial(updated);
+
+    if (isSupabaseConfigured()) {
+      supabaseService.upsertFinancial(newEntry).catch(console.warn);
+    }
 
     storageService.addAuditLog({
       userId: currentUser?.id || 'sys',
@@ -503,6 +596,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = financial.map(f => f.id === id ? { ...f, ...updates } : f);
     setFinancial(updated);
     storageService.saveFinancial(updated);
+
+    if (isSupabaseConfigured()) {
+      const f = updated.find(x => x.id === id);
+      if (f) supabaseService.upsertFinancial(f).catch(console.warn);
+    }
+
     showToast('Registro financeiro atualizado.', 'success');
   };
 
@@ -510,6 +609,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = financial.filter(f => f.id !== id);
     setFinancial(updated);
     storageService.saveFinancial(updated);
+
+    if (isSupabaseConfigured()) {
+      supabaseService.deleteFinancial(id).catch(console.warn);
+    }
+
     showToast('Registro financeiro removido.', 'info');
   };
 
@@ -524,6 +628,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = [newDoc, ...documents];
     setDocuments(updated);
     storageService.saveDocuments(updated);
+
+    if (isSupabaseConfigured()) {
+      supabaseService.upsertDocument(newDoc).catch(console.warn);
+    }
 
     storageService.addAuditLog({
       userId: currentUser?.id || 'sys',
@@ -590,6 +698,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const added = storageService.addTemplate(newTemplate);
     setTemplates(storageService.getTemplates());
 
+    if (isSupabaseConfigured()) {
+      supabaseService.upsertTemplate(newTemplate).catch(console.warn);
+    }
+
     storageService.addAuditLog({
       userId: currentUser?.id || 'sys',
       userName: currentUser?.name || 'Sistema',
@@ -618,6 +730,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     storageService.deleteTemplate(id);
     setTemplates(storageService.getTemplates());
+
+    if (isSupabaseConfigured()) {
+      supabaseService.deleteTemplate(id).catch(console.warn);
+    }
 
     storageService.addAuditLog({
       userId: currentUser?.id || 'sys',

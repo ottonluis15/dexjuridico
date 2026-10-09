@@ -9,17 +9,33 @@ import {
   Camera,
   Trash2,
   Check,
-  AlertCircle
+  AlertCircle,
+  Database,
+  Cloud,
+  RefreshCw,
+  FileDown,
+  CheckCircle2,
+  ExternalLink,
+  KeyRound,
+  Upload
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { LGPDCompliance } from '../lgpd/LGPDCompliance';
+import { 
+  getSupabaseCredentials, 
+  saveSupabaseCredentials, 
+  isSupabaseConfigured, 
+  testSupabaseConnection 
+} from '../../services/supabaseClient';
+import { supabaseService } from '../../services/supabaseService';
+import { storageService } from '../../services/storageService';
 
 export const SettingsView: React.FC = () => {
   const { currentUser, isAdmin, updateProfilePhoto, updateProfileData } = useAuth();
   const { showToast } = useData();
 
-  const [activeSubTab, setActiveSubTab] = useState<'general' | 'profile' | 'security' | 'integrations'>('profile');
+  const [activeSubTab, setActiveSubTab] = useState<'general' | 'profile' | 'security' | 'integrations' | 'database'>('profile');
 
   // Form states - Sociedade
   const [officeName, setOfficeName] = useState(currentUser?.officeName || 'Dex Sociedade de Advogados');
@@ -38,6 +54,101 @@ export const SettingsView: React.FC = () => {
   const [photoPreview, setPhotoPreview] = useState<string | undefined>(currentUser?.avatarUrl);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [isPhotoChanged, setIsPhotoChanged] = useState(false);
+
+  // Estados - Banco de Dados & Nuvem (Supabase)
+  const initialCreds = getSupabaseCredentials();
+  const [supabaseUrl, setSupabaseUrl] = useState(initialCreds.url);
+  const [supabaseKey, setSupabaseKey] = useState(initialCreds.key);
+  const [isTestingDb, setIsTestingDb] = useState(false);
+  const [isSyncingDb, setIsSyncingDb] = useState(false);
+  const [dbStatus, setDbStatus] = useState<{ success?: boolean; message?: string } | null>(null);
+
+  const handleTestAndSaveSupabase = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDbStatus(null);
+    setIsTestingDb(true);
+
+    try {
+      const res = await testSupabaseConnection(supabaseUrl, supabaseKey);
+      setDbStatus(res);
+      if (res.success) {
+        saveSupabaseCredentials(supabaseUrl, supabaseKey);
+        showToast('Credenciais do Supabase validadas e salvas com sucesso!', 'success');
+      } else {
+        showToast(res.message, 'error');
+      }
+    } catch {
+      setDbStatus({ success: false, message: 'Erro ao validar conexão com o Supabase.' });
+      showToast('Falha na conexão com o banco de dados.', 'error');
+    } finally {
+      setIsTestingDb(false);
+    }
+  };
+
+  const handleSyncLocalToSupabase = async () => {
+    setIsSyncingDb(true);
+    setDbStatus(null);
+    try {
+      const localData = {
+        users: storageService.getUsers(),
+        clients: storageService.getClients(),
+        lawyers: storageService.getLawyers(),
+        cases: storageService.getCases(),
+        deadlines: storageService.getDeadlines(),
+        financial: storageService.getFinancial(),
+        documents: storageService.getDocuments(),
+        templates: storageService.getTemplates()
+      };
+
+      const res = await supabaseService.pushAllLocalDataToSupabase(localData);
+      setDbStatus(res);
+      if (res.success) {
+        showToast('Todos os dados locais foram enviados para o Supabase com sucesso!', 'success');
+      } else {
+        showToast(res.message, 'error');
+      }
+    } catch (err: any) {
+      setDbStatus({ success: false, message: err?.message || 'Falha ao sincronizar dados.' });
+      showToast('Erro na sincronização em lote.', 'error');
+    } finally {
+      setIsSyncingDb(false);
+    }
+  };
+
+  const handleExportBackup = () => {
+    const jsonStr = storageService.exportAllData();
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup_dex_juridico_${new Date().toISOString().substring(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Backup JSON exportado com sucesso!', 'success');
+  };
+
+  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const success = storageService.importAllData(reader.result as string);
+          if (success) {
+            showToast('Backup importado com sucesso! Recarregando dados...', 'success');
+            setTimeout(() => window.location.reload(), 1200);
+          } else {
+            showToast('Arquivo de backup inválido.', 'error');
+          }
+        } catch {
+          showToast('Erro ao processar o arquivo de backup.', 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
 
   useEffect(() => {
     if (currentUser) {
@@ -185,6 +296,18 @@ export const SettingsView: React.FC = () => {
         >
           <Sliders className="w-4 h-4" />
           Integrações & IA
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('database')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            activeSubTab === 'database'
+              ? 'bg-brand-600 text-white shadow-md shadow-brand-600/20'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <Database className="w-4 h-4" />
+          Banco de Dados & Nuvem
         </button>
       </div>
 
@@ -439,6 +562,181 @@ export const SettingsView: React.FC = () => {
               <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
                 Conectado
               </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Banco de Dados & Nuvem (Supabase) */}
+      {activeSubTab === 'database' && (
+        <div className="space-y-6 max-w-3xl">
+          {/* Status Geral */}
+          <div className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800/80 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
+                  isSupabaseConfigured()
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                    : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                }`}>
+                  <Cloud className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    {isSupabaseConfigured()
+                      ? 'Nuvem Conectada (Supabase / PostgreSQL)'
+                      : 'Armazenamento Local (Navegador)'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {isSupabaseConfigured()
+                      ? 'Cadastros e dados sincronizados em tempo real entre todos os dispositivos.'
+                      : 'Os dados estão salvos apenas neste navegador. Para salvar globalmente, conecte o Supabase.'}
+                  </p>
+                </div>
+              </div>
+              <span className={`text-[10px] font-bold px-3 py-1 rounded-full border ${
+                isSupabaseConfigured()
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                  : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+              }`}>
+                {isSupabaseConfigured() ? 'Online • Nuvem' : 'Modo Offline / Local'}
+              </span>
+            </div>
+
+            {dbStatus && (
+              <div className={`p-3.5 rounded-xl text-xs flex items-center gap-2 ${
+                dbStatus.success
+                  ? 'bg-emerald-950/60 border border-emerald-800 text-emerald-200'
+                  : 'bg-rose-950/60 border border-rose-800 text-rose-200'
+              }`}>
+                {dbStatus.success ? (
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                )}
+                <span>{dbStatus.message}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Configuração Supabase */}
+          <form onSubmit={handleTestAndSaveSupabase} className="p-6 sm:p-8 rounded-2xl bg-slate-900/80 border border-slate-800/80 space-y-5">
+            <div>
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Database className="w-4 h-4 text-cyan-400" />
+                Conectar Banco de Dados Supabase
+              </h3>
+              <p className="text-xs text-slate-400">
+                Insira as credenciais do seu projeto Supabase para habilitar salvamento na nuvem.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  URL do Projeto Supabase (Project URL)
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://xyzabcdefg.supabase.co"
+                  value={supabaseUrl}
+                  onChange={e => setSupabaseUrl(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Chave Pública Anon (Anon Public Key)
+                </label>
+                <input
+                  type="password"
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  value={supabaseKey}
+                  onChange={e => setSupabaseKey(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <button
+                type="submit"
+                disabled={isTestingDb}
+                className="py-2.5 px-5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-cyan-600/30 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-60"
+              >
+                {isTestingDb ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Testando Conexão...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Salvar e Conectar Supabase</span>
+                  </>
+                )}
+              </button>
+
+              {isSupabaseConfigured() && (
+                <button
+                  type="button"
+                  onClick={handleSyncLocalToSupabase}
+                  disabled={isSyncingDb}
+                  className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-60"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 text-cyan-400 ${isSyncingDb ? 'animate-spin' : ''}`} />
+                  <span>{isSyncingDb ? 'Sincronizando...' : 'Enviar Dados Deste PC para o Supabase'}</span>
+                </button>
+              )}
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-700/50 space-y-2 text-xs text-slate-300 leading-relaxed">
+              <p className="font-semibold text-white flex items-center gap-1.5">
+                <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                Como configurar no Vercel (Produção):
+              </p>
+              <ol className="list-decimal pl-4 space-y-1 text-slate-400 text-[11px]">
+                <li>Acesse o dashboard do seu projeto no <strong>Vercel</strong> &gt; <strong>Settings</strong> &gt; <strong>Environment Variables</strong>.</li>
+                <li>Adicione <code className="text-cyan-300 font-mono">VITE_SUPABASE_URL</code> com a URL do seu Supabase.</li>
+                <li>Adicione <code className="text-cyan-300 font-mono">VITE_SUPABASE_ANON_KEY</code> com a chave anon pública.</li>
+                <li>O script de criação de tabelas está no arquivo <code className="text-cyan-300 font-mono">supabase_schema.sql</code> na raiz do projeto.</li>
+              </ol>
+            </div>
+          </form>
+
+          {/* Backup e Exportação Manual */}
+          <div className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800/80 space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <FileDown className="w-4 h-4 text-emerald-400" />
+                Backup Manual e Transferência Entre Computadores
+              </h3>
+              <p className="text-xs text-slate-400">
+                Baixe todos os dados em um arquivo JSON para transferir entre dispositivos ou restaurar a qualquer momento.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleExportBackup}
+                className="py-2.5 px-4 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold rounded-xl transition-colors flex items-center gap-2 cursor-pointer"
+              >
+                <FileDown className="w-4 h-4" />
+                Exportar Backup Completo (.JSON)
+              </button>
+
+              <label className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold rounded-xl transition-colors flex items-center gap-2 cursor-pointer">
+                <Upload className="w-4 h-4 text-cyan-400" />
+                Importar Arquivo de Backup (.JSON)
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleImportBackup}
+                  className="hidden"
+                />
+              </label>
             </div>
           </div>
         </div>
