@@ -397,6 +397,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setCurrentUser(null);
     storageService.saveCurrentUser(null);
+    if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
+      window.history.pushState({}, '', '/login');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
   };
 
   const isAdmin = currentUser?.role === 'ADMIN';

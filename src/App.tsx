@@ -43,8 +43,10 @@ export const App: React.FC = () => {
   const navigate = (path: string) => {
     window.history.pushState({}, '', path);
     setCurrentPath(path);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // 1. Hook para sincronizar com botões Voltar / Avançar do navegador
   useEffect(() => {
     const handlePopState = () => {
       setCurrentPath(window.location.pathname || '/');
@@ -53,87 +55,45 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Redirecionamento automático se usuário logar ou deslogar
+  // Normalização do caminho da URL (minúsculas, sem barras extras)
+  const normalizedPath = (currentPath || '/').toLowerCase().trim();
+  const cleanPath = normalizedPath.length > 1 && normalizedPath.endsWith('/')
+    ? normalizedPath.slice(0, -1)
+    : normalizedPath;
+
+  // 2. Hook de sincronização de rotas com abas ativas (/perfil, /configuracoes)
+  // DEVE EXECUTAR NO TOPO, INCONDICIONALMENTE, PARA NÃO VIOLAR AS REGRAS DOS HOOKS DO REACT
   useEffect(() => {
-    if (isAuthenticated) {
-      // Se autenticado e estava nas telas de login/cadastro, redireciona para o sistema
-      if (currentPath === '/login' || currentPath === '/cadastro') {
-        navigate('/app');
-      }
-    } else {
-      // Se não autenticado e tentou acessar rota protegida do sistema, vai para login
-      if (currentPath.startsWith('/app') || currentPath.startsWith('/dashboard')) {
-        navigate('/login');
-      }
-    }
-  }, [isAuthenticated, currentPath]);
-
-  // ROTA 1: Página Inicial / Landing Page ("/")
-  if (currentPath === '/' || currentPath === '') {
-    return (
-      <LandingPage
-        onNavigateToLogin={() => navigate('/login')}
-        onNavigateToRegister={(plan) => {
-          if (plan) setSelectedPlanForRegister(plan);
-          navigate('/cadastro');
-        }}
-        onBackToApp={() => navigate('/app')}
-        isLoggedIn={isAuthenticated}
-      />
-    );
-  }
-
-  // ROTA 2: Tela de Cadastro ("/cadastro")
-  if (currentPath === '/cadastro') {
-    if (isAuthenticated) {
-      navigate('/app');
-      return null;
-    }
-    return (
-      <RegisterScreen
-        onNavigateToLogin={() => navigate('/login')}
-        onNavigateToLanding={() => navigate('/')}
-        initialPlan={selectedPlanForRegister}
-      />
-    );
-  }
-
-  // ROTA 3: Tela de Login ("/login")
-  if (currentPath === '/login') {
-    if (isAuthenticated) {
-      navigate('/app');
-      return null;
-    }
-    return (
-      <LoginScreen
-        onNavigateToRegister={() => navigate('/cadastro')}
-        onNavigateToLanding={() => navigate('/')}
-      />
-    );
-  }
-
-  // ROTA 4: Sistema / Dashboard ("/app" ou rotas internas)
-  if (!isAuthenticated) {
-    return (
-      <LoginScreen
-        onNavigateToRegister={() => navigate('/cadastro')}
-        onNavigateToLanding={() => navigate('/')}
-      />
-    );
-  }
-
-  // Sincronização de rotas com a barra de endereços (/app, /perfil, /configuracoes)
-  useEffect(() => {
-    if (currentPath === '/perfil' || currentPath === '/profile') {
+    if (cleanPath === '/perfil' || cleanPath === '/profile') {
       setActiveTab('profile');
-    } else if (currentPath === '/configuracoes' || currentPath === '/settings') {
+    } else if (cleanPath === '/configuracoes' || cleanPath === '/settings') {
       if (isAppAdmin) {
         setActiveTab('settings');
       } else {
         setActiveTab('dashboard');
       }
     }
-  }, [currentPath, isAppAdmin]);
+  }, [cleanPath, isAppAdmin]);
+
+  // 3. Hook de redirecionamento automático (login / logout)
+  useEffect(() => {
+    if (isAuthenticated) {
+      if (cleanPath === '/login' || cleanPath === '/cadastro') {
+        navigate('/app');
+      }
+    } else {
+      const isProtectedRoute = 
+        cleanPath.startsWith('/app') || 
+        cleanPath.startsWith('/dashboard') || 
+        cleanPath.startsWith('/perfil') || 
+        cleanPath.startsWith('/profile') || 
+        cleanPath.startsWith('/configuracoes') || 
+        cleanPath.startsWith('/settings');
+      if (isProtectedRoute) {
+        navigate('/login');
+      }
+    }
+  }, [isAuthenticated, cleanPath]);
 
   // Proteção de abas por perfil (RBAC):
   // 1. Se advogado tentar gerenciar equipe, redireciona para a workbench
@@ -233,6 +193,73 @@ export const App: React.FC = () => {
     }
   };
 
+  // ROTA 1: Página Inicial / Landing Page ("/")
+  if (cleanPath === '/' || cleanPath === '') {
+    return (
+      <LandingPage
+        onNavigateToLogin={() => navigate('/login')}
+        onNavigateToRegister={(plan) => {
+          if (plan) setSelectedPlanForRegister(plan);
+          navigate('/cadastro');
+        }}
+        onBackToApp={() => navigate('/app')}
+        isLoggedIn={isAuthenticated}
+      />
+    );
+  }
+
+  // ROTA 2: Tela de Cadastro ("/cadastro")
+  if (cleanPath === '/cadastro') {
+    if (isAuthenticated) {
+      return (
+        <Layout activeTab={activeTab} setActiveTab={handleTabChange}>
+          {renderContent()}
+          <CaseModal isOpen={isCaseModalOpen} onClose={() => setIsCaseModalOpen(false)} />
+          <DeadlineModal isOpen={isDeadlineModalOpen} onClose={() => setIsDeadlineModalOpen(false)} />
+          <ClientModal isOpen={isClientModalOpen} onClose={() => setIsClientModalOpen(false)} />
+        </Layout>
+      );
+    }
+    return (
+      <RegisterScreen
+        onNavigateToLogin={() => navigate('/login')}
+        onNavigateToLanding={() => navigate('/')}
+        initialPlan={selectedPlanForRegister}
+      />
+    );
+  }
+
+  // ROTA 3: Tela de Login ("/login")
+  if (cleanPath === '/login') {
+    if (isAuthenticated) {
+      return (
+        <Layout activeTab={activeTab} setActiveTab={handleTabChange}>
+          {renderContent()}
+          <CaseModal isOpen={isCaseModalOpen} onClose={() => setIsCaseModalOpen(false)} />
+          <DeadlineModal isOpen={isDeadlineModalOpen} onClose={() => setIsDeadlineModalOpen(false)} />
+          <ClientModal isOpen={isClientModalOpen} onClose={() => setIsClientModalOpen(false)} />
+        </Layout>
+      );
+    }
+    return (
+      <LoginScreen
+        onNavigateToRegister={() => navigate('/cadastro')}
+        onNavigateToLanding={() => navigate('/')}
+      />
+    );
+  }
+
+  // Se não estiver autenticado, qualquer outra rota renderiza a tela de login
+  if (!isAuthenticated) {
+    return (
+      <LoginScreen
+        onNavigateToRegister={() => navigate('/cadastro')}
+        onNavigateToLanding={() => navigate('/')}
+      />
+    );
+  }
+
+  // ROTA 4: Sistema / App Autenticado
   return (
     <Layout activeTab={activeTab} setActiveTab={handleTabChange}>
       {renderContent()}
