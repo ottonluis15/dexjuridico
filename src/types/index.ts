@@ -72,7 +72,8 @@ export type LegalArea =
   | 'Empresarial'
   | 'Previdenciário'
   | 'Consumidor'
-  | 'Imobiliário';
+  | 'Imobiliário'
+  | 'Direito Digital';
 
 export type CaseStatus = 
   | 'INICIAL'

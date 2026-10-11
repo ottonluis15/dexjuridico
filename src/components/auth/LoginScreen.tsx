@@ -201,14 +201,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           </form>
 
           {/* Quick-fill para testes e acesso em qualquer dispositivo / guia anônima */}
-          <div className="pt-3 border-t border-slate-800/80 space-y-2">
+          <div className="pt-3 border-t border-slate-800/80 space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-slate-300">
-                Acesso de Teste (Qualquer Computador / Anônima):
+                Acessos Rápidos da Banca (Senha única: <span className="text-cyan-400 font-mono">Admin123!</span>):
               </span>
-              <span className="text-[10px] text-cyan-400 font-mono font-medium">Senha: Admin123!</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+
+            {/* Administradores */}
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -217,10 +218,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   setError(null);
                 }}
                 className="p-2 rounded-xl bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/60 text-left transition-colors cursor-pointer group"
-                title="Dra. Helena Moreira - Administrador do Escritório"
+                title="Dra. Helena Moreira - Sócia Administradora"
               >
-                <div className="text-[11px] font-bold text-white group-hover:text-cyan-300">
-                  🛡️ Helena (Admin)
+                <div className="text-[11px] font-bold text-white group-hover:text-cyan-300 truncate">
+                  🛡️ Dra. Helena (Sócia Admin)
                 </div>
                 <div className="text-[9px] text-slate-400 truncate">
                   admin@dexjuridico.adv.br
@@ -235,16 +236,110 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   setError(null);
                 }}
                 className="p-2 rounded-xl bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/60 text-left transition-colors cursor-pointer group"
-                title="Dr. Otton Luis - Sócio e Administrador"
+                title="Dr. Otton Luis - Sócio Fundador & Super Admin"
               >
-                <div className="text-[11px] font-bold text-white group-hover:text-cyan-300">
-                  ⚖️ Dr. Otton (Admin)
+                <div className="text-[11px] font-bold text-white group-hover:text-cyan-300 truncate">
+                  ⚖️ Dr. Otton (Sócio & App Admin)
                 </div>
                 <div className="text-[9px] text-slate-400 truncate">
-                  otton.luis.alcaraz@...
+                  otton.luis.alcaraz@gmail.com
                 </div>
               </button>
+            </div>
 
+            {/* Advogados Associados Especialistas */}
+            <div>
+              <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-1.5">
+                6 Especialistas da Banca & Autônomo:
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('lucas.mendes@dexjuridico.adv.br');
+                    setPassword('Admin123!');
+                    setError(null);
+                  }}
+                  className="p-1.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/70 border border-slate-700/50 text-left transition-colors cursor-pointer"
+                  title="Dr. Lucas Mendes - Direito do Trabalho"
+                >
+                  <div className="text-[10px] font-bold text-slate-200 truncate">💼 Dr. Lucas</div>
+                  <div className="text-[9px] text-cyan-400 truncate">Trabalhista</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('camila.rocha@dexjuridico.adv.br');
+                    setPassword('Admin123!');
+                    setError(null);
+                  }}
+                  className="p-1.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/70 border border-slate-700/50 text-left transition-colors cursor-pointer"
+                  title="Dra. Camila Rocha - Direito Tributário"
+                >
+                  <div className="text-[10px] font-bold text-slate-200 truncate">📊 Dra. Camila</div>
+                  <div className="text-[9px] text-cyan-400 truncate">Tributário</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('rafael.silveira@dexjuridico.adv.br');
+                    setPassword('Admin123!');
+                    setError(null);
+                  }}
+                  className="p-1.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/70 border border-slate-700/50 text-left transition-colors cursor-pointer"
+                  title="Dr. Rafael Silveira - Direito Empresarial"
+                >
+                  <div className="text-[10px] font-bold text-slate-200 truncate">🏢 Dr. Rafael</div>
+                  <div className="text-[9px] text-cyan-400 truncate">Empresarial</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('juliana.matsuoka@dexjuridico.adv.br');
+                    setPassword('Admin123!');
+                    setError(null);
+                  }}
+                  className="p-1.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/70 border border-slate-700/50 text-left transition-colors cursor-pointer"
+                  title="Dra. Juliana Matsuoka - Direito Digital & LGPD"
+                >
+                  <div className="text-[10px] font-bold text-slate-200 truncate">🔒 Dra. Juliana</div>
+                  <div className="text-[9px] text-cyan-400 truncate">Digital / LGPD</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('gabriel.fontes@dexjuridico.adv.br');
+                    setPassword('Admin123!');
+                    setError(null);
+                  }}
+                  className="p-1.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/70 border border-slate-700/50 text-left transition-colors cursor-pointer"
+                  title="Dr. Gabriel Fontes - Direito de Família e Sucessões"
+                >
+                  <div className="text-[10px] font-bold text-slate-200 truncate">👨‍👩‍👧 Dr. Gabriel</div>
+                  <div className="text-[9px] text-cyan-400 truncate">Família/Sucessões</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('mariana.vasconcelos@dexjuridico.adv.br');
+                    setPassword('Admin123!');
+                    setError(null);
+                  }}
+                  className="p-1.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/70 border border-slate-700/50 text-left transition-colors cursor-pointer"
+                  title="Dra. Mariana Vasconcelos - Direito Cível e Imobiliário"
+                >
+                  <div className="text-[10px] font-bold text-slate-200 truncate">🏠 Dra. Mariana</div>
+                  <div className="text-[9px] text-cyan-400 truncate">Cível/Imobiliário</div>
+                </button>
+              </div>
+            </div>
+
+            <div className="pt-1 text-center">
               <button
                 type="button"
                 onClick={() => {
@@ -252,20 +347,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   setPassword('Admin123!');
                   setError(null);
                 }}
-                className="p-2 rounded-xl bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/60 text-left transition-colors cursor-pointer group"
-                title="Dra. Beatriz Albuquerque - Advogado Autônomo"
+                className="text-[10px] text-slate-400 hover:text-cyan-300 transition-colors cursor-pointer"
+                title="Testar Perfil de Advogado Autônomo Independente"
               >
-                <div className="text-[11px] font-bold text-white group-hover:text-cyan-300">
-                  💼 Beatriz (Autônomo)
-                </div>
-                <div className="text-[9px] text-slate-400 truncate">
-                  beatriz.albuquerque@...
-                </div>
+                👤 Ou testar com Advogada Autônoma (Dra. Beatriz Albuquerque)
               </button>
             </div>
-            <p className="text-[10px] text-slate-400 text-center leading-relaxed">
-              💡 Clique em um dos perfis acima para preencher automaticamente ou crie uma conta personalizada abaixo.
-            </p>
           </div>
 
           {/* Cadastro Link */}

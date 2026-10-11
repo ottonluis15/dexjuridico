@@ -36,15 +36,21 @@ const STORAGE_KEYS = {
   TEAM_POSTS: 'dex_team_posts',
   AUDIT_LOGS: 'dex_audit_logs',
   CURRENT_USER: 'dex_current_user',
-  API_SETTINGS: 'dex_api_settings'
+  API_SETTINGS: 'dex_api_settings',
+  DATA_VERSION: 'dex_seed_version_v3'
 };
+
+const CURRENT_SEED_VERSION = 'v3_moreira_alcaraz_6lawyers_15cases';
 
 export const storageService = {
   // Inicialização padrão segura e auto-recuperável
   init() {
     try {
+      const storedVersion = localStorage.getItem(STORAGE_KEYS.DATA_VERSION);
+      const isOutdated = storedVersion !== CURRENT_SEED_VERSION;
+
       const rawUsers = localStorage.getItem(STORAGE_KEYS.USERS);
-      if (!rawUsers || rawUsers === '[]' || rawUsers === 'null') {
+      if (isOutdated || !rawUsers || rawUsers === '[]' || rawUsers === 'null') {
         localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
       } else {
         try {
@@ -63,48 +69,63 @@ export const storageService = {
       }
 
       const rawClients = localStorage.getItem(STORAGE_KEYS.CLIENTS);
-      if (!rawClients || rawClients === '[]' || rawClients === 'null') {
+      if (isOutdated || !rawClients || rawClients === '[]' || rawClients === 'null') {
         localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(INITIAL_CLIENTS));
       }
 
       const rawLawyers = localStorage.getItem(STORAGE_KEYS.LAWYERS);
-      if (!rawLawyers || rawLawyers === '[]' || rawLawyers === 'null') {
+      if (isOutdated || !rawLawyers || rawLawyers === '[]' || rawLawyers === 'null') {
         localStorage.setItem(STORAGE_KEYS.LAWYERS, JSON.stringify(INITIAL_LAWYERS));
       }
 
       const rawCases = localStorage.getItem(STORAGE_KEYS.CASES);
-      if (!rawCases || rawCases === '[]' || rawCases === 'null') {
+      if (isOutdated || !rawCases || rawCases === '[]' || rawCases === 'null') {
         localStorage.setItem(STORAGE_KEYS.CASES, JSON.stringify(INITIAL_CASES));
       }
 
       const rawDeadlines = localStorage.getItem(STORAGE_KEYS.DEADLINES);
-      if (!rawDeadlines || rawDeadlines === '[]' || rawDeadlines === 'null') {
+      if (isOutdated || !rawDeadlines || rawDeadlines === '[]' || rawDeadlines === 'null') {
         localStorage.setItem(STORAGE_KEYS.DEADLINES, JSON.stringify(INITIAL_DEADLINES));
       }
 
       const rawFinancial = localStorage.getItem(STORAGE_KEYS.FINANCIAL);
-      if (!rawFinancial || rawFinancial === '[]' || rawFinancial === 'null') {
+      if (isOutdated || !rawFinancial || rawFinancial === '[]' || rawFinancial === 'null') {
         localStorage.setItem(STORAGE_KEYS.FINANCIAL, JSON.stringify(INITIAL_FINANCIAL));
       }
 
       const rawDocs = localStorage.getItem(STORAGE_KEYS.DOCUMENTS);
-      if (!rawDocs || rawDocs === '[]' || rawDocs === 'null') {
+      if (isOutdated || !rawDocs || rawDocs === '[]' || rawDocs === 'null') {
         localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(INITIAL_DOCUMENTS));
       }
 
       const rawTemplates = localStorage.getItem(STORAGE_KEYS.TEMPLATES);
-      if (!rawTemplates || rawTemplates === '[]' || rawTemplates === 'null') {
+      if (isOutdated || !rawTemplates || rawTemplates === '[]' || rawTemplates === 'null') {
         localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(INITIAL_TEMPLATES));
       }
 
       const rawTeamPosts = localStorage.getItem(STORAGE_KEYS.TEAM_POSTS);
-      if (!rawTeamPosts || rawTeamPosts === '[]' || rawTeamPosts === 'null') {
+      if (isOutdated || !rawTeamPosts || rawTeamPosts === '[]' || rawTeamPosts === 'null') {
         localStorage.setItem(STORAGE_KEYS.TEAM_POSTS, JSON.stringify(INITIAL_TEAM_POSTS));
       }
 
       const rawAudit = localStorage.getItem(STORAGE_KEYS.AUDIT_LOGS);
       if (!rawAudit) {
         localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(INITIAL_AUDIT_LOGS));
+      }
+
+      // Atualiza versão do seed
+      localStorage.setItem(STORAGE_KEYS.DATA_VERSION, CURRENT_SEED_VERSION);
+
+      // Preserva sessão ativa com dados atualizados se for um dos usuários padrão
+      const rawCurrent = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+      if (rawCurrent) {
+        try {
+          const curr = JSON.parse(rawCurrent);
+          const matched = INITIAL_USERS.find(u => u.email.toLowerCase() === curr.email?.toLowerCase());
+          if (matched) {
+            localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(matched));
+          }
+        } catch {}
       }
     } catch {
       // Ignora falhas de storage restrito
