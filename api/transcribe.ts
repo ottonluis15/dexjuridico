@@ -26,7 +26,7 @@ export default async function handler(req: any, res: any) {
     }
 
     // Chamada à API oficial do Google Gemini com suporte multimodal de áudio
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
 
     const geminiRes = await fetch(geminiUrl, {
       method: 'POST',
