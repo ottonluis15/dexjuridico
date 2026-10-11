@@ -139,7 +139,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
         return;
       }
 
-      showToast(`Bem-vindo(a) ao Dex! Conta criada com sucesso.`, 'success');
+      showToast(`Bem-vindo ao Dex! Conta criada com sucesso.`, 'success');
     } catch {
       setError('Ocorreu um erro inesperado ao realizar o cadastro. Tente novamente.');
       setIsSubmitting(false);

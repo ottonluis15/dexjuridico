@@ -9,7 +9,9 @@ import {
   DocumentItem, 
   AuditLog, 
   AIAnalysisResult,
-  TemplateDocument 
+  TemplateDocument,
+  WallPost,
+  WallPostCategory 
 } from '../types';
 import { storageService } from '../services/storageService';
 import { supabaseService } from '../services/supabaseService';
@@ -31,6 +33,7 @@ interface DataContextType {
   financial: FinancialEntry[];
   documents: DocumentItem[];
   templates: TemplateDocument[];
+  teamPosts: WallPost[];
   auditLogs: AuditLog[];
   toasts: ToastNotification[];
 
@@ -41,6 +44,7 @@ interface DataContextType {
   userFinancial: FinancialEntry[];
   userDocuments: DocumentItem[];
   userTemplates: TemplateDocument[];
+  userTeamPosts: WallPost[];
 
   // Estatísticas de Dashboard
   stats: {
@@ -95,6 +99,16 @@ interface DataContextType {
   }) => TemplateDocument;
   deleteTemplate: (id: string) => boolean;
 
+  // Operações do Mural da Equipe
+  addTeamPost: (postData: {
+    title: string;
+    content: string;
+    category: WallPostCategory;
+    isPinned?: boolean;
+  }) => Promise<{ success: boolean; post?: WallPost; error?: string }>;
+  deleteTeamPost: (postId: string) => Promise<{ success: boolean; error?: string }>;
+  toggleLikePost: (postId: string) => Promise<{ success: boolean; liked?: boolean; count?: number; error?: string }>;
+
   // Utilitários de UI e IA
   showToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
   removeToast: (id: string) => void;
@@ -115,6 +129,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [financial, setFinancial] = useState<FinancialEntry[]>(() => storageService.getFinancial());
   const [documents, setDocuments] = useState<DocumentItem[]>(() => storageService.getDocuments());
   const [templates, setTemplates] = useState<TemplateDocument[]>(() => storageService.getTemplates());
+  const [teamPosts, setTeamPosts] = useState<WallPost[]>(() => storageService.getTeamPosts(currentUser?.officeId));
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => storageService.getAuditLogs());
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
   const [pendingAiDraft, setPendingAiDraft] = useState<{ analysis: AIAnalysisResult; rawPrompt: string } | null>(null);
@@ -128,6 +143,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setFinancial(storageService.getFinancial());
     setDocuments(storageService.getDocuments());
     setTemplates(storageService.getTemplates());
+    setTeamPosts(storageService.getTeamPosts(currentUser?.officeId));
     setAuditLogs(storageService.getAuditLogs());
 
     // Se o Supabase estiver configurado, busca dados atualizados na nuvem
@@ -139,8 +155,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         supabaseService.fetchDeadlines(),
         supabaseService.fetchFinancial(),
         supabaseService.fetchDocuments(),
-        supabaseService.fetchTemplates()
-      ]).then(([c, l, cs, d, f, docs, tpls]) => {
+        supabaseService.fetchTemplates(),
+        supabaseService.fetchTeamPosts(currentUser?.officeId)
+      ]).then(([c, l, cs, d, f, docs, tpls, posts]) => {
         if (c && c.length > 0) { setClients(c); storageService.saveClients(c); }
         if (l && l.length > 0) { setLawyers(l); storageService.saveLawyers(l); }
         if (cs && cs.length > 0) { setCases(cs); storageService.saveCases(cs); }
@@ -148,6 +165,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (f && f.length > 0) { setFinancial(f); storageService.saveFinancial(f); }
         if (docs && docs.length > 0) { setDocuments(docs); storageService.saveDocuments(docs); }
         if (tpls && tpls.length > 0) { setTemplates(tpls); storageService.saveTemplates(tpls); }
+        if (posts && posts.length > 0) { setTeamPosts(posts); storageService.saveTeamPosts(posts); }
       }).catch(err => {
         console.warn('Erro ao carregar dados remotos do Supabase:', err);
       });
@@ -239,6 +257,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const userTemplates = useMemo(() => {
     return storageService.getTemplatesForUser(currentUser);
   }, [templates, currentUser]);
+
+  // Publicações do Mural visíveis para o escritório (com soft delete filtrado)
+  const userTeamPosts = useMemo(() => {
+    if (!currentUser) return [];
+    return teamPosts.filter(p => {
+      if (p.deleted_at) return false;
+      return !currentUser.officeId || !p.officeId || p.officeId === currentUser.officeId;
+    });
+  }, [teamPosts, currentUser]);
 
   // Estatísticas do Dashboard
   const stats = useMemo(() => {
@@ -750,6 +777,111 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
+  // Operações do Mural da Equipe
+  const addTeamPost = async (postData: {
+    title: string;
+    content: string;
+    category: WallPostCategory;
+    isPinned?: boolean;
+  }): Promise<{ success: boolean; post?: WallPost; error?: string }> => {
+    if (!currentUser) {
+      return { success: false, error: 'Usuário não autenticado.' };
+    }
+
+    try {
+      const newPost: WallPost = {
+        id: `post_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        authorId: currentUser.id,
+        authorName: currentUser.name || 'Advogado Dex',
+        authorRole: currentUser.role === 'ADMIN' ? 'Sócio / Administrador' : 'Advogado Associado',
+        authorInitial: (currentUser.name?.[0] || 'D').toUpperCase(),
+        createdAt: 'Hoje às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        title: postData.title.trim(),
+        content: postData.content.trim(),
+        category: postData.category,
+        isPinned: !!postData.isPinned,
+        likes: 0,
+        likedBy: [],
+        commentsCount: 0,
+        officeId: currentUser.officeId,
+        deleted_at: null,
+        deleted_by: null
+      };
+
+      // 1. Salva localmente
+      storageService.addTeamPost(newPost);
+      setTeamPosts(prev => [newPost, ...prev]);
+
+      // 2. Se Supabase configurado, salva na nuvem
+      if (isSupabaseConfigured()) {
+        supabaseService.upsertTeamPost(newPost).catch(err => {
+          console.warn('Erro ao salvar publicação no Supabase:', err);
+        });
+      }
+
+      return { success: true, post: newPost };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Falha ao salvar publicação.' };
+    }
+  };
+
+  const deleteTeamPost = async (postId: string): Promise<{ success: boolean; error?: string }> => {
+    if (!currentUser) return { success: false, error: 'Usuário não autenticado.' };
+
+    const target = teamPosts.find(p => p.id === postId);
+    if (!target) return { success: false, error: 'Publicação não encontrada.' };
+
+    if (target.authorId !== currentUser.id) {
+      return { success: false, error: 'Apenas o autor pode excluir sua publicação.' };
+    }
+
+    try {
+      // 1. Soft delete local
+      storageService.softDeleteTeamPost(postId, currentUser.id);
+      setTeamPosts(prev => prev.filter(p => p.id !== postId));
+
+      // 2. Soft delete no Supabase
+      if (isSupabaseConfigured()) {
+        await supabaseService.softDeleteTeamPost(postId, currentUser.id);
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Erro ao excluir publicação.' };
+    }
+  };
+
+  const toggleLikePost = async (postId: string): Promise<{ success: boolean; liked?: boolean; count?: number; error?: string }> => {
+    if (!currentUser) return { success: false, error: 'Usuário não autenticado.' };
+
+    try {
+      // 1. Local toggle
+      const localResult = storageService.togglePostLike(postId, currentUser.id);
+      setTeamPosts(prev => prev.map(p => {
+        if (p.id === postId) {
+          const likedBy = p.likedBy || [];
+          const hasLiked = likedBy.includes(currentUser.id);
+          const newLikedBy = hasLiked ? likedBy.filter(id => id !== currentUser.id) : [...likedBy, currentUser.id];
+          return {
+            ...p,
+            likedBy: newLikedBy,
+            likes: newLikedBy.length
+          };
+        }
+        return p;
+      }));
+
+      // 2. Nuvem
+      if (isSupabaseConfigured()) {
+        supabaseService.togglePostLike(postId, currentUser.id, currentUser.officeId).catch(console.warn);
+      }
+
+      return { success: true, liked: localResult.liked, count: localResult.count };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Erro ao curtir publicação.' };
+    }
+  };
+
   // Integração com Dex AI
   const prefillCaseFromAI = (analysis: AIAnalysisResult, rawPrompt: string) => {
     setPendingAiDraft({ analysis, rawPrompt });
@@ -770,6 +902,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         financial,
         documents,
         templates,
+        teamPosts,
         auditLogs,
         toasts,
         userCases,
@@ -778,6 +911,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userFinancial,
         userDocuments,
         userTemplates,
+        userTeamPosts,
         stats,
         addClient,
         updateClient,
@@ -799,6 +933,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteDocument,
         addTemplate,
         deleteTemplate,
+        addTeamPost,
+        deleteTeamPost,
+        toggleLikePost,
         showToast,
         removeToast,
         prefillCaseFromAI,

@@ -35,7 +35,7 @@ export const SettingsView: React.FC = () => {
   const { currentUser, isAdmin, updateProfilePhoto, updateProfileData } = useAuth();
   const { showToast } = useData();
 
-  const [activeSubTab, setActiveSubTab] = useState<'general' | 'profile' | 'security' | 'integrations' | 'database'>('profile');
+  const [activeSubTab, setActiveSubTab] = useState<'database' | 'general' | 'profile' | 'security' | 'integrations'>('database');
 
   // Form states - Sociedade
   const [officeName, setOfficeName] = useState(currentUser?.officeName || 'Dex Sociedade de Advogados');

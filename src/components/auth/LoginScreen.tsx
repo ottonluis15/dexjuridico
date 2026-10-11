@@ -217,7 +217,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   setError(null);
                 }}
                 className="p-2 rounded-xl bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/60 text-left transition-colors cursor-pointer group"
-                title="Dra. Helena Moreira - Administradora do Escritório"
+                title="Dra. Helena Moreira - Administrador do Escritório"
               >
                 <div className="text-[11px] font-bold text-white group-hover:text-cyan-300">
                   🛡️ Helena (Admin)
@@ -253,10 +253,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   setError(null);
                 }}
                 className="p-2 rounded-xl bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/60 text-left transition-colors cursor-pointer group"
-                title="Dra. Beatriz Albuquerque - Advogada Autônoma"
+                title="Dra. Beatriz Albuquerque - Advogado Autônomo"
               >
                 <div className="text-[11px] font-bold text-white group-hover:text-cyan-300">
-                  💼 Beatriz (Autônoma)
+                  💼 Beatriz (Autônomo)
                 </div>
                 <div className="text-[9px] text-slate-400 truncate">
                   beatriz.albuquerque@...

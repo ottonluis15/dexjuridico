@@ -31,6 +31,7 @@ export type TabType =
   | 'reports'
   | 'notifications'
   | 'settings'
+  | 'profile'
   | 'lawyer-workbench'
   | 'lgpd'
   | 'landing';
@@ -58,7 +59,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
   setIsOpen
 }) => {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, isAppAdmin, logout } = useAuth();
   const { userCases } = useData();
 
   const sections: NavSection[] = [
@@ -131,11 +132,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           label: 'Notificações',
           icon: Bell,
         },
-        {
-          id: 'settings',
+        ...(isAppAdmin ? [{
+          id: 'settings' as TabType,
           label: 'Configurações',
           icon: Settings,
-        },
+        }] : []),
         {
           id: 'landing',
           label: 'Página Inicial (Web)',
@@ -223,28 +224,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* User Profile Footer */}
-        <div className="p-4 border-t border-neutral-200/70 bg-[#FAFAFA]/80 flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0">
+        <div className="p-3.5 border-t border-neutral-200/70 bg-[#FAFAFA]/90 flex items-center justify-between gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('profile');
+              setIsOpen(false);
+            }}
+            className={`flex items-center gap-3 min-w-0 flex-1 p-2 rounded-2xl transition-all cursor-pointer text-left group ${
+              activeTab === 'profile'
+                ? 'bg-[#222222] text-white shadow-sm ring-1 ring-neutral-800'
+                : 'hover:bg-neutral-200/70'
+            }`}
+            title="Acessar Meu Perfil e Foto"
+          >
             {currentUser?.avatarUrl ? (
               <img
                 src={currentUser.avatarUrl}
                 alt={userName}
-                className="w-11 h-11 rounded-full object-cover shrink-0 border border-neutral-300 shadow-sm"
+                className="w-10 h-10 rounded-full object-cover shrink-0 border border-neutral-300 shadow-sm"
               />
             ) : (
-              <div className="w-11 h-11 rounded-full bg-[#C69255] text-white flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-[#C69255] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
                 {userInitial}
               </div>
             )}
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-neutral-800 truncate leading-tight">
+            <div className="min-w-0 flex-1">
+              <p className={`text-xs font-bold truncate leading-tight ${
+                activeTab === 'profile' ? 'text-white' : 'text-neutral-800 group-hover:text-black'
+              }`}>
                 {userName}
               </p>
-              <p className="text-xs text-neutral-400 truncate leading-tight mt-0.5">
-                {userRole}
+              <p className={`text-[11px] truncate leading-tight mt-0.5 ${
+                activeTab === 'profile' ? 'text-neutral-300' : 'text-neutral-500'
+              }`}>
+                {userRole} • Meu Perfil
               </p>
             </div>
-          </div>
+          </button>
 
           <button
             onClick={logout}

@@ -19,13 +19,15 @@ import {
   CheckCircle2,
   DollarSign,
   Calendar,
-  Building2
+  Building2,
+  Mic
 } from 'lucide-react';
 import { aiService, SAMPLE_CASE_TEMPLATES } from '../../services/aiService';
 import { AIAnalysisResult, LegalArea } from '../../types';
 import { useData } from '../../context/DataContext';
 import { PriorityBadge } from '../common/Badge';
 import { Modal } from '../common/Modal';
+import { AudioTranscriber } from './AudioTranscriber';
 
 interface DexAIAssistantProps {
   onNavigateToCases: () => void;
@@ -41,6 +43,16 @@ export const DexAIAssistant: React.FC<DexAIAssistantProps> = ({ onNavigateToCase
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [selectedModel, setSelectedModel] = useState('claude-3-5-sonnet');
+  const [isAudioModalOpen, setIsAudioModalOpen] = useState(false);
+
+  const handleTranscriptionComplete = (transcribedText: string) => {
+    setPromptText(prev => {
+      const cleanNew = transcribedText.trim();
+      if (!prev.trim()) return cleanNew;
+      return `${prev.trim()}\n\n[Transcrição de Áudio]:\n${cleanNew}`;
+    });
+    showToast('Áudio transcrito e inserido no relato com sucesso!', 'success');
+  };
 
   // Estados do Modal de Criação e Salvamento do Processo
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -262,15 +274,30 @@ export const DexAIAssistant: React.FC<DexAIAssistantProps> = ({ onNavigateToCase
       {/* Input Prompt Section */}
       <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80 space-y-4">
         <div>
-          <label className="block text-xs font-bold text-white mb-1.5 flex items-center justify-between">
-            <span>Relato Fático do Caso / Mensagem do Cliente</span>
-            <span className="text-xs text-slate-400 font-normal">
-              {promptText.length} caracteres
-            </span>
-          </label>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+            <label className="text-xs font-bold text-white flex items-center gap-2">
+              <span>Relato Fático do Caso / Mensagem do Cliente</span>
+            </label>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsAudioModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1 bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/40 rounded-xl text-xs font-semibold transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
+                title="Gravar pelo microfone ou enviar arquivo de áudio para transcrição via IA Gemini"
+              >
+                <Mic className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Gravar / Enviar Áudio</span>
+              </button>
+
+              <span className="text-xs text-slate-400 font-normal">
+                {promptText.length} caracteres
+              </span>
+            </div>
+          </div>
           <textarea
             rows={5}
-            placeholder="Cole aqui o relato fático bruto, anotações de entrevista com o cliente ou histórico narrado..."
+            placeholder="Cole aqui o relato fático bruto, anotações de entrevista com o cliente ou grave/envie um áudio acima..."
             value={promptText}
             onChange={e => setPromptText(e.target.value)}
             className="w-full p-4 bg-slate-800/90 border border-slate-700 rounded-2xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 leading-relaxed font-sans"
@@ -568,7 +595,7 @@ export const DexAIAssistant: React.FC<DexAIAssistantProps> = ({ onNavigateToCase
             {/* Advogado */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Advogado(a) Responsável *
+                Advogado Responsável *
               </label>
               <select
                 required
@@ -684,6 +711,13 @@ export const DexAIAssistant: React.FC<DexAIAssistantProps> = ({ onNavigateToCase
           </div>
         </form>
       </Modal>
+
+      {/* Modal de Gravação e Transcrição de Áudio com IA Gemini */}
+      <AudioTranscriber
+        isOpen={isAudioModalOpen}
+        onClose={() => setIsAudioModalOpen(false)}
+        onTranscriptionComplete={handleTranscriptionComplete}
+      />
     </div>
   );
 };

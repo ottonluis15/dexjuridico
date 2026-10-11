@@ -8,7 +8,8 @@ import {
   FinancialEntry, 
   DocumentItem, 
   TemplateDocument,
-  AuditLog 
+  AuditLog,
+  WallPost 
 } from '../types';
 
 export const supabaseService = {
@@ -365,6 +366,171 @@ export const supabaseService = {
       return { success: true, message: 'Todos os dados locais foram sincronizados com a nuvem com sucesso!' };
     } catch (err: any) {
       return { success: false, message: err?.message || 'Falha ao sincronizar dados com o Supabase.' };
+    }
+  },
+
+  /**
+   * Busca publicações ativas do Mural da Equipe (onde deleted_at IS NULL)
+   */
+  async fetchTeamPosts(officeId?: string): Promise<WallPost[] | null> {
+    const client = getSupabaseClient();
+    if (!client) return null;
+
+    try {
+      let query = client.from('dex_team_posts').select('*').is('deleted_at', null).order('created_at', { ascending: false });
+      
+      if (officeId) {
+        query = query.or(`officeId.eq.${officeId},officeId.is.null`);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        console.warn('Supabase fetchTeamPosts error:', error.message);
+        return null;
+      }
+
+      // Buscar curtidas associadas para preencher likedBy
+      const posts = (data as WallPost[]) || [];
+      if (posts.length > 0) {
+        try {
+          const postIds = posts.map(p => p.id);
+          const { data: likesData } = await client
+            .from('dex_team_post_likes')
+            .select('postId, userId')
+            .in('postId', postIds);
+
+          if (likesData && likesData.length > 0) {
+            const likesByPost: Record<string, string[]> = {};
+            likesData.forEach((l: any) => {
+              if (!likesByPost[l.postId]) likesByPost[l.postId] = [];
+              likesByPost[l.postId].push(l.userId);
+            });
+
+            posts.forEach(p => {
+              p.likedBy = likesByPost[p.id] || [];
+              p.likes = p.likedBy.length;
+            });
+          }
+        } catch {
+          // Se a tabela de curtidas ainda não existir, segue com as curtidas do post
+        }
+      }
+
+      return posts;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Salva ou atualiza uma publicação do Mural no Supabase
+   */
+  async upsertTeamPost(post: WallPost): Promise<boolean> {
+    const client = getSupabaseClient();
+    if (!client) return false;
+
+    try {
+      const payload: any = {
+        id: post.id,
+        authorId: post.authorId,
+        authorName: post.authorName,
+        authorRole: post.authorRole,
+        authorInitial: post.authorInitial,
+        createdAt: post.createdAt,
+        title: post.title,
+        content: post.content,
+        category: post.category,
+        isPinned: !!post.isPinned,
+        likes: post.likes || 0,
+        commentsCount: post.commentsCount || 0,
+        officeId: post.officeId,
+        deleted_at: post.deleted_at || null,
+        deleted_by: post.deleted_by || null
+      };
+
+      const { error } = await client.from('dex_team_posts').upsert([payload], { onConflict: 'id' });
+      if (error) {
+        console.warn('Supabase upsertTeamPost error:', error.message);
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * Realiza Soft Delete da publicação garantindo que apenas o autor possa excluir
+   */
+  async softDeleteTeamPost(postId: string, userId: string): Promise<boolean> {
+    const client = getSupabaseClient();
+    if (!client) return false;
+
+    try {
+      const { error } = await client
+        .from('dex_team_posts')
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: userId
+        })
+        .eq('id', postId)
+        .eq('authorId', userId);
+
+      if (error) {
+        console.warn('Supabase softDeleteTeamPost error:', error.message);
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * Alterna curtida (1 curtida por perfil por publicação)
+   */
+  async togglePostLike(postId: string, userId: string, officeId?: string): Promise<{ liked: boolean; count: number } | null> {
+    const client = getSupabaseClient();
+    if (!client) return null;
+
+    try {
+      // 1. Verifica se o usuário já curtiu
+      const { data: existingLike } = await client
+        .from('dex_team_post_likes')
+        .select('id')
+        .eq('postId', postId)
+        .eq('userId', userId)
+        .maybeSingle();
+
+      let liked = false;
+      if (existingLike) {
+        // Remover curtida
+        await client.from('dex_team_post_likes').delete().eq('id', existingLike.id);
+        liked = false;
+      } else {
+        // Adicionar curtida (garantido por unique constraint)
+        const newLikeId = `like_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+        await client.from('dex_team_post_likes').insert([{
+          id: newLikeId,
+          postId,
+          userId,
+          officeId
+        }]);
+        liked = true;
+      }
+
+      // 2. Obter contagem atualizada e salvar no post
+      const { count } = await client
+        .from('dex_team_post_likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('postId', postId);
+
+      const finalCount = count || 0;
+      await client.from('dex_team_posts').update({ likes: finalCount }).eq('id', postId);
+
+      return { liked, count: finalCount };
+    } catch {
+      return null;
     }
   }
 };

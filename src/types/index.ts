@@ -5,6 +5,7 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  isSuperAdmin?: boolean; // Admin do aplicativo Dex (dono da plataforma)
   avatarUrl?: string;
   oab?: string;
   phone?: string;
@@ -147,6 +148,9 @@ export interface FinancialEntry {
   paymentMethod: PaymentMethod;
   hasReceipt?: boolean;
   receiptName?: string;
+  receiptUrl?: string; // Data URL Base64 para persistência compatível com Vercel/Supabase
+  receiptType?: string; // MIME type (application/pdf, image/png, etc.)
+  receiptSize?: number; // Tamanho em bytes
   officeId?: string;
 }
 
@@ -223,4 +227,33 @@ export interface AuditLog {
   details: string;
   ipAddress: string;
   officeId?: string;
+}
+
+export type WallPostCategory = 'COMUNICADO' | 'VITORIA' | 'PRAZO_URGENTE' | 'EVENTO' | 'GERAL';
+
+export interface WallPost {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorRole: string;
+  authorInitial: string;
+  createdAt: string;
+  title: string;
+  content: string;
+  category: WallPostCategory;
+  isPinned?: boolean;
+  likes: number;
+  likedBy?: string[]; // IDs dos usuários que curtiram
+  commentsCount: number;
+  officeId?: string;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
+}
+
+export interface PostLike {
+  id: string;
+  postId: string;
+  userId: string;
+  officeId?: string;
+  createdAt?: string;
 }

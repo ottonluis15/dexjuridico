@@ -79,7 +79,8 @@ export const Header: React.FC<HeaderProps> = ({
     'team-wall': { title: 'Mural da Equipe', subtitle: 'Comunicados internos, avisos e alinhamentos da banca' },
     reports: { title: 'Relatórios & Inteligência Jurídica', subtitle: 'Métricas de desempenho, taxa de êxito e produtividade' },
     notifications: { title: 'Central de Notificações', subtitle: 'Alertas de prazos, movimentações e comunicados' },
-    settings: { title: 'Configurações do Sistema', subtitle: 'Preferências, perfil, segurança e governança' },
+    profile: { title: 'Meu Perfil e Foto', subtitle: 'Informações cadastrais, credenciais e foto de exibição' },
+    settings: { title: 'Configurações do Sistema', subtitle: 'Preferências, banco de dados, segurança e governança' },
     lgpd: { title: 'Conformidade & Governança LGPD', subtitle: 'Inventário de dados, registro de acessos e segurança da informação' },
     landing: { title: 'Página de Apresentação', subtitle: 'Visão pública e institucional da plataforma DEX' },
   };
@@ -378,7 +379,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   onClick={() => {
                     setIsUserMenuOpen(false);
-                    setActiveTab('settings');
+                    setActiveTab('profile');
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800 rounded-xl transition-colors text-left cursor-pointer"
                 >

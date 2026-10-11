@@ -7,7 +7,8 @@ import {
   DocumentItem, 
   AuditLog, 
   User,
-  TemplateDocument 
+  TemplateDocument,
+  WallPost 
 } from '../types';
 import { 
   INITIAL_CLIENTS, 
@@ -18,7 +19,8 @@ import {
   INITIAL_DOCUMENTS, 
   INITIAL_AUDIT_LOGS, 
   INITIAL_USERS, 
-  INITIAL_TEMPLATES 
+  INITIAL_TEMPLATES,
+  INITIAL_TEAM_POSTS 
 } from '../mock/initialData';
 import { cryptoService } from './cryptoService';
 
@@ -31,6 +33,7 @@ const STORAGE_KEYS = {
   FINANCIAL: 'dex_financial',
   DOCUMENTS: 'dex_documents',
   TEMPLATES: 'dex_templates',
+  TEAM_POSTS: 'dex_team_posts',
   AUDIT_LOGS: 'dex_audit_logs',
   CURRENT_USER: 'dex_current_user',
   API_SETTINGS: 'dex_api_settings'
@@ -43,6 +46,20 @@ export const storageService = {
       const rawUsers = localStorage.getItem(STORAGE_KEYS.USERS);
       if (!rawUsers || rawUsers === '[]' || rawUsers === 'null') {
         localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+      } else {
+        try {
+          const users: User[] = JSON.parse(rawUsers);
+          let changed = false;
+          users.forEach(u => {
+            if (u.id === 'usr_admin_otton' && !u.isSuperAdmin) {
+              u.isSuperAdmin = true;
+              changed = true;
+            }
+          });
+          if (changed) {
+            localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+          }
+        } catch {}
       }
 
       const rawClients = localStorage.getItem(STORAGE_KEYS.CLIENTS);
@@ -80,6 +97,11 @@ export const storageService = {
         localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(INITIAL_TEMPLATES));
       }
 
+      const rawTeamPosts = localStorage.getItem(STORAGE_KEYS.TEAM_POSTS);
+      if (!rawTeamPosts || rawTeamPosts === '[]' || rawTeamPosts === 'null') {
+        localStorage.setItem(STORAGE_KEYS.TEAM_POSTS, JSON.stringify(INITIAL_TEAM_POSTS));
+      }
+
       const rawAudit = localStorage.getItem(STORAGE_KEYS.AUDIT_LOGS);
       if (!rawAudit) {
         localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(INITIAL_AUDIT_LOGS));
@@ -99,6 +121,7 @@ export const storageService = {
     localStorage.setItem(STORAGE_KEYS.FINANCIAL, JSON.stringify(INITIAL_FINANCIAL));
     localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(INITIAL_DOCUMENTS));
     localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(INITIAL_TEMPLATES));
+    localStorage.setItem(STORAGE_KEYS.TEAM_POSTS, JSON.stringify(INITIAL_TEAM_POSTS));
     localStorage.removeItem(STORAGE_KEYS.AUDIT_LOGS);
     localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
   },
@@ -464,5 +487,94 @@ export const storageService = {
   },
   saveApiSettings(settings: { provider: string; apiKey: string; model: string }) {
     localStorage.setItem(STORAGE_KEYS.API_SETTINGS, JSON.stringify(settings));
+  },
+
+  // Publicações do Mural da Equipe
+  getTeamPosts(officeId?: string): WallPost[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.TEAM_POSTS);
+      if (!data) return [];
+      const posts: WallPost[] = JSON.parse(data);
+      // Filtra estritamente deleted_at IS NULL e por officeId
+      return posts.filter(p => {
+        if (p.deleted_at) return false;
+        if (!officeId) return true;
+        return !p.officeId || p.officeId === officeId;
+      });
+    } catch {
+      return [];
+    }
+  },
+
+  getAllRawTeamPosts(): WallPost[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.TEAM_POSTS);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  saveTeamPosts(posts: WallPost[]) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.TEAM_POSTS, JSON.stringify(posts));
+    } catch (e) {
+      console.warn('Erro ao salvar publicações no localStorage:', e);
+    }
+  },
+
+  addTeamPost(post: WallPost): WallPost {
+    const raw = this.getAllRawTeamPosts();
+    const updated = [post, ...raw];
+    this.saveTeamPosts(updated);
+    return post;
+  },
+
+  softDeleteTeamPost(postId: string, userId: string): boolean {
+    const raw = this.getAllRawTeamPosts();
+    const idx = raw.findIndex(p => p.id === postId);
+    if (idx === -1) return false;
+    
+    // Verifica se o usuário que está apagando é o autor
+    if (raw[idx].authorId && raw[idx].authorId !== userId) {
+      return false;
+    }
+
+    raw[idx] = {
+      ...raw[idx],
+      deleted_at: new Date().toISOString(),
+      deleted_by: userId
+    };
+    this.saveTeamPosts(raw);
+    return true;
+  },
+
+  togglePostLike(postId: string, userId: string): { liked: boolean; count: number } {
+    const raw = this.getAllRawTeamPosts();
+    const idx = raw.findIndex(p => p.id === postId);
+    if (idx === -1) return { liked: false, count: 0 };
+
+    const post = raw[idx];
+    const likedBy = post.likedBy || [];
+    const hasLiked = likedBy.includes(userId);
+
+    let updatedLikedBy: string[];
+    if (hasLiked) {
+      updatedLikedBy = likedBy.filter(id => id !== userId);
+    } else {
+      updatedLikedBy = [...likedBy, userId];
+    }
+
+    raw[idx] = {
+      ...post,
+      likedBy: updatedLikedBy,
+      likes: updatedLikedBy.length
+    };
+
+    this.saveTeamPosts(raw);
+    return {
+      liked: !hasLiked,
+      count: updatedLikedBy.length
+    };
   }
 };

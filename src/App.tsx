@@ -19,16 +19,18 @@ import { TeamWall } from './components/team-wall/TeamWall';
 import { ReportsView } from './components/reports/ReportsView';
 import { NotificationsView } from './components/notifications/NotificationsView';
 import { SettingsView } from './components/settings/SettingsView';
+import { UserProfileView } from './components/profile/UserProfileView';
 import { CaseModal } from './components/cases/CaseModal';
 import { DeadlineModal } from './components/deadlines/DeadlineModal';
 import { ClientModal } from './components/clients/ClientModal';
+import { ShieldAlert } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const { isAuthenticated, isAdmin } = useAuth();
+  const { isAuthenticated, isAdmin, isAppAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [selectedPlanForRegister, setSelectedPlanForRegister] = useState<string>('Escritório Pro');
 
-  // Gerenciamento de rotas amigáveis na URL (/ , /login , /cadastro , /app)
+  // Gerenciamento de rotas amigáveis na URL (/ , /login , /cadastro , /app , /perfil)
   const [currentPath, setCurrentPath] = useState<string>(() => {
     return window.location.pathname || '/';
   });
@@ -120,17 +122,41 @@ export const App: React.FC = () => {
     );
   }
 
+  // Sincronização de rotas com a barra de endereços (/app, /perfil, /configuracoes)
+  useEffect(() => {
+    if (currentPath === '/perfil' || currentPath === '/profile') {
+      setActiveTab('profile');
+    } else if (currentPath === '/configuracoes' || currentPath === '/settings') {
+      if (isAppAdmin) {
+        setActiveTab('settings');
+      } else {
+        setActiveTab('dashboard');
+      }
+    }
+  }, [currentPath, isAppAdmin]);
+
   // Proteção de abas por perfil (RBAC):
-  // Se advogado tentar abrir a aba exclusiva de administração da banca, redireciona para a workbench
+  // 1. Se advogado tentar gerenciar equipe, redireciona para a workbench
+  // 2. Se usuário não for o admin do aplicativo (Dex Super Admin), bloqueia Configurações
   const handleTabChange = (tab: TabType) => {
     if (tab === 'landing') {
       navigate('/');
+      return;
+    }
+    if (tab === 'profile') {
+      navigate('/perfil');
+      setActiveTab('profile');
       return;
     }
     if (tab === 'lawyers' && !isAdmin) {
       setActiveTab('lawyer-workbench');
       return;
     }
+    if (tab === 'settings' && !isAppAdmin) {
+      setActiveTab('dashboard');
+      return;
+    }
+    navigate('/app');
     setActiveTab(tab);
   };
 
@@ -145,6 +171,8 @@ export const App: React.FC = () => {
             onOpenNewClient={() => setIsClientModalOpen(true)}
           />
         );
+      case 'profile':
+        return <UserProfileView />;
       case 'lawyer-workbench':
         return <LawyerWorkbench onNavigateToAI={() => handleTabChange('ai-assistant')} />;
       case 'cases':
@@ -163,6 +191,26 @@ export const App: React.FC = () => {
       case 'notifications':
         return <NotificationsView />;
       case 'settings':
+        // Apenas o administrador da plataforma Dex pode acessar Configurações
+        if (!isAppAdmin) {
+          return (
+            <div className="p-8 text-center max-w-lg mx-auto bg-slate-900/80 rounded-2xl border border-rose-500/30 mt-12 space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-400 mx-auto flex items-center justify-center border border-rose-500/20">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-white">403 — Acesso Restrito</h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                A área de Configurações do Sistema é reservada exclusivamente para o Administrador da Plataforma Dex (App Admin).
+              </p>
+              <button
+                onClick={() => handleTabChange('dashboard')}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-xl border border-slate-700 transition-colors"
+              >
+                Voltar ao Dashboard
+              </button>
+            </div>
+          );
+        }
         return <SettingsView />;
       case 'financial':
         return <FinancialList />;

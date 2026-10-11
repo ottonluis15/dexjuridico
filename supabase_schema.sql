@@ -21,11 +21,14 @@ CREATE TABLE IF NOT EXISTS public.dex_users (
     "officeName" TEXT,
     "officeCode" TEXT,
     "isIndependent" BOOLEAN DEFAULT false,
+    "isSuperAdmin" BOOLEAN DEFAULT false,
     "avatarUrl" TEXT,
     "passwordHash" TEXT,
     salt TEXT,
     "created_at" TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "isSuperAdmin" BOOLEAN DEFAULT false;
 
 -- 2. Tabela de Clientes
 CREATE TABLE IF NOT EXISTS public.dex_clients (
@@ -99,16 +102,32 @@ CREATE TABLE IF NOT EXISTS public.dex_financial (
     id TEXT PRIMARY KEY,
     type TEXT,
     title TEXT,
+    description TEXT,
     "clientId" TEXT,
     "caseId" TEXT,
     "lawyerId" TEXT,
     amount NUMERIC DEFAULT 0,
     "dueDate" TEXT,
+    "paymentDate" TEXT,
     status TEXT DEFAULT 'PENDENTE',
     "paymentMethod" TEXT,
+    "hasReceipt" BOOLEAN DEFAULT false,
+    "receiptName" TEXT,
+    "receiptUrl" TEXT,
+    "receiptType" TEXT,
+    "receiptSize" BIGINT,
     "officeId" TEXT,
     "created_at" TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migrações incrementais de colunas financeiras (caso a tabela já exista):
+ALTER TABLE public.dex_financial ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE public.dex_financial ADD COLUMN IF NOT EXISTS "paymentDate" TEXT;
+ALTER TABLE public.dex_financial ADD COLUMN IF NOT EXISTS "hasReceipt" BOOLEAN DEFAULT false;
+ALTER TABLE public.dex_financial ADD COLUMN IF NOT EXISTS "receiptName" TEXT;
+ALTER TABLE public.dex_financial ADD COLUMN IF NOT EXISTS "receiptUrl" TEXT;
+ALTER TABLE public.dex_financial ADD COLUMN IF NOT EXISTS "receiptType" TEXT;
+ALTER TABLE public.dex_financial ADD COLUMN IF NOT EXISTS "receiptSize" BIGINT;
 
 -- 7. Tabela de Documentos
 CREATE TABLE IF NOT EXISTS public.dex_documents (
@@ -143,7 +162,44 @@ CREATE TABLE IF NOT EXISTS public.dex_templates (
     "created_at" TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 9. Habilitar Políticas de Acesso Público Anon (Permite leitura/escrita com chave anon do Supabase)
+-- 9. Tabela de Publicações do Mural da Equipe
+CREATE TABLE IF NOT EXISTS public.dex_team_posts (
+    id TEXT PRIMARY KEY,
+    "authorId" TEXT NOT NULL,
+    "authorName" TEXT NOT NULL,
+    "authorRole" TEXT NOT NULL,
+    "authorInitial" TEXT NOT NULL,
+    "createdAt" TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'COMUNICADO',
+    "isPinned" BOOLEAN DEFAULT false,
+    likes INT DEFAULT 0,
+    "commentsCount" INT DEFAULT 0,
+    "officeId" TEXT,
+    deleted_at TIMESTAMPTZ,
+    deleted_by TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 10. Tabela de Curtidas do Mural (1 curtida por perfil por publicação)
+CREATE TABLE IF NOT EXISTS public.dex_team_post_likes (
+    id TEXT PRIMARY KEY,
+    "postId" TEXT NOT NULL REFERENCES public.dex_team_posts(id) ON DELETE CASCADE,
+    "userId" TEXT NOT NULL,
+    "officeId" TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT unique_post_user_like UNIQUE ("postId", "userId")
+);
+
+-- Migração de limpeza de curtidas duplicadas (se houverem)
+DELETE FROM public.dex_team_post_likes a
+USING public.dex_team_post_likes b
+WHERE a.ctid < b.ctid
+  AND a."postId" = b."postId"
+  AND a."userId" = b."userId";
+
+-- 11. Habilitar Políticas de Acesso Público Anon (Permite leitura/escrita com chave anon do Supabase)
 ALTER TABLE public.dex_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.dex_clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.dex_lawyers ENABLE ROW LEVEL SECURITY;
@@ -152,6 +208,8 @@ ALTER TABLE public.dex_deadlines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.dex_financial ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.dex_documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.dex_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.dex_team_posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.dex_team_post_likes ENABLE ROW LEVEL SECURITY;
 
 -- Políticas universais de leitura e gravação para a chave pública anon
 CREATE POLICY "Permitir Leitura Dex Users" ON public.dex_users FOR SELECT USING (true);
@@ -178,9 +236,15 @@ CREATE POLICY "Permitir Gravacao Dex Documentos" ON public.dex_documents FOR ALL
 CREATE POLICY "Permitir Leitura Dex Modelos" ON public.dex_templates FOR SELECT USING (true);
 CREATE POLICY "Permitir Gravacao Dex Modelos" ON public.dex_templates FOR ALL USING (true);
 
+CREATE POLICY "Permitir Leitura Dex Team Posts" ON public.dex_team_posts FOR SELECT USING (true);
+CREATE POLICY "Permitir Gravacao Dex Team Posts" ON public.dex_team_posts FOR ALL USING (true);
+
+CREATE POLICY "Permitir Leitura Dex Team Likes" ON public.dex_team_post_likes FOR SELECT USING (true);
+CREATE POLICY "Permitir Gravacao Dex Team Likes" ON public.dex_team_post_likes FOR ALL USING (true);
+
 -- 10. Inserir Contas Administrativas Iniciais (com Senha Admin123!)
 INSERT INTO public.dex_users (
-    id, name, email, role, oab, phone, specialties, status, "officeId", "officeName", "officeCode", "isIndependent", salt, "passwordHash", "avatarUrl"
+    id, name, email, role, oab, phone, specialties, status, "officeId", "officeName", "officeCode", "isIndependent", "isSuperAdmin", salt, "passwordHash", "avatarUrl"
 ) VALUES 
 (
     'usr_admin_otton',
@@ -195,6 +259,7 @@ INSERT INTO public.dex_users (
     'Moreira & Associados Advocacia',
     'DEX-1001',
     false,
+    true,
     'a1b2c3d4e5f60718',
     '7ec23d5cbd8c1ff9db5abecfc8c289e6330ef637f917e6a3480bcbf812553d55',
     'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=256&auto=format&fit=crop'
@@ -212,8 +277,22 @@ INSERT INTO public.dex_users (
     'Moreira & Associados Advocacia',
     'DEX-1001',
     false,
+    false,
     'a1b2c3d4e5f60718',
     '7ec23d5cbd8c1ff9db5abecfc8c289e6330ef637f917e6a3480bcbf812553d55',
     'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=256&auto=format&fit=crop'
 )
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET "isSuperAdmin" = EXCLUDED."isSuperAdmin";
+
+-- 12. Migração: Padronização de Títulos e Cargos no Masculino
+UPDATE public.dex_lawyers 
+SET "roleTitle" = REPLACE("roleTitle", 'Sócia Fundadora & Administradora', 'Sócio Fundador & Administrador')
+WHERE "roleTitle" ILIKE '%Sócia Fundadora & Administradora%';
+
+UPDATE public.dex_lawyers 
+SET "roleTitle" = REPLACE("roleTitle", 'Advogada Autônoma', 'Advogado Autônomo')
+WHERE "roleTitle" ILIKE '%Advogada Autônoma%';
+
+UPDATE public.dex_lawyers 
+SET "roleTitle" = REPLACE(REPLACE("roleTitle", 'Sócia', 'Sócio'), 'Advogada', 'Advogado')
+WHERE "roleTitle" ILIKE '%Sócia%' OR "roleTitle" ILIKE '%Advogada%';

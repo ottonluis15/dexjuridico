@@ -37,6 +37,7 @@ interface AuthContextType {
   currentUser: User | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isAppAdmin: boolean;
   isLawyer: boolean;
   login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   registerUser: (userData: RegisterUserData) => Promise<{ success: boolean; user?: User; error?: string }>;
@@ -399,6 +400,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isAdmin = currentUser?.role === 'ADMIN';
+  const appAdminEmail = ((import.meta as any).env?.VITE_APP_ADMIN_EMAIL || 'otton.luis.alcaraz@gmail.com').toLowerCase();
+  const isAppAdmin = !!currentUser?.isSuperAdmin || 
+    (currentUser?.email ? currentUser.email.toLowerCase() === appAdminEmail : false);
   const isLawyer = currentUser?.role === 'LAWYER';
   const isAuthenticated = !!currentUser;
 
@@ -408,6 +412,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentUser,
         isAuthenticated,
         isAdmin,
+        isAppAdmin,
         isLawyer,
         login,
         registerUser,

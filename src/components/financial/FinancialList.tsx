@@ -13,7 +13,11 @@ import {
   Filter,
   TrendingUp,
   CreditCard,
-  ShieldCheck
+  ShieldCheck,
+  Paperclip,
+  Eye,
+  ExternalLink,
+  Image as ImageIcon
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -22,6 +26,7 @@ import { FinancialStatusBadge } from '../common/Badge';
 import { FinancialModal } from './FinancialModal';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { EmptyState } from '../common/EmptyState';
+import { Modal } from '../common/Modal';
 
 export const FinancialList: React.FC = () => {
   const { userFinancial, clients, cases, deleteFinancial, updateFinancial } = useData();
@@ -34,6 +39,7 @@ export const FinancialList: React.FC = () => {
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<FinancialEntry | null>(null);
   const [entryToDelete, setEntryToDelete] = useState<FinancialEntry | null>(null);
+  const [viewingReceipt, setViewingReceipt] = useState<FinancialEntry | null>(null);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -64,6 +70,19 @@ export const FinancialList: React.FC = () => {
   const totalOverdue = userFinancial
     .filter(f => f.status === 'ATRASADO')
     .reduce((sum, f) => sum + f.amount, 0);
+
+  const handleDownloadReceipt = (entry: FinancialEntry) => {
+    if (!entry.receiptUrl) {
+      alert('Este comprovante possui apenas o nome de registro. Edite o lançamento para anexar um novo arquivo físico.');
+      return;
+    }
+    const link = document.createElement('a');
+    link.href = entry.receiptUrl;
+    link.download = entry.receiptName || 'comprovante.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleMarkAsPaid = (entry: FinancialEntry) => {
     updateFinancial(entry.id, {
@@ -210,9 +229,15 @@ export const FinancialList: React.FC = () => {
                           {entry.type.replace('_', ' ')}
                         </span>
                         {entry.hasReceipt && (
-                          <span className="inline-flex items-center gap-1 text-[10px] text-brand-400 mt-1">
-                            📎 {entry.receiptName}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setViewingReceipt(entry)}
+                            className="inline-flex items-center gap-1.5 text-[10px] text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-0.5 rounded-lg border border-emerald-500/20 transition-colors mt-1.5 group cursor-pointer"
+                            title="Visualizar ou baixar comprovante"
+                          >
+                            <Paperclip className="w-3 h-3 group-hover:rotate-12 transition-transform" />
+                            <span className="truncate max-w-[140px] font-medium">{entry.receiptName || 'Ver Comprovante'}</span>
+                          </button>
                         )}
                       </td>
 
@@ -262,6 +287,15 @@ export const FinancialList: React.FC = () => {
                       {/* Actions */}
                       <td className="py-4 px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {entry.hasReceipt && (
+                            <button
+                              onClick={() => setViewingReceipt(entry)}
+                              title="Visualizar / Baixar Comprovante"
+                              className="p-1.5 text-emerald-400 hover:text-white hover:bg-emerald-950/40 rounded-lg transition-colors"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          )}
                           {entry.status !== 'PAGO' && (
                             <button
                               onClick={() => handleMarkAsPaid(entry)}
@@ -305,6 +339,85 @@ export const FinancialList: React.FC = () => {
         }}
         entryToEdit={editingEntry}
       />
+
+      {/* Visualizador de Comprovante */}
+      {viewingReceipt && (
+        <Modal
+          isOpen={!!viewingReceipt}
+          onClose={() => setViewingReceipt(null)}
+          title="Comprovante de Pagamento"
+          subtitle={`Lançamento: ${viewingReceipt.title} • Valor: ${formatCurrency(viewingReceipt.amount)}`}
+          maxWidth="2xl"
+          icon={<Paperclip className="w-5 h-5 text-emerald-400" />}
+        >
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3.5 bg-slate-800/80 rounded-xl border border-slate-700/60">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white truncate max-w-[280px]">
+                    {viewingReceipt.receiptName || 'comprovante_anexo'}
+                  </p>
+                  <p className="text-[10px] text-slate-400">
+                    Vencimento: {viewingReceipt.dueDate} • Status: {viewingReceipt.status}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {viewingReceipt.receiptUrl && (
+                  <button
+                    onClick={() => handleDownloadReceipt(viewingReceipt)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-lg shadow-emerald-600/20 transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Baixar
+                  </button>
+                )}
+                {viewingReceipt.receiptUrl && (
+                  <a
+                    href={viewingReceipt.receiptUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-semibold transition-colors"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Abrir em Nova Aba
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {viewingReceipt.receiptUrl ? (
+              viewingReceipt.receiptType?.startsWith('image/') || viewingReceipt.receiptName?.match(/\.(png|jpe?g|webp)$/i) ? (
+                <div className="rounded-xl overflow-hidden border border-slate-800 bg-slate-950 flex items-center justify-center p-2 max-h-[460px]">
+                  <img
+                    src={viewingReceipt.receiptUrl}
+                    alt={viewingReceipt.receiptName || 'Comprovante'}
+                    className="max-h-[440px] max-w-full object-contain rounded-lg"
+                  />
+                </div>
+              ) : (
+                <div className="rounded-xl overflow-hidden border border-slate-800 bg-slate-950 h-[460px]">
+                  <iframe
+                    src={viewingReceipt.receiptUrl}
+                    title={viewingReceipt.receiptName || 'Comprovante'}
+                    className="w-full h-full border-0"
+                  />
+                </div>
+              )
+            ) : (
+              <div className="p-8 text-center text-slate-400 bg-slate-800/30 rounded-xl border border-slate-800">
+                <FileText className="w-10 h-10 mx-auto text-slate-500 mb-2" />
+                <p className="text-xs font-medium text-slate-300">Este lançamento possui apenas o registro nominal do comprovante.</p>
+                <p className="text-[10px] text-slate-500 mt-1">Para anexar um novo arquivo físico, edite o lançamento.</p>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
 
       {/* Delete confirmation */}
       {entryToDelete && (

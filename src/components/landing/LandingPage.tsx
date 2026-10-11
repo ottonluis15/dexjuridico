@@ -808,7 +808,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               />
               <div>
                 <span className="text-xs font-bold text-white block">Dra. Helena Moreira</span>
-                <span className="text-[11px] text-slate-400 block">Sócia • OAB 184.920/SP</span>
+                <span className="text-[11px] text-slate-400 block">Sócio • OAB 184.920/SP</span>
               </div>
             </div>
           </div>

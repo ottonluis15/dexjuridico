@@ -7,7 +7,8 @@ import {
   FinancialEntry, 
   DocumentItem, 
   AuditLog,
-  TemplateDocument 
+  TemplateDocument,
+  WallPost 
 } from '../types';
 
 // Salt e Hash criptográfico gerado para a senha padrão "Admin123!"
@@ -20,6 +21,7 @@ export const INITIAL_USERS: User[] = [
     name: 'Dra. Helena Moreira',
     email: 'admin@dexjuridico.adv.br',
     role: 'ADMIN',
+    isSuperAdmin: false,
     oab: '184.920/SP',
     phone: '(11) 98765-4321',
     specialties: ['Direito Empresarial', 'Tributário', 'Contratos'],
@@ -37,6 +39,7 @@ export const INITIAL_USERS: User[] = [
     name: 'Dr. Otton Luis',
     email: 'otton.luis.alcaraz@gmail.com',
     role: 'ADMIN',
+    isSuperAdmin: true,
     oab: '245.890/SP',
     phone: '(11) 99999-8888',
     specialties: ['Direito Digital', 'Contratos', 'Direito Civil'],
@@ -92,7 +95,7 @@ export const INITIAL_LAWYERS: Lawyer[] = [
     oab: '184.920/SP',
     specialties: ['Direito Empresarial', 'Tributário', 'Contratos'],
     status: 'ACTIVE',
-    roleTitle: 'Sócia Fundadora & Administradora',
+    roleTitle: 'Sócio Fundador & Administrador',
     assignedCasesCount: 2,
     officeId: 'off_dex_principal',
     avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=256&auto=format&fit=crop',
@@ -134,7 +137,7 @@ export const INITIAL_LAWYERS: Lawyer[] = [
     oab: '278.114/SP',
     specialties: ['Direito de Família e Sucessões', 'Cível'],
     status: 'ACTIVE',
-    roleTitle: 'Advogada Autônoma',
+    roleTitle: 'Advogado Autônomo',
     assignedCasesCount: 1,
     avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=256&auto=format&fit=crop',
   }
@@ -345,5 +348,62 @@ export const INITIAL_TEMPLATES: TemplateDocument[] = [
     uploadedByUserId: 'system',
     uploadedByName: 'Dex Jurídico',
     createdAt: '2026-02-20'
+  }
+];
+
+export const INITIAL_TEAM_POSTS: WallPost[] = [
+  {
+    id: 'post_1',
+    authorId: 'usr_admin_1',
+    authorName: 'Dr. Otton Luis',
+    authorRole: 'Sócio Fundador',
+    authorInitial: 'O',
+    createdAt: 'Hoje às 09:15',
+    title: '🎉 Grande Vitória no TRF-3 — Tese de Exclusão do ICMS-ST!',
+    content: 'Parabéns a toda a equipe tributária! Obtivemos decisão unânime favorável na 6ª Turma do TRF-3 em favor da TechVanguard. Compensação estimada em mais de R$ 800 mil. Excelente trabalho de todos os envolvidos!',
+    category: 'VITORIA',
+    isPinned: true,
+    likes: 12,
+    likedBy: ['usr_admin_1', 'usr_admin_otton', 'usr_lawyer_1'],
+    commentsCount: 4,
+    officeId: 'off_dex_principal',
+    deleted_at: null,
+    deleted_by: null
+  },
+  {
+    id: 'post_2',
+    authorId: 'usr_lawyer_1',
+    authorName: 'Dr. Lucas Mendes',
+    authorRole: 'Advogado Associado',
+    authorInitial: 'L',
+    createdAt: 'Ontem às 16:40',
+    title: '📢 Recesso Forense e Escala de Prazos',
+    content: 'Lembramos a todos os colegas que as pautas de audiências da próxima semana já estão atualizadas no sistema. Favor revisar os despachos e juntada de documentos com 48h de antecedência.',
+    category: 'COMUNICADO',
+    isPinned: true,
+    likes: 8,
+    likedBy: ['usr_admin_1', 'usr_lawyer_1'],
+    commentsCount: 2,
+    officeId: 'off_dex_principal',
+    deleted_at: null,
+    deleted_by: null
+  },
+  {
+    id: 'post_3',
+    authorId: 'usr_lawyer_2',
+    authorName: 'Dr. Bernardo Albuquerque',
+    authorRole: 'Advogado Associado',
+    authorInitial: 'B',
+    createdAt: '26 de Agosto às 11:20',
+    title: '💡 Treinamento sobre a Nova Dex AI no Escritório',
+    content: 'A triagem automatizada com inteligência artificial aumentou nossa velocidade de elaboração de peças em 40%. Para quem quiser dicas de prompts jurídicos avançados, estarei disponível nesta quinta às 15h.',
+    category: 'GERAL',
+    isPinned: false,
+    likes: 6,
+    likedBy: ['usr_admin_1'],
+    commentsCount: 1,
+    officeId: 'off_dex_principal',
+    deleted_at: null,
+    deleted_by: null
   }
 ];
