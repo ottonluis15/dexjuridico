@@ -1,22 +1,14 @@
 import React, { useState } from 'react';
 import { 
   Scale, 
-  Lock, 
-  Mail, 
-  User, 
-  Building2, 
-  Phone, 
-  Award, 
-  ArrowRight, 
-  CheckCircle2, 
-  ShieldCheck, 
-  Sparkles, 
+  Eye, 
+  EyeOff, 
   ArrowLeft,
-  Eye,
-  EyeOff,
-  Star,
-  Briefcase,
-  Link as LinkIcon
+  CheckCircle2,
+  Building2,
+  UserCheck,
+  ChevronDown,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -38,56 +30,77 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   // Tipo de cadastro: Escritório vs Advogado Individual
   const [accountType, setAccountType] = useState<'OFFICE' | 'LAWYER'>('OFFICE');
 
-  // Se for advogado, modalidade: Autônomo vs Vinculado a Escritório
+  // Modalidade de Advogado (se for LAWYER)
   const [lawyerAffiliation, setLawyerAffiliation] = useState<'INDEPENDENT' | 'LINKED'>('INDEPENDENT');
   const [officeCodeOrEmail, setOfficeCodeOrEmail] = useState('');
 
-  // Campos de Escritório
+  // Dados do Escritório
   const [firmName, setFirmName] = useState('');
+  const [cnpj, setCnpj] = useState('');
+  const [phone, setPhone] = useState('');
+  const [primaryArea, setPrimaryArea] = useState('');
+  const [address, setAddress] = useState('');
 
-  // Campos Comuns
+  // Dados do Administrador / Advogado
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [oab, setOab] = useState('');
-  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [selectedPlan, setSelectedPlan] = useState(initialPlan);
+
+  // Estados de UI
   const [showPassword, setShowPassword] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(true);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Helper de força da senha
-  const getPasswordStrength = (pwd: string) => {
-    if (!pwd) return 0;
-    let score = 0;
-    if (pwd.length >= 6) score++;
-    if (/[A-Z]/.test(pwd)) score++;
-    if (/[0-9]/.test(pwd)) score++;
-    if (/[^A-Za-z0-9]/.test(pwd)) score++;
-    return score;
+  // Máscara amigável de CNPJ: 00.000.000/0000-00
+  const handleCnpjChange = (val: string) => {
+    const raw = val.replace(/\D/g, '').slice(0, 14);
+    let formatted = raw;
+    if (raw.length > 12) {
+      formatted = raw.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{1,2})$/, '$1.$2.$3/$4-$5');
+    } else if (raw.length > 8) {
+      formatted = raw.replace(/^(\d{2})(\d{3})(\d{3})(\d{1,4})$/, '$1.$2.$3/$4');
+    } else if (raw.length > 5) {
+      formatted = raw.replace(/^(\d{2})(\d{3})(\d{1,3})$/, '$1.$2.$3');
+    } else if (raw.length > 2) {
+      formatted = raw.replace(/^(\d{2})(\d{1,3})$/, '$1.$2');
+    }
+    setCnpj(formatted);
   };
 
-  const pwdScore = getPasswordStrength(password);
+  // Máscara amigável de Telefone: (00) 00000-0000
+  const handlePhoneChange = (val: string) => {
+    const raw = val.replace(/\D/g, '').slice(0, 11);
+    let formatted = raw;
+    if (raw.length > 10) {
+      formatted = raw.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
+    } else if (raw.length > 6) {
+      formatted = raw.replace(/^(\d{2})(\d{4})(\d{0,4})$/, '($1) $2-$3');
+    } else if (raw.length > 2) {
+      formatted = raw.replace(/^(\d{2})(\d{0,5})$/, '($1) $2');
+    }
+    setPhone(formatted);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
     // Validações gerais
-    if (!fullName.trim() || !email.trim() || !oab.trim() || !password.trim()) {
-      setError('Por favor, preencha todos os campos obrigatórios marcados com (*).');
+    if (!fullName.trim() || !email.trim() || !password.trim()) {
+      setError('Por favor, preencha todos os campos obrigatórios (*).');
       return;
     }
 
     if (accountType === 'OFFICE' && !firmName.trim()) {
-      setError('Informe o nome ou razão social do seu escritório de advocacia.');
+      setError('Informe o nome do escritório.');
       return;
     }
 
     if (accountType === 'LAWYER' && lawyerAffiliation === 'LINKED' && !officeCodeOrEmail.trim()) {
-      setError('Informe o código ou e-mail institucional do escritório ao qual deseja se vincular.');
+      setError('Informe o código ou e-mail do escritório ao qual deseja se vincular.');
       return;
     }
 
@@ -101,11 +114,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
       return;
     }
 
-    if (!agreeTerms) {
-      setError('Você deve concordar com os termos de sigilo profissional e conformidade LGPD.');
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
@@ -114,10 +122,13 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
         email: email.trim().toLowerCase(),
         password,
         role: accountType === 'OFFICE' ? 'ADMIN' : 'LAWYER',
-        oab: oab.trim().toUpperCase(),
+        oab: oab.trim().toUpperCase() || 'OAB/PENDENTE',
         phone: phone.trim() || undefined,
         firmName: accountType === 'OFFICE' ? firmName.trim() : undefined,
-        plan: accountType === 'OFFICE' ? selectedPlan : 'Advogado Individual',
+        cnpj: accountType === 'OFFICE' ? cnpj.trim() : undefined,
+        address: address.trim() || undefined,
+        primaryArea: primaryArea.trim() || undefined,
+        plan: accountType === 'OFFICE' ? initialPlan : 'Advogado Individual',
         isIndependent: accountType === 'LAWYER' && lawyerAffiliation === 'INDEPENDENT',
         officeCodeOrEmail: accountType === 'LAWYER' && lawyerAffiliation === 'LINKED' ? officeCodeOrEmail.trim() : undefined
       });
@@ -128,442 +139,611 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
         return;
       }
 
-      showToast(`Bem-vindo(a) ao DEX, Dr(a). ${fullName.split(' ')[0]}! Conta criada com sucesso.`, 'success');
+      showToast(`Bem-vindo(a) ao Dex! Conta criada com sucesso.`, 'success');
     } catch {
       setError('Ocorreu um erro inesperado ao realizar o cadastro. Tente novamente.');
       setIsSubmitting(false);
     }
   };
 
-  const plans = [
-    {
-      id: 'Advogado Individual',
-      name: 'Individual',
-      price: 'R$ 89/mês',
-      desc: '1 Advogado • Processos ilimitados'
-    },
-    {
-      id: 'Escritório Pro',
-      name: 'Escritório Pro',
-      price: 'R$ 199/mês',
-      desc: 'Até 5 Advogados • Dex AI Ilimitado'
-    },
-    {
-      id: 'Banca Corporativa',
-      name: 'Corporativo',
-      price: 'R$ 499/mês',
-      desc: 'Equipe Ilimitada • Gestão Avançada'
-    }
-  ];
-
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden selection:bg-cyan-500 selection:text-slate-950">
-      {/* Background Glows */}
-      <div className="absolute top-0 right-1/4 -mt-32 w-96 h-96 bg-cyan-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 left-1/4 -mb-32 w-96 h-96 bg-brand-600/10 rounded-full blur-3xl pointer-events-none" />
-
-      {/* Top Bar for Back Navigation */}
-      <div className="max-w-4xl w-full mx-auto px-4 mb-6 flex items-center justify-between">
+    <div className="min-h-screen bg-[#f7f8fa] flex flex-col justify-center items-center py-8 px-4 sm:px-6 relative font-sans text-stone-800">
+      {/* Barra Superior Discreta de Navegação */}
+      <div className="max-w-[980px] w-full mx-auto mb-4 flex items-center justify-between px-2">
         <button
           onClick={onNavigateToLanding}
-          className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 text-xs font-medium text-stone-500 hover:text-stone-900 transition-colors cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Voltar para a Página Inicial</span>
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Voltar ao início</span>
         </button>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400">Já tem uma conta?</span>
+        {/* Seletor Sutil: Escritório vs Advogado Individual */}
+        <div className="inline-flex items-center bg-stone-200/60 p-1 rounded-full border border-stone-200">
           <button
-            onClick={onNavigateToLogin}
-            className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+            type="button"
+            onClick={() => setAccountType('OFFICE')}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
+              accountType === 'OFFICE'
+                ? 'bg-white text-stone-900 shadow-sm font-semibold'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
           >
-            Fazer Login
+            <Building2 className="w-3.5 h-3.5" />
+            <span>Escritório</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setAccountType('LAWYER')}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
+              accountType === 'LAWYER'
+                ? 'bg-white text-stone-900 shadow-sm font-semibold'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            <span>Advogado Individual</span>
           </button>
         </div>
       </div>
 
-      <div className="max-w-4xl w-full mx-auto px-4">
-        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl shadow-2xl p-6 sm:p-10 backdrop-blur-xl">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-800 gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-brand-600 text-white flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                  <Scale className="w-5 h-5" />
-                </div>
-                <h1 className="text-2xl font-black text-white tracking-tight">Criar Conta no DEX Jurídico</h1>
+      {/* Card Principal - Design Exato do Mockup */}
+      <div className="max-w-[980px] w-full bg-white rounded-[28px] sm:rounded-[34px] border border-amber-200/50 shadow-[0_20px_50px_rgba(0,0,0,0.03),0_0_25px_rgba(245,158,11,0.04)] p-6 sm:p-10 md:p-12 relative overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-stretch">
+          
+          {/* COLUNA ESQUERDA: Identidade Visual e Ilustração */}
+          <div className="lg:col-span-5 flex flex-col items-center justify-between text-center pb-6 lg:pb-0">
+            <div className="w-full flex flex-col items-center">
+              {/* Logo Dex com Balança */}
+              <div className="flex items-center justify-center gap-2.5">
+                <Scale className="w-7 h-7 sm:w-8 sm:h-8 text-stone-800" strokeWidth={1.8} />
+                <span className="font-serif font-black text-3xl sm:text-4xl text-stone-900 tracking-tight">
+                  Dex
+                </span>
               </div>
-              <p className="text-xs text-slate-400">
-                Plataforma com IA para gestão de processos, prazos e controle de honorários.
+              <p className="text-stone-700 text-xs sm:text-sm font-normal tracking-wide mt-1">
+                Sistema de Advocacia
               </p>
+
+              {/* Título Principal em Serifa */}
+              <h2 className="font-serif font-bold text-xl sm:text-2xl text-stone-900 mt-6 sm:mt-7">
+                {accountType === 'OFFICE' ? 'Crie seu escritório' : 'Cadastro de Advogado'}
+              </h2>
+              <p className="text-stone-400 text-xs sm:text-[13px] mt-1 font-sans">
+                {accountType === 'OFFICE' ? 'Preencha os dados para comecar' : 'Preencha seus dados para começar'}
+              </p>
+
+              {/* Divisor Horizontal Delicado */}
+              <div className="w-40 sm:w-48 h-[1px] bg-stone-200/80 my-6 sm:my-7" />
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20 self-start sm:self-auto">
-              <ShieldCheck className="w-4 h-4" />
-              <span>Sem cartão de crédito • 14 dias grátis</span>
-            </div>
-          </div>
+            {/* Espaço Inferior: Ilustração Vetorial Minimalista */}
+            <div className="w-full flex flex-col items-center justify-center my-auto py-4">
+              <div className="w-48 h-44 sm:w-56 sm:h-48 flex items-center justify-center relative">
+                {/* Arte linear com traço fino sofisticado */}
+                <svg
+                  viewBox="0 0 240 200"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-full h-full text-stone-400/80 stroke-current"
+                >
+                  {/* Base Neoclássica */}
+                  <line x1="30" y1="180" x2="210" y2="180" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="45" y1="174" x2="195" y2="174" strokeWidth="1" strokeLinecap="round" />
+                  <line x1="60" y1="168" x2="180" y2="168" strokeWidth="1" strokeLinecap="round" />
 
-          {/* Seleção do Tipo de Conta: Escritório vs Advogado */}
-          <div className="pt-6 pb-2">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-              Selecione o seu perfil de cadastro:
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setAccountType('OFFICE')}
-                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-3.5 ${
-                  accountType === 'OFFICE'
-                    ? 'bg-cyan-950/40 border-cyan-400 shadow-md shadow-cyan-950/50'
-                    : 'bg-slate-800/40 border-slate-700/60 hover:border-slate-600 text-slate-300'
-                }`}
-              >
-                <div className={`p-2 rounded-xl shrink-0 ${accountType === 'OFFICE' ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
-                  <Building2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-white">Escritório de Advocacia</span>
-                    {accountType === 'OFFICE' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />}
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Titular ou sócio administrador. Permite cadastrar e gerenciar equipe de advogados.
-                  </p>
-                </div>
-              </button>
+                  {/* Colunas Arquitetônicas do Templo da Justiça */}
+                  <rect x="70" y="80" width="10" height="88" rx="1" strokeWidth="1" strokeDasharray="3 3" />
+                  <rect x="115" y="80" width="10" height="88" rx="1" strokeWidth="1.2" />
+                  <rect x="160" y="80" width="10" height="88" rx="1" strokeWidth="1" strokeDasharray="3 3" />
 
-              <button
-                type="button"
-                onClick={() => setAccountType('LAWYER')}
-                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-3.5 ${
-                  accountType === 'LAWYER'
-                    ? 'bg-cyan-950/40 border-cyan-400 shadow-md shadow-cyan-950/50'
-                    : 'bg-slate-800/40 border-slate-700/60 hover:border-slate-600 text-slate-300'
-                }`}
-              >
-                <div className={`p-2 rounded-xl shrink-0 ${accountType === 'LAWYER' ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
-                  <Briefcase className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-white">Advogado Individual</span>
-                    {accountType === 'LAWYER' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />}
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Advogado autônomo ou associado buscando vínculo com um escritório parceiro.
-                  </p>
-                </div>
-              </button>
-            </div>
-          </div>
+                  {/* Frontão / Frontispício Superior */}
+                  <polygon points="120,28 40,68 200,68" strokeWidth="1.2" strokeLinejoin="round" />
+                  <line x1="50" y1="74" x2="190" y2="74" strokeWidth="1" />
 
-          {/* Sub-opção se for Advogado: Autônomo vs Vinculado */}
-          {accountType === 'LAWYER' && (
-            <div className="p-4 rounded-2xl bg-slate-800/50 border border-slate-700/60 space-y-3 mt-2 animate-in fade-in">
-              <span className="text-xs font-bold text-slate-300 block">Como você atuará no sistema?</span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <label className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-800/80 border border-slate-700/80 cursor-pointer text-xs">
-                  <input
-                    type="radio"
-                    name="lawyerAffiliation"
-                    checked={lawyerAffiliation === 'INDEPENDENT'}
-                    onChange={() => setLawyerAffiliation('INDEPENDENT')}
-                    className="text-cyan-500"
-                  />
-                  <div>
-                    <span className="font-semibold text-white block">Advogado Autônomo</span>
-                    <span className="text-[10px] text-slate-400">Atuação independente, sem vínculo com bancas</span>
-                  </div>
-                </label>
+                  {/* Balança Central */}
+                  <g className="text-stone-700 stroke-current">
+                    {/* Haste Central */}
+                    <line x1="120" y1="45" x2="120" y2="140" strokeWidth="1.8" strokeLinecap="round" />
+                    {/* Barra Transversal */}
+                    <line x1="75" y1="65" x2="165" y2="65" strokeWidth="1.5" strokeLinecap="round" />
+                    {/* Ponto de Apoio Superior */}
+                    <circle cx="120" cy="45" r="3" strokeWidth="1.5" />
 
-                <label className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-800/80 border border-slate-700/80 cursor-pointer text-xs">
-                  <input
-                    type="radio"
-                    name="lawyerAffiliation"
-                    checked={lawyerAffiliation === 'LINKED'}
-                    onChange={() => setLawyerAffiliation('LINKED')}
-                    className="text-cyan-500"
-                  />
-                  <div>
-                    <span className="font-semibold text-white block">Vincular a Escritório</span>
-                    <span className="text-[10px] text-slate-400">Informar código ou e-mail de um escritório cadastrado</span>
-                  </div>
-                </label>
+                    {/* Prato Esquerdo */}
+                    <line x1="75" y1="65" x2="62" y2="98" strokeWidth="1" />
+                    <line x1="75" y1="65" x2="88" y2="98" strokeWidth="1" />
+                    <path d="M58 98 Q 75 110 92 98 Z" strokeWidth="1.2" />
+
+                    {/* Prato Direito */}
+                    <line x1="165" y1="65" x2="152" y2="98" strokeWidth="1" />
+                    <line x1="165" y1="65" x2="178" y2="98" strokeWidth="1" />
+                    <path d="M148 98 Q 165 110 182 98 Z" strokeWidth="1.2" />
+                  </g>
+
+                  {/* Folhas de Louro / Ramo Delicado */}
+                  <path d="M35 150 C 30 135 32 110 45 95" strokeWidth="0.8" strokeDasharray="2 2" />
+                  <path d="M205 150 C 210 135 208 110 195 95" strokeWidth="0.8" strokeDasharray="2 2" />
+                </svg>
               </div>
-
-              {lawyerAffiliation === 'LINKED' && (
-                <div className="pt-2 animate-in fade-in">
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Código do Escritório ou E-mail da Banca *
-                  </label>
-                  <div className="relative">
-                    <LinkIcon className="w-4 h-4 text-cyan-400 absolute left-3.5 top-3" />
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ex: DEX-4819 ou contato@moreira.adv.br"
-                      value={officeCodeOrEmail}
-                      onChange={e => setOfficeCodeOrEmail(e.target.value)}
-                      className="w-full pl-9 pr-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-                    />
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Peça o código exclusivo de identificação ao sócio titular do seu escritório.
-                  </p>
-                </div>
-              )}
+              <span className="text-[11px] font-serif italic text-stone-400 mt-2">
+                Advocacia, Ética &amp; Tecnologia
+              </span>
             </div>
-          )}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6 pt-4">
+            {/* Rodapé da Coluna Esquerda */}
+            <div className="text-[11px] text-stone-400">
+              Dex Gestão Jurídica Inteligente
+            </div>
+          </div>
+
+          {/* DIVISOR VERTICAL (Desktop) */}
+          <div className="hidden lg:block w-[1px] bg-stone-200/80 -my-6 self-stretch" />
+
+          {/* COLUNA DIREITA: Formulário com Seções */}
+          <div className="lg:col-span-6 flex flex-col justify-center">
+            
+            {/* Mensagem de Erro (se houver) */}
             {error && (
-              <div className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-800 text-rose-200 text-xs animate-in fade-in">
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
                 {error}
               </div>
             )}
 
-            {/* Section 1: Identificação */}
-            <div className="space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                <User className="w-4 h-4 text-cyan-400" />
-                1. Identificação Profissional
-              </h3>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              
+              {/* ===== MODO ESCRITÓRIO ===== */}
+              {accountType === 'OFFICE' && (
+                <>
+                  {/* SEÇÃO 1: DADOS DO ESCRITÓRIO */}
+                  <div className="flex items-center gap-3 pt-1">
+                    <div className="flex-1 h-[1px] bg-stone-200/80" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 whitespace-nowrap">
+                      DADOS DO ESCRITÓRIO
+                    </span>
+                    <div className="flex-1 h-[1px] bg-stone-200/80" />
+                  </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Nome do Escritório (se for escritório) */}
-                {accountType === 'OFFICE' && (
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                      Nome do Escritório / Razão Social *
+                  {/* Nome do Escritório */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      NOME DO ESCRITÓRIO *
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="Ex: Moreira & Associados Advocacia"
+                      placeholder="Ex: Silva & Associados"
                       value={firmName}
                       onChange={e => setFirmName(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                      className="w-full px-3.5 py-2.5 bg-[#fafafa] border border-stone-200 rounded-xl text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-400 focus:bg-white focus:ring-1 focus:ring-stone-400/20 transition-all"
                     />
                   </div>
-                )}
 
-                {/* Nome do Advogado */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Nome Completo *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ex: Dra. Helena Moreira"
-                    value={fullName}
-                    onChange={e => setFullName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-                  />
-                </div>
+                  {/* CNPJ e Telefone */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                        CNPJ
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="00.000.000/0000-00"
+                        value={cnpj}
+                        onChange={e => handleCnpjChange(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-[#fafafa] border border-stone-200 rounded-xl text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-400 focus:bg-white focus:ring-1 focus:ring-stone-400/20 transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                        TELEFONE
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="(00) 00000-0000"
+                        value={phone}
+                        onChange={e => handlePhoneChange(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-[#fafafa] border border-stone-200 rounded-xl text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-400 focus:bg-white focus:ring-1 focus:ring-stone-400/20 transition-all"
+                      />
+                    </div>
+                  </div>
 
-                {/* Inscrição OAB */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Inscrição OAB com UF *
-                  </label>
-                  <div className="relative">
-                    <Award className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  {/* Área Principal e Endereço */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                        ÁREA PRINCIPAL *
+                      </label>
+                      <div className="relative">
+                        <select
+                          required
+                          value={primaryArea}
+                          onChange={e => setPrimaryArea(e.target.value)}
+                          className="w-full appearance-none px-3.5 py-2.5 bg-[#fafafa] border border-stone-200 rounded-xl text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-400 focus:bg-white focus:ring-1 focus:ring-stone-400/20 transition-all pr-8 cursor-pointer"
+                        >
+                          <option value="">Selecione a area</option>
+                          <option value="Direito Civil">Direito Civil</option>
+                          <option value="Direito Trabalhista">Direito Trabalhista</option>
+                          <option value="Direito Empresarial">Direito Empresarial & Societário</option>
+                          <option value="Direito Tributário">Direito Tributário</option>
+                          <option value="Direito Penal">Direito Penal & Criminal</option>
+                          <option value="Direito de Família">Direito de Família & Sucessões</option>
+                          <option value="Direito Previdenciário">Direito Previdenciário</option>
+                          <option value="Direito Imobiliário">Direito Imobiliário</option>
+                          <option value="Full Service">Full Service / Multidisciplinar</option>
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 top-3 pointer-events-none" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                        ENDEREÇO
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Rua, N, Cidade/UF"
+                        value={address}
+                        onChange={e => setAddress(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-[#fafafa] border border-stone-200 rounded-xl text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-400 focus:bg-white focus:ring-1 focus:ring-stone-400/20 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* SEÇÃO 2: DADOS DO ADMINISTRADOR */}
+                  <div className="flex items-center gap-3 pt-3">
+                    <div className="flex-1 h-[1px] bg-stone-200/80" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 whitespace-nowrap">
+                      DADOS DO ADMINISTRADOR
+                    </span>
+                    <div className="flex-1 h-[1px] bg-stone-200/80" />
+                  </div>
+
+                  {/* Nome Completo */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      NOME COMPLETO *
+                    </label>
                     <input
                       type="text"
                       required
-                      placeholder="Ex: 184.920/SP"
-                      value={oab}
-                      onChange={e => setOab(e.target.value)}
-                      className="w-full pl-9 pr-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 uppercase"
+                      placeholder="Seu nome completo"
+                      value={fullName}
+                      onChange={e => setFullName(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-[#fafafa] border border-stone-200 rounded-xl text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-400 focus:bg-white focus:ring-1 focus:ring-stone-400/20 transition-all"
                     />
                   </div>
-                </div>
 
-                {/* Telefone / WhatsApp */}
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    WhatsApp Comercial / Celular
-                  </label>
-                  <div className="relative">
-                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  {/* E-mail e OAB */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                        E-MAIL *
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="seu@email.com"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-[#fafafa] border border-stone-200 rounded-xl text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-400 focus:bg-white focus:ring-1 focus:ring-stone-400/20 transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                        OAB
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="UF000000"
+                        value={oab}
+                        onChange={e => setOab(e.target.value.toUpperCase())}
+                        className="w-full px-3.5 py-2.5 bg-[#fafafa] border border-stone-200 rounded-xl text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-400 focus:bg-white focus:ring-1 focus:ring-stone-400/20 uppercase transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Senha e Confirmar Senha */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                        SENHA *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          required
+                          placeholder="Minimo 6 caracteres"
+                          value={password}
+                          onChange={e => setPassword(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-[#fafafa] border border-stone-200 rounded-xl text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-400 focus:bg-white focus:ring-1 focus:ring-stone-400/20 pr-9 transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-2.5 top-2.5 text-stone-400 hover:text-stone-700 cursor-pointer"
+                          tabIndex={-1}
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                        CONFIRMAR SENHA *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          required
+                          placeholder="Repita a senha"
+                          value={confirmPassword}
+                          onChange={e => setConfirmPassword(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-[#fafafa] border border-stone-200 rounded-xl text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-400 focus:bg-white focus:ring-1 focus:ring-stone-400/20 pr-9 transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-2.5 top-2.5 text-stone-400 hover:text-stone-700 cursor-pointer"
+                          tabIndex={-1}
+                        >
+                          {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Botão de Envio: Criar Escritório */}
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full py-3 sm:py-3.5 bg-[#222222] hover:bg-[#111111] text-white font-medium text-xs sm:text-sm rounded-full transition-all shadow-sm active:scale-[0.99] cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Criando seu escritório...</span>
+                        </>
+                      ) : (
+                        <span>Criar Escritório</span>
+                      )}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* ===== MODO ADVOGADO INDIVIDUAL ===== */}
+              {accountType === 'LAWYER' && (
+                <>
+                  {/* Sub-seleção: Autônomo vs Vinculado */}
+                  <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 space-y-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 block">
+                      Como atuará no sistema?
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      <label className="flex items-center gap-2 p-2 bg-white rounded-lg border border-stone-200 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="lawyerAffiliation"
+                          checked={lawyerAffiliation === 'INDEPENDENT'}
+                          onChange={() => setLawyerAffiliation('INDEPENDENT')}
+                          className="text-stone-800"
+                        />
+                        <span className="font-medium text-stone-800">Advogado Autônomo</span>
+                      </label>
+
+                      <label className="flex items-center gap-2 p-2 bg-white rounded-lg border border-stone-200 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="lawyerAffiliation"
+                          checked={lawyerAffiliation === 'LINKED'}
+                          onChange={() => setLawyerAffiliation('LINKED')}
+                          className="text-stone-800"
+                        />
+                        <span className="font-medium text-stone-800">Vincular a Escritório</span>
+                      </label>
+                    </div>
+
+                    {lawyerAffiliation === 'LINKED' && (
+                      <div className="pt-1">
+                        <label className="block text-[10px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                          Código ou E-mail da Banca *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Ex: DEX-4819 ou contato@escritorio.adv.br"
+                          value={officeCodeOrEmail}
+                          onChange={e => setOfficeCodeOrEmail(e.target.value)}
+                          className="w-full px-3 py-2 bg-white border border-stone-200 rounded-lg text-xs text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-400"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* SEÇÃO 1: DADOS PROFISSIONAIS */}
+                  <div className="flex items-center gap-3 pt-1">
+                    <div className="flex-1 h-[1px] bg-stone-200/80" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 whitespace-nowrap">
+                      DADOS PROFISSIONAIS
+                    </span>
+                    <div className="flex-1 h-[1px] bg-stone-200/80" />
+                  </div>
+
+                  {/* Nome Completo */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      NOME COMPLETO *
+                    </label>
                     <input
-                      type="tel"
-                      placeholder="(11) 98765-4321"
-                      value={phone}
-                      onChange={e => setPhone(e.target.value)}
-                      className="w-full pl-9 pr-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                      type="text"
+                      required
+                      placeholder="Seu nome completo"
+                      value={fullName}
+                      onChange={e => setFullName(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-[#fafafa] border border-stone-200 rounded-xl text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-400 focus:bg-white focus:ring-1 focus:ring-stone-400/20 transition-all"
                     />
                   </div>
-                </div>
-              </div>
-            </div>
 
-            {/* Section 2: Credenciais */}
-            <div className="space-y-4 pt-4 border-t border-slate-800">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                <Lock className="w-4 h-4 text-cyan-400" />
-                2. Credenciais de Acesso (Criptografadas)
-              </h3>
+                  {/* OAB e Telefone */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                        OAB COM UF *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ex: 184920/SP"
+                        value={oab}
+                        onChange={e => setOab(e.target.value.toUpperCase())}
+                        className="w-full px-3.5 py-2.5 bg-[#fafafa] border border-stone-200 rounded-xl text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-400 focus:bg-white focus:ring-1 focus:ring-stone-400/20 uppercase transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                        TELEFONE / WHATSAPP
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="(00) 00000-0000"
+                        value={phone}
+                        onChange={e => handlePhoneChange(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-[#fafafa] border border-stone-200 rounded-xl text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-400 focus:bg-white focus:ring-1 focus:ring-stone-400/20 transition-all"
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* E-mail */}
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    E-mail Institucional *
-                  </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  {/* Área Principal */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      ÁREA DE ATUAÇÃO PRINCIPAL
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={primaryArea}
+                        onChange={e => setPrimaryArea(e.target.value)}
+                        className="w-full appearance-none px-3.5 py-2.5 bg-[#fafafa] border border-stone-200 rounded-xl text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-400 focus:bg-white focus:ring-1 focus:ring-stone-400/20 transition-all pr-8 cursor-pointer"
+                      >
+                        <option value="">Selecione a área de atuação</option>
+                        <option value="Direito Civil">Direito Civil</option>
+                        <option value="Direito Trabalhista">Direito Trabalhista</option>
+                        <option value="Direito Empresarial">Direito Empresarial & Societário</option>
+                        <option value="Direito Tributário">Direito Tributário</option>
+                        <option value="Direito Penal">Direito Penal & Criminal</option>
+                        <option value="Direito de Família">Direito de Família & Sucessões</option>
+                        <option value="Direito Previdenciário">Direito Previdenciário</option>
+                        <option value="Direito Imobiliário">Direito Imobiliário</option>
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 top-3 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* SEÇÃO 2: DADOS DE ACESSO */}
+                  <div className="flex items-center gap-3 pt-3">
+                    <div className="flex-1 h-[1px] bg-stone-200/80" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 whitespace-nowrap">
+                      DADOS DE ACESSO
+                    </span>
+                    <div className="flex-1 h-[1px] bg-stone-200/80" />
+                  </div>
+
+                  {/* E-mail */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      E-MAIL *
+                    </label>
                     <input
                       type="email"
                       required
-                      placeholder="contato@seudominio.adv.br"
+                      placeholder="seu@email.com"
                       value={email}
                       onChange={e => setEmail(e.target.value)}
-                      className="w-full pl-9 pr-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                      className="w-full px-3.5 py-2.5 bg-[#fafafa] border border-stone-200 rounded-xl text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-400 focus:bg-white focus:ring-1 focus:ring-stone-400/20 transition-all"
                     />
                   </div>
-                </div>
 
-                {/* Senha */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Senha de Acesso *
-                  </label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      placeholder="Mínimo 6 caracteres"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      className="w-full pl-9 pr-10 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-                    />
+                  {/* Senha e Confirmação */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                        SENHA *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          required
+                          placeholder="Minimo 6 caracteres"
+                          value={password}
+                          onChange={e => setPassword(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-[#fafafa] border border-stone-200 rounded-xl text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-400 focus:bg-white focus:ring-1 focus:ring-stone-400/20 pr-9 transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-2.5 top-2.5 text-stone-400 hover:text-stone-700 cursor-pointer"
+                          tabIndex={-1}
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                        CONFIRMAR SENHA *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          required
+                          placeholder="Repita a senha"
+                          value={confirmPassword}
+                          onChange={e => setConfirmPassword(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-[#fafafa] border border-stone-200 rounded-xl text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-400 focus:bg-white focus:ring-1 focus:ring-stone-400/20 pr-9 transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-2.5 top-2.5 text-stone-400 hover:text-stone-700 cursor-pointer"
+                          tabIndex={-1}
+                        >
+                          {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Botão de Envio: Criar Conta de Advogado */}
+                  <div className="pt-2">
                     <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-3 text-slate-400 hover:text-white cursor-pointer"
-                      tabIndex={-1}
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full py-3 sm:py-3.5 bg-[#222222] hover:bg-[#111111] text-white font-medium text-xs sm:text-sm rounded-full transition-all shadow-sm active:scale-[0.99] cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {isSubmitting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Cadastrando advogado...</span>
+                        </>
+                      ) : (
+                        <span>Criar Conta de Advogado</span>
+                      )}
                     </button>
                   </div>
-                  {/* Strength Bar */}
-                  {password && (
-                    <div className="flex gap-1 mt-1.5">
-                      {[1, 2, 3, 4].map(level => (
-                        <div
-                          key={level}
-                          className={`h-1 flex-1 rounded-full transition-colors ${
-                            pwdScore >= level ? 'bg-cyan-400' : 'bg-slate-800'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
+                </>
+              )}
 
-                {/* Confirmação de Senha */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Confirmar Senha *
-                  </label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      placeholder="Repita sua senha"
-                      value={confirmPassword}
-                      onChange={e => setConfirmPassword(e.target.value)}
-                      className="w-full pl-9 pr-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-                    />
-                  </div>
-                </div>
+              {/* Rodapé: Link de Login idêntico ao mockup */}
+              <div className="text-center text-xs text-stone-500 pt-2">
+                Ja tem conta?{' '}
+                <button
+                  type="button"
+                  onClick={onNavigateToLogin}
+                  className="text-[#c28840] hover:text-[#9e6826] font-medium transition-colors cursor-pointer"
+                >
+                  Fazer login
+                </button>
               </div>
-            </div>
-
-            {/* Section 3: Plano (se for Escritório) */}
-            {accountType === 'OFFICE' && (
-              <div className="space-y-4 pt-4 border-t border-slate-800">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                  <Star className="w-4 h-4 text-cyan-400" />
-                  3. Plano para Avaliação (14 dias grátis)
-                </h3>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {plans.map(p => {
-                    const isSelected = selectedPlan === p.id;
-                    return (
-                      <div
-                        key={p.id}
-                        onClick={() => setSelectedPlan(p.id)}
-                        className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
-                          isSelected
-                            ? 'bg-cyan-950/40 border-cyan-400 shadow-md shadow-cyan-950/50 scale-[1.02]'
-                            : 'bg-slate-800/40 border-slate-700/60 hover:border-slate-600'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-bold text-white">{p.name}</span>
-                          {isSelected && <CheckCircle2 className="w-4 h-4 text-cyan-400" />}
-                        </div>
-                        <span className="text-xs font-mono font-bold text-emerald-400 block">{p.price}</span>
-                        <span className="text-[10px] text-slate-400 mt-0.5 block">{p.desc}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Termos e Conformidade */}
-            <div className="space-y-3 pt-4 border-t border-slate-800 text-xs">
-              <label className="flex items-start gap-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={agreeTerms}
-                  onChange={e => setAgreeTerms(e.target.checked)}
-                  className="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-cyan-500/30 mt-0.5 cursor-pointer"
-                />
-                <span className="text-slate-300 leading-relaxed">
-                  Declaro ser profissional habilitado e concordo com os{' '}
-                  <strong className="text-white">Termos de Uso</strong> e{' '}
-                  <strong className="text-white">Política de Privacidade</strong> em conformidade com o Provimento OAB nº 205/2021 e a LGPD (Lei 13.709/2018).
-                </span>
-              </label>
-            </div>
-
-            {/* Submit Button */}
-            <div className="pt-4">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-brand-600 to-brand-500 hover:from-cyan-400 hover:to-brand-400 text-white font-bold text-sm shadow-xl shadow-cyan-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Processando seu cadastro com segurança...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Concluir Cadastro & Entrar</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-
-          {/* Footer Security Note */}
-          <div className="mt-8 pt-6 border-t border-slate-800/80 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>Ambiente seguro com criptografia e isolamento de dados LGPD</span>
+            </form>
           </div>
         </div>
       </div>

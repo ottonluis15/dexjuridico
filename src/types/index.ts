@@ -13,6 +13,9 @@ export interface User {
   officeId?: string; // ID do escritório ao qual pertence (se houver)
   officeName?: string; // Nome do escritório
   officeCode?: string; // Código para convite/vínculo do escritório
+  cnpj?: string; // CNPJ da sociedade de advogados
+  address?: string; // Endereço da sede
+  primaryArea?: string; // Área de atuação principal
   isIndependent?: boolean; // Verdadeiro se for advogado autônomo sem vínculo
   passwordHash?: string; // Hash seguro com salt da senha
   salt?: string; // Salt criptográfico

@@ -13,6 +13,9 @@ export interface RegisterUserData {
   oab: string;
   phone?: string;
   firmName?: string;
+  cnpj?: string;
+  address?: string;
+  primaryArea?: string;
   plan?: string;
   isIndependent?: boolean;
   officeCodeOrEmail?: string; // Para advogado solicitar vínculo
@@ -209,6 +212,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       officeId,
       officeName,
       officeCode,
+      cnpj: userData.cnpj?.trim(),
+      address: userData.address?.trim(),
+      primaryArea: userData.primaryArea?.trim(),
       isIndependent: userData.role === 'LAWYER' ? !!userData.isIndependent : false,
       avatarUrl: userData.avatarUrl,
       passwordHash,
@@ -229,7 +235,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email: newUser.email,
       phone: newUser.phone || '',
       oab: newUser.oab || '',
-      specialties: ['Direito Geral', 'Contencioso'],
+      specialties: userData.primaryArea ? [userData.primaryArea, 'Contencioso'] : ['Direito Geral', 'Contencioso'],
       status: 'ACTIVE',
       roleTitle: newUser.role === 'ADMIN' 
         ? `Sócio Fundador • ${officeName || 'Banca'}` 
