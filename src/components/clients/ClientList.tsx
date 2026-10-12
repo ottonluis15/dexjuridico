@@ -11,7 +11,8 @@ import {
   Eye, 
   MessageSquare,
   Building,
-  UserCheck
+  UserCheck,
+  Download
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -22,8 +23,8 @@ import { ConfirmDialog } from '../common/ConfirmDialog';
 import { EmptyState } from '../common/EmptyState';
 
 export const ClientList: React.FC = () => {
-  const { clients, userCases, deleteClient } = useData();
-  const { isAdmin } = useAuth();
+  const { clients, userCases, deleteClient, exportClientsCsv } = useData();
+  const { currentUser, isAdmin } = useAuth();
 
   const [search, setSearch] = useState('');
   const [selectedType, setSelectedType] = useState<string>('ALL');
@@ -58,13 +59,25 @@ export const ClientList: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setIsNewModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-emerald-600/30 transition-all self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          Novo Cliente
-        </button>
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <button
+            onClick={exportClientsCsv}
+            className="flex items-center gap-2 px-3.5 py-2.5 bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700/80 transition-all cursor-pointer"
+            title="Exportar carteira em formato CSV"
+          >
+            <Download className="w-4 h-4 text-emerald-400" />
+            <span className="hidden sm:inline">Exportar CSV</span>
+            <span className="sm:hidden">Exportar</span>
+          </button>
+
+          <button
+            onClick={() => setIsNewModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Novo Cliente</span>
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -190,11 +203,11 @@ export const ClientList: React.FC = () => {
                     >
                       <Edit className="w-4 h-4" />
                     </button>
-                    {isAdmin && (
+                    {(isAdmin || currentUser?.isIndependent) && (
                       <button
                         onClick={() => setClientToDelete(client)}
                         title="Excluir cliente"
-                        className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 rounded-lg transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 rounded-lg transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

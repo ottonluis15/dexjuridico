@@ -58,13 +58,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [allUsers, setAllUsers] = useState<User[]>(() => storageService.getUsers());
 
-  // Sincronização inicial com Supabase se configurado
+  // Sincronização inicial com Supabase se configurado (merge seguro, sem apagar cadastros locais)
   useEffect(() => {
     if (isSupabaseConfigured()) {
       supabaseService.fetchUsers().then(remoteUsers => {
         if (remoteUsers && remoteUsers.length > 0) {
-          storageService.saveUsers(remoteUsers);
-          setAllUsers(remoteUsers);
+          const localUsers = storageService.getUsers();
+          const remoteEmailSet = new Set(remoteUsers.map(u => u.email.trim().toLowerCase()));
+          const merged = [...remoteUsers];
+          // Preserva usuários cadastrados localmente que ainda não estejam na nuvem
+          for (const localUser of localUsers) {
+            if (!remoteEmailSet.has(localUser.email.trim().toLowerCase())) {
+              merged.push(localUser);
+              supabaseService.upsertUser(localUser).catch(console.warn);
+            }
+          }
+          storageService.saveUsers(merged);
+          setAllUsers(merged);
         }
       }).catch(console.warn);
     }
@@ -89,20 +99,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const remoteUsers = await supabaseService.fetchUsers();
         if (remoteUsers && remoteUsers.length > 0) {
-          storageService.saveUsers(remoteUsers);
-          setAllUsers(remoteUsers);
-          foundUser = remoteUsers.find(u => u.email.toLowerCase() === cleanEmail);
+          const localUsers = storageService.getUsers();
+          const remoteEmailSet = new Set(remoteUsers.map(u => u.email.trim().toLowerCase()));
+          const merged = [...remoteUsers];
+          for (const localUser of localUsers) {
+            if (!remoteEmailSet.has(localUser.email.trim().toLowerCase())) {
+              merged.push(localUser);
+            }
+          }
+          storageService.saveUsers(merged);
+          setAllUsers(merged);
+          foundUser = merged.find(u => u.email.trim().toLowerCase() === cleanEmail);
         }
       } catch (err) {
         console.warn('Erro ao consultar Supabase no login:', err);
       }
-    }
-
-    if (!foundUser) {
-      return { 
-        success: false, 
-        error: 'Nenhuma conta encontrada com este e-mail institucional.' 
-      };
     }
 
     if (!password) {
@@ -112,20 +123,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
     }
 
+    // Mensagem de segurança OWASP: não revelar se a conta existe ou não
+    if (!foundUser) {
+      return { 
+        success: false, 
+        error: 'E-mail ou senha incorretos. Verifique suas credenciais e tente novamente.' 
+      };
+    }
+
     // Validação segura de senha com salt e hash
     if (foundUser.passwordHash && foundUser.salt) {
       const isValid = await cryptoService.verifyPassword(password, foundUser.salt, foundUser.passwordHash);
       if (!isValid) {
         return { 
           success: false, 
-          error: 'Senha incorreta. Verifique suas credenciais e tente novamente.' 
+          error: 'E-mail ou senha incorretos. Verifique suas credenciais e tente novamente.' 
         };
       }
     } else {
       // Fallback para contas legadas sem hash
       return {
         success: false,
-        error: 'Credenciais desatualizadas. Por favor, redefina sua conta.'
+        error: 'E-mail ou senha incorretos. Verifique suas credenciais e tente novamente.'
       };
     }
 

@@ -23,8 +23,10 @@ import {
   Mic
 } from 'lucide-react';
 import { aiService, SAMPLE_CASE_TEMPLATES } from '../../services/aiService';
+import { storageService } from '../../services/storageService';
 import { AIAnalysisResult, LegalArea } from '../../types';
 import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
 import { PriorityBadge } from '../common/Badge';
 import { Modal } from '../common/Modal';
 import { AudioTranscriber } from './AudioTranscriber';
@@ -34,6 +36,7 @@ interface DexAIAssistantProps {
 }
 
 export const DexAIAssistant: React.FC<DexAIAssistantProps> = ({ onNavigateToCases }) => {
+  const { currentUser } = useAuth();
   const { clients, lawyers, addCase, prefillCaseFromAI, clearPendingAiDraft, showToast } = useData();
 
   const [promptText, setPromptText] = useState('');
@@ -68,6 +71,18 @@ export const DexAIAssistant: React.FC<DexAIAssistantProps> = ({ onNavigateToCase
     if (!promptText.trim()) {
       showToast('Por favor, digite ou selecione um relato fático para análise.', 'warning');
       return;
+    }
+
+    // Limite de uso de IA para Conta de Demonstração (Item 5)
+    if (currentUser?.isDemo) {
+      const rateLimit = storageService.checkDemoAiRateLimit();
+      if (!rateLimit.allowed) {
+        showToast(
+          `Limite de requisições atingido para a conta demo (máximo de 5 análises por hora). Liberação em ~${rateLimit.resetMinutes} min. Para uso irrestrito, utilize sua conta real.`,
+          'warning'
+        );
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -229,47 +244,45 @@ export const DexAIAssistant: React.FC<DexAIAssistantProps> = ({ onNavigateToCase
               </select>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Chave de API (Opcional)</label>
-              <input
-                type="password"
-                placeholder="sk-ant-... ou AIzaSy..."
-                value={apiKey}
-                onChange={e => setApiKey(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white"
-              />
+            <div className="flex flex-col justify-center">
+              <span className="text-[11px] text-slate-400 font-semibold mb-1">Segurança e Chaves de API</span>
+              <p className="text-[11px] text-slate-400">
+                As credenciais de IA e chaves de provedores permanecem seguras exclusivamente no servidor e variáveis de ambiente.
+              </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Sample Scenarios Bar */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
-          <Lightbulb className="w-4 h-4 text-amber-400" />
-          Ou carregue um caso de exemplo real para teste imediato:
-        </div>
+      {/* Barra de Casos de Exemplo - Visível SOMENTE para conta de demonstração (Item 5) */}
+      {currentUser?.isDemo && (
+        <div className="space-y-2 p-4 rounded-2xl bg-cyan-950/20 border border-cyan-500/30">
+          <div className="flex items-center gap-2 text-xs font-bold text-cyan-300 uppercase tracking-wider">
+            <Lightbulb className="w-4 h-4 text-amber-400" />
+            <span>[Modo Demonstração] Casos de exemplo para teste imediato:</span>
+          </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-          {SAMPLE_CASE_TEMPLATES.map(template => (
-            <button
-              key={template.id}
-              onClick={() => handleApplyTemplate(template.rawText)}
-              className="p-3 rounded-xl bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 hover:border-cyan-500/40 text-left transition-all group"
-            >
-              <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700 inline-block mb-1.5">
-                {template.category}
-              </span>
-              <h5 className="text-xs font-bold text-white group-hover:text-cyan-300 transition-colors line-clamp-1">
-                {template.title.split(':')[1] || template.title}
-              </h5>
-              <p className="text-[11px] text-slate-400 line-clamp-2 mt-1">
-                {template.description}
-              </p>
-            </button>
-          ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+            {SAMPLE_CASE_TEMPLATES.map(template => (
+              <button
+                key={template.id}
+                onClick={() => handleApplyTemplate(template.rawText)}
+                className="p-3 rounded-xl bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 hover:border-cyan-500/40 text-left transition-all group cursor-pointer"
+              >
+                <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700 inline-block mb-1.5">
+                  {template.category}
+                </span>
+                <h5 className="text-xs font-bold text-white group-hover:text-cyan-300 transition-colors line-clamp-1">
+                  {template.title.split(':')[1] || template.title}
+                </h5>
+                <p className="text-[11px] text-slate-400 line-clamp-2 mt-1">
+                  {template.description}
+                </p>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Input Prompt Section */}
       <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80 space-y-4">

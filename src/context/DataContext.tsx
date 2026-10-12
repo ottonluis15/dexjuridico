@@ -46,6 +46,11 @@ interface DataContextType {
   userTemplates: TemplateDocument[];
   userTeamPosts: WallPost[];
 
+  // Área de trabalho individual (pessoal do usuário logado: sócio ou advogado)
+  personalCases: LegalCase[];
+  personalDeadlines: Deadline[];
+  personalClients: Client[];
+
   // Estatísticas de Dashboard
   stats: {
     activeCasesCount: number;
@@ -61,11 +66,14 @@ interface DataContextType {
   addClient: (client: Omit<Client, 'id' | 'createdAt'>) => Client;
   updateClient: (id: string, updates: Partial<Client>) => void;
   deleteClient: (id: string) => void;
+  exportClientsCsv: () => void;
 
   // Operações de Advogados
   addLawyer: (lawyer: Omit<Lawyer, 'id'>) => Lawyer;
   updateLawyer: (id: string, updates: Partial<Lawyer>) => void;
   deleteLawyer: (id: string) => void;
+  removeLawyerAffiliation: (id: string) => { success: boolean; message: string };
+  linkExistingLawyer: (identifier: string) => { success: boolean; lawyer?: Lawyer; error?: string };
 
   // Operações de Processos
   addCase: (caseItem: Omit<LegalCase, 'id' | 'updatedAt'>) => LegalCase;
@@ -123,13 +131,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { currentUser, isAdmin } = useAuth();
 
   const [clients, setClients] = useState<Client[]>(() => storageService.getClients());
-  const [lawyers, setLawyers] = useState<Lawyer[]>(() => storageService.getLawyers());
+  const [lawyers, setLawyers] = useState<Lawyer[]>(() => storageService.getLawyersForUser(currentUser));
   const [cases, setCases] = useState<LegalCase[]>(() => storageService.getCases());
   const [deadlines, setDeadlines] = useState<Deadline[]>(() => storageService.getDeadlines());
   const [financial, setFinancial] = useState<FinancialEntry[]>(() => storageService.getFinancial());
   const [documents, setDocuments] = useState<DocumentItem[]>(() => storageService.getDocuments());
   const [templates, setTemplates] = useState<TemplateDocument[]>(() => storageService.getTemplates());
-  const [teamPosts, setTeamPosts] = useState<WallPost[]>(() => storageService.getTeamPosts(currentUser?.officeId));
+  const [teamPosts, setTeamPosts] = useState<WallPost[]>(() => storageService.getTeamPosts(currentUser?.officeId, currentUser?.isIndependent, currentUser?.id));
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => storageService.getAuditLogs());
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
   const [pendingAiDraft, setPendingAiDraft] = useState<{ analysis: AIAnalysisResult; rawPrompt: string } | null>(null);
@@ -137,20 +145,23 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Recarregar dados quando o usuário muda (login/logout)
   useEffect(() => {
     setClients(storageService.getClients());
-    setLawyers(storageService.getLawyers());
+    setLawyers(storageService.getLawyersForUser(currentUser));
     setCases(storageService.getCases());
     setDeadlines(storageService.getDeadlines());
     setFinancial(storageService.getFinancial());
     setDocuments(storageService.getDocuments());
     setTemplates(storageService.getTemplates());
-    setTeamPosts(storageService.getTeamPosts(currentUser?.officeId));
+    setTeamPosts(storageService.getTeamPosts(currentUser?.officeId, currentUser?.isIndependent, currentUser?.id));
     setAuditLogs(storageService.getAuditLogs());
 
-    // Se o Supabase estiver configurado, busca dados atualizados na nuvem
+    // Se o Supabase estiver configurado, busca dados atualizados na nuvem aplicando filtro de escritório no servidor
     if (isSupabaseConfigured()) {
       Promise.all([
-        supabaseService.fetchClients(),
-        supabaseService.fetchLawyers(),
+        supabaseService.fetchClients(
+          currentUser?.officeId, 
+          currentUser?.isIndependent ? (currentUser?.id) : undefined
+        ),
+        supabaseService.fetchLawyers(currentUser?.officeId, currentUser?.id),
         supabaseService.fetchCases(),
         supabaseService.fetchDeadlines(),
         supabaseService.fetchFinancial(),
@@ -159,7 +170,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         supabaseService.fetchTeamPosts(currentUser?.officeId)
       ]).then(([c, l, cs, d, f, docs, tpls, posts]) => {
         if (c && c.length > 0) { setClients(c); storageService.saveClients(c); }
-        if (l && l.length > 0) { setLawyers(l); storageService.saveLawyers(l); }
+        if (l && l.length > 0) { 
+          // Merge seguro de advogados no storage local
+          const currentAll = storageService.getLawyers();
+          const remoteIds = new Set(l.map(item => item.id));
+          const mergedLawyers = [...l, ...currentAll.filter(item => !remoteIds.has(item.id))];
+          storageService.saveLawyers(mergedLawyers);
+          setLawyers(storageService.getLawyersForUser(currentUser)); 
+        }
         if (cs && cs.length > 0) { setCases(cs); storageService.saveCases(cs); }
         if (d && d.length > 0) { setDeadlines(d); storageService.saveDeadlines(d); }
         if (f && f.length > 0) { setFinancial(f); storageService.saveFinancial(f); }
@@ -224,14 +242,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [deadlines, userCases, isAdmin, currentUser, currentLawyer]);
 
   const userClients = useMemo(() => {
-    if (!currentUser) return [];
-    if (isAdmin) {
-      return clients.filter(c => !currentUser.officeId || c.officeId === currentUser.officeId);
-    }
-    if (!currentLawyer) return [];
-    const myCaseClientIds = new Set(userCases.map(c => c.clientId));
-    return clients.filter(c => c.linkedLawyerId === currentLawyer.id || myCaseClientIds.has(c.id));
-  }, [clients, userCases, isAdmin, currentUser, currentLawyer]);
+    return storageService.getClientsForUser(currentUser, currentLawyer, userCases);
+  }, [currentUser, currentLawyer, userCases, clients]);
 
   const userFinancial = useMemo(() => {
     if (!currentUser) return [];
@@ -253,6 +265,26 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return documents.filter(d => (d.caseId && myCaseIds.has(d.caseId)) || d.uploadedByLawyerId === currentLawyer.id);
   }, [documents, userCases, isAdmin, currentUser, currentLawyer]);
 
+  // Área de trabalho individual: processos estritamente atribuídos ao profissional logado
+  const personalCases = useMemo(() => {
+    if (!currentUser || !currentLawyer) return [];
+    return cases.filter(c => c.lawyerId === currentLawyer.id);
+  }, [cases, currentUser, currentLawyer]);
+
+  // Agenda e prazos estritamente da pauta pessoal do profissional logado
+  const personalDeadlines = useMemo(() => {
+    if (!currentUser || !currentLawyer) return [];
+    const myCaseIds = new Set(personalCases.map(c => c.id));
+    return deadlines.filter(d => d.lawyerId === currentLawyer.id || myCaseIds.has(d.caseId));
+  }, [deadlines, personalCases, currentUser, currentLawyer]);
+
+  // Clientes da carteira direta sob condução do profissional logado
+  const personalClients = useMemo(() => {
+    if (!currentUser || !currentLawyer) return [];
+    const myCaseClientIds = new Set(personalCases.map(c => c.clientId));
+    return clients.filter(c => c.linkedLawyerId === currentLawyer.id || myCaseClientIds.has(c.id));
+  }, [clients, personalCases, currentUser, currentLawyer]);
+
   // Modelos visíveis para o usuário logado
   const userTemplates = useMemo(() => {
     return storageService.getTemplatesForUser(currentUser);
@@ -263,7 +295,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!currentUser) return [];
     return teamPosts.filter(p => {
       if (p.deleted_at) return false;
-      return !currentUser.officeId || !p.officeId || p.officeId === currentUser.officeId;
+      if (currentUser.isIndependent) {
+        return p.authorId === currentUser.id || !p.officeId;
+      }
+      if (currentUser.officeId) {
+        return p.officeId === currentUser.officeId;
+      }
+      return true;
     });
   }, [teamPosts, currentUser]);
 
@@ -293,17 +331,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [userCases, userDeadlines, userFinancial, userDocuments]);
 
-  // CRUD Clientes
+  // CRUD Clientes com Validação Rigorosa de Escritório / Proprietário (Item 6)
   const addClient = (clientData: Omit<Client, 'id' | 'createdAt'>): Client => {
-    const newClient: Client = {
-      ...clientData,
-      id: `cli_${Date.now()}`,
-      createdAt: new Date().toISOString().substring(0, 10),
-      officeId: currentUser?.officeId
-    };
-    const updated = [newClient, ...clients];
-    setClients(updated);
-    storageService.saveClients(updated);
+    const res = storageService.addClientForUser(clientData, currentUser, currentLawyer);
+    if (res.status !== 200 || !res.client) {
+      showToast(res.error || 'Erro ao cadastrar cliente.', 'error');
+      throw new Error(res.error || 'Acesso negado');
+    }
+    const newClient = res.client;
+    setClients(storageService.getClients());
 
     if (isSupabaseConfigured()) {
       supabaseService.upsertClient(newClient).catch(console.warn);
@@ -325,13 +361,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateClient = (id: string, updates: Partial<Client>) => {
-    const updated = clients.map(c => c.id === id ? { ...c, ...updates } : c);
-    setClients(updated);
-    storageService.saveClients(updated);
+    const res = storageService.updateClientForUser(id, updates, currentUser, currentLawyer, userCases);
+    if (res.status !== 200 || !res.client) {
+      showToast(res.error || '403 Proibido: Você não possui autorização para alterar este cliente.', 'error');
+      return;
+    }
+    setClients(storageService.getClients());
 
     if (isSupabaseConfigured()) {
-      const c = updated.find(x => x.id === id);
-      if (c) supabaseService.upsertClient(c).catch(console.warn);
+      supabaseService.upsertClient(res.client).catch(console.warn);
     }
 
     showToast('Dados do cliente atualizados com sucesso.', 'success');
@@ -339,9 +377,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteClient = (id: string) => {
     const target = clients.find(c => c.id === id);
-    const updated = clients.filter(c => c.id !== id);
-    setClients(updated);
-    storageService.saveClients(updated);
+    const res = storageService.deleteClientForUser(id, currentUser, currentLawyer, userCases);
+    if (!res.success) {
+      showToast(res.error || '403 Proibido: Você não possui autorização para excluir este cliente.', 'error');
+      return;
+    }
+    setClients(storageService.getClients());
 
     if (isSupabaseConfigured()) {
       supabaseService.deleteClient(id).catch(console.warn);
@@ -354,13 +395,35 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userRole: currentUser?.role || 'LAWYER',
         action: 'EXCLUSAO_CLIENTE',
         entity: `Cliente: ${target.name}`,
-        details: `Exclusão permanente de cadastro de cliente.`,
+        details: `Cliente removido da carteira.`,
         ipAddress: '187.54.12.90',
         officeId: currentUser?.officeId
       });
       setAuditLogs(storageService.getAuditLogs());
     }
-    showToast('Cliente removido.', 'info');
+
+    showToast('Cliente removido com sucesso.', 'info');
+  };
+
+  const exportClientsCsv = () => {
+    const res = storageService.exportClientsCsvForUser(currentUser, currentLawyer, userCases);
+    if (res.status !== 200) {
+      showToast('403 Proibido: Você não possui autorização para exportar clientes.', 'error');
+      return;
+    }
+    if (res.count === 0) {
+      showToast('Nenhum cliente disponível para exportar na sua carteira.', 'warning');
+      return;
+    }
+    const blob = new Blob([res.csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `clientes_${currentUser?.officeName ? 'escritorio' : 'autonomo'}_${new Date().toISOString().substring(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast(`${res.count} clientes exportados com sucesso!`, 'success');
   };
 
   // CRUD Advogados
@@ -406,32 +469,82 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     showToast('Registro do advogado atualizado.', 'success');
   };
 
-  const deleteLawyer = (id: string) => {
-    const target = lawyers.find(l => l.id === id);
-    const updated = lawyers.filter(l => l.id !== id);
+  const removeLawyerAffiliation = (id: string): { success: boolean; message: string } => {
+    const res = storageService.removeLawyerAffiliation(id);
+    if (!res.success) {
+      showToast(res.message, 'error');
+      return res;
+    }
+
+    const updated = storageService.getLawyersForUser(currentUser);
     setLawyers(updated);
-    storageService.saveLawyers(updated);
 
     if (isSupabaseConfigured()) {
-      // Deletar ou inativar no Supabase se configurado
       const client = getSupabaseClient();
-      if (client) client.from('dex_lawyers').delete().eq('id', id).then();
+      if (client) {
+        client.from('dex_lawyers').update({ officeId: null, roleTitle: 'Advogado Autônomo' }).eq('id', id).then();
+      }
     }
 
-    if (target) {
-      storageService.addAuditLog({
-        userId: currentUser?.id || 'sys',
-        userName: currentUser?.name || 'Sistema',
-        userRole: currentUser?.role || 'ADMIN',
-        action: 'EXCLUSAO_ADVOGADO',
-        entity: `Advogado: ${target.name}`,
-        details: `Remoção de advogado do corpo jurídico.`,
-        ipAddress: '187.54.12.90',
-        officeId: currentUser?.officeId
-      });
-      setAuditLogs(storageService.getAuditLogs());
+    storageService.addAuditLog({
+      userId: currentUser?.id || 'sys',
+      userName: currentUser?.name || 'Sistema',
+      userRole: currentUser?.role || 'ADMIN',
+      action: 'DESVINCULACAO_ADVOGADO',
+      entity: `Advogado ID: ${id}`,
+      details: res.message,
+      ipAddress: '187.54.12.90',
+      officeId: currentUser?.officeId
+    });
+    setAuditLogs(storageService.getAuditLogs());
+
+    showToast(res.message, 'success');
+    return res;
+  };
+
+  const linkExistingLawyer = (identifier: string): { success: boolean; lawyer?: Lawyer; error?: string } => {
+    if (!currentUser?.officeId) {
+      const err = 'Apenas escritórios ativos podem vincular advogados à equipe.';
+      showToast(err, 'error');
+      return { success: false, error: err };
     }
-    showToast('Advogado desvinculado.', 'info');
+
+    const res = storageService.linkExistingLawyerToOffice(
+      identifier,
+      currentUser.officeId,
+      currentUser.officeName || 'Escritório'
+    );
+
+    if (!res.success) {
+      showToast(res.error || 'Erro ao vincular advogado.', 'error');
+      return res;
+    }
+
+    const updated = storageService.getLawyersForUser(currentUser);
+    setLawyers(updated);
+
+    if (res.lawyer && isSupabaseConfigured()) {
+      supabaseService.upsertLawyer(res.lawyer).catch(console.warn);
+    }
+
+    storageService.addAuditLog({
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userRole: currentUser.role,
+      action: 'VINCULO_ADVOGADO_EXISTENTE',
+      entity: `Advogado: ${res.lawyer?.name}`,
+      details: `Advogado ${res.lawyer?.name} vinculado com sucesso à equipe do escritório.`,
+      ipAddress: '187.54.12.90',
+      officeId: currentUser.officeId
+    });
+    setAuditLogs(storageService.getAuditLogs());
+
+    showToast(`Advogado ${res.lawyer?.name} vinculado à equipe com sucesso!`, 'success');
+    return res;
+  };
+
+  const deleteLawyer = (id: string) => {
+    removeLawyerAffiliation(id);
   };
 
   // CRUD Processos
@@ -793,7 +906,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: `post_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         authorId: currentUser.id,
         authorName: currentUser.name || 'Advogado Dex',
-        authorRole: currentUser.role === 'ADMIN' ? 'Sócio / Administrador' : 'Advogado Associado',
+        authorRole: currentUser.role === 'ADMIN' 
+          ? 'Sócio / Administrador' 
+          : (currentUser.isIndependent ? 'Advogado Autônomo' : 'Advogado Associado'),
         authorInitial: (currentUser.name?.[0] || 'D').toUpperCase(),
         createdAt: 'Hoje às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
         title: postData.title.trim(),
@@ -803,7 +918,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         likes: 0,
         likedBy: [],
         commentsCount: 0,
-        officeId: currentUser.officeId,
+        officeId: currentUser.isIndependent ? undefined : currentUser.officeId,
+        officeName: currentUser.isIndependent 
+          ? 'Advogado autônomo' 
+          : (currentUser.officeName || 'Moreira & Alcaraz Advogados Associados'),
+        officeLogoUrl: currentUser.avatarUrl,
         deleted_at: null,
         deleted_by: null
       };
@@ -895,7 +1014,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <DataContext.Provider
       value={{
-        clients,
+        clients: userClients,
         lawyers,
         cases,
         deadlines,
@@ -912,13 +1031,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userDocuments,
         userTemplates,
         userTeamPosts,
+        personalCases,
+        personalDeadlines,
+        personalClients,
         stats,
         addClient,
         updateClient,
         deleteClient,
+        exportClientsCsv,
         addLawyer,
         updateLawyer,
         deleteLawyer,
+        removeLawyerAffiliation,
+        linkExistingLawyer,
         addCase,
         updateCase,
         deleteCase,

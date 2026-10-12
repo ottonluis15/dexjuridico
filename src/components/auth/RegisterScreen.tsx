@@ -152,36 +152,39 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
       <div className="max-w-[980px] w-full mx-auto mb-4 flex items-center justify-between px-2">
         <button
           onClick={onNavigateToLanding}
+          aria-label="Voltar para a página inicial"
           className="flex items-center gap-1.5 text-xs font-medium text-stone-500 hover:text-stone-900 transition-colors cursor-pointer"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
+          <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
           <span>Voltar ao início</span>
         </button>
 
         {/* Seletor Sutil: Escritório vs Advogado Individual */}
-        <div className="inline-flex items-center bg-stone-200/60 p-1 rounded-full border border-stone-200">
+        <div role="group" aria-label="Tipo de conta" className="inline-flex items-center bg-stone-200/60 p-1 rounded-full border border-stone-200">
           <button
             type="button"
             onClick={() => setAccountType('OFFICE')}
+            aria-pressed={accountType === 'OFFICE'}
             className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
               accountType === 'OFFICE'
                 ? 'bg-white text-stone-900 shadow-sm font-semibold'
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            <Building2 className="w-3.5 h-3.5" />
+            <Building2 className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Escritório</span>
           </button>
           <button
             type="button"
             onClick={() => setAccountType('LAWYER')}
+            aria-pressed={accountType === 'LAWYER'}
             className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
               accountType === 'LAWYER'
                 ? 'bg-white text-stone-900 shadow-sm font-semibold'
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            <UserCheck className="w-3.5 h-3.5" />
+            <UserCheck className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Advogado Individual</span>
           </button>
         </div>
@@ -196,7 +199,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
             <div className="w-full flex flex-col items-center">
               {/* Logo Dex com Balança */}
               <div className="flex items-center justify-center gap-2.5">
-                <Scale className="w-7 h-7 sm:w-8 sm:h-8 text-stone-800" strokeWidth={1.8} />
+                <Scale className="w-7 h-7 sm:w-8 sm:h-8 text-stone-800" strokeWidth={1.8} aria-hidden="true" />
                 <span className="font-serif font-black text-3xl sm:text-4xl text-stone-900 tracking-tight">
                   Dex
                 </span>
@@ -219,7 +222,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
             {/* Espaço Inferior: Ilustração Vetorial Minimalista */}
             <div className="w-full flex flex-col items-center justify-center my-auto py-4">
-              <div className="w-48 h-44 sm:w-56 sm:h-48 flex items-center justify-center relative">
+              <div className="w-48 h-44 sm:w-56 sm:h-48 flex items-center justify-center relative" aria-hidden="true">
                 {/* Arte linear com traço fino sofisticado */}
                 <svg
                   viewBox="0 0 240 200"
@@ -285,7 +288,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
             
             {/* Mensagem de Erro (se houver) */}
             {error && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+              <div role="alert" className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
                 {error}
               </div>
             )}
@@ -306,12 +309,14 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
                   {/* Nome do Escritório */}
                   <div>
-                    <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                    <label htmlFor="reg-office-firm-name" className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
                       NOME DO ESCRITÓRIO *
                     </label>
                     <input
+                      id="reg-office-firm-name"
                       type="text"
                       required
+                      autoComplete="organization"
                       placeholder="Ex: Silva & Associados"
                       value={firmName}
                       onChange={e => setFirmName(e.target.value)}
@@ -322,10 +327,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   {/* CNPJ e Telefone */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      <label htmlFor="reg-office-cnpj" className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
                         CNPJ
                       </label>
                       <input
+                        id="reg-office-cnpj"
                         type="text"
                         placeholder="00.000.000/0000-00"
                         value={cnpj}
@@ -334,11 +340,13 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      <label htmlFor="reg-office-phone" className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
                         TELEFONE
                       </label>
                       <input
+                        id="reg-office-phone"
                         type="tel"
+                        autoComplete="tel"
                         placeholder="(00) 00000-0000"
                         value={phone}
                         onChange={e => handlePhoneChange(e.target.value)}
@@ -350,11 +358,12 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   {/* Área Principal e Endereço */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      <label htmlFor="reg-office-area" className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
                         ÁREA PRINCIPAL *
                       </label>
                       <div className="relative">
                         <select
+                          id="reg-office-area"
                           required
                           value={primaryArea}
                           onChange={e => setPrimaryArea(e.target.value)}
@@ -371,15 +380,17 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                           <option value="Direito Imobiliário">Direito Imobiliário</option>
                           <option value="Full Service">Full Service / Multidisciplinar</option>
                         </select>
-                        <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 top-3 pointer-events-none" />
+                        <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 top-3 pointer-events-none" aria-hidden="true" />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      <label htmlFor="reg-office-address" className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
                         ENDEREÇO
                       </label>
                       <input
+                        id="reg-office-address"
                         type="text"
+                        autoComplete="street-address"
                         placeholder="Rua, N, Cidade/UF"
                         value={address}
                         onChange={e => setAddress(e.target.value)}
@@ -399,12 +410,14 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
                   {/* Nome Completo */}
                   <div>
-                    <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                    <label htmlFor="reg-office-name" className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
                       NOME COMPLETO *
                     </label>
                     <input
+                      id="reg-office-name"
                       type="text"
                       required
+                      autoComplete="name"
                       placeholder="Seu nome completo"
                       value={fullName}
                       onChange={e => setFullName(e.target.value)}
@@ -415,12 +428,14 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   {/* E-mail e OAB */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      <label htmlFor="reg-office-email" className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
                         E-MAIL *
                       </label>
                       <input
+                        id="reg-office-email"
                         type="email"
                         required
+                        autoComplete="email"
                         placeholder="seu@email.com"
                         value={email}
                         onChange={e => setEmail(e.target.value)}
@@ -428,10 +443,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      <label htmlFor="reg-office-oab" className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
                         OAB
                       </label>
                       <input
+                        id="reg-office-oab"
                         type="text"
                         placeholder="UF000000"
                         value={oab}
@@ -444,13 +460,15 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   {/* Senha e Confirmar Senha */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      <label htmlFor="reg-office-password" className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
                         SENHA *
                       </label>
                       <div className="relative">
                         <input
+                          id="reg-office-password"
                           type={showPassword ? 'text' : 'password'}
                           required
+                          autoComplete="new-password"
                           placeholder="Minimo 6 caracteres"
                           value={password}
                           onChange={e => setPassword(e.target.value)}
@@ -459,21 +477,23 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-2.5 top-2.5 text-stone-400 hover:text-stone-700 cursor-pointer"
-                          tabIndex={-1}
+                          aria-label={showPassword ? 'Ocultar senha' : 'Exibir senha'}
+                          className="absolute right-2.5 top-2.5 text-stone-400 hover:text-stone-700 cursor-pointer p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-stone-400"
                         >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          {showPassword ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
                         </button>
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      <label htmlFor="reg-office-confirm-password" className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
                         CONFIRMAR SENHA *
                       </label>
                       <div className="relative">
                         <input
+                          id="reg-office-confirm-password"
                           type={showConfirmPassword ? 'text' : 'password'}
                           required
+                          autoComplete="new-password"
                           placeholder="Repita a senha"
                           value={confirmPassword}
                           onChange={e => setConfirmPassword(e.target.value)}
@@ -482,10 +502,10 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                         <button
                           type="button"
                           onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="absolute right-2.5 top-2.5 text-stone-400 hover:text-stone-700 cursor-pointer"
-                          tabIndex={-1}
+                          aria-label={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Exibir confirmação de senha'}
+                          className="absolute right-2.5 top-2.5 text-stone-400 hover:text-stone-700 cursor-pointer p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-stone-400"
                         >
-                          {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          {showConfirmPassword ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
                         </button>
                       </div>
                     </div>
@@ -515,15 +535,16 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               {accountType === 'LAWYER' && (
                 <>
                   {/* Sub-seleção: Autônomo vs Vinculado */}
-                  <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 space-y-2">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 block">
+                  <fieldset className="p-3 bg-stone-50 rounded-xl border border-stone-200 space-y-2">
+                    <legend className="text-[11px] font-bold uppercase tracking-wider text-stone-500 block px-1">
                       Como atuará no sistema?
-                    </span>
+                    </legend>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                       <label className="flex items-center gap-2 p-2 bg-white rounded-lg border border-stone-200 cursor-pointer">
                         <input
                           type="radio"
                           name="lawyerAffiliation"
+                          value="INDEPENDENT"
                           checked={lawyerAffiliation === 'INDEPENDENT'}
                           onChange={() => setLawyerAffiliation('INDEPENDENT')}
                           className="text-stone-800"
@@ -535,6 +556,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                         <input
                           type="radio"
                           name="lawyerAffiliation"
+                          value="LINKED"
                           checked={lawyerAffiliation === 'LINKED'}
                           onChange={() => setLawyerAffiliation('LINKED')}
                           className="text-stone-800"
@@ -545,10 +567,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
                     {lawyerAffiliation === 'LINKED' && (
                       <div className="pt-1">
-                        <label className="block text-[10px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                        <label htmlFor="reg-lawyer-office-code" className="block text-[10px] font-bold text-stone-600 uppercase tracking-wider mb-1">
                           Código ou E-mail da Banca *
                         </label>
                         <input
+                          id="reg-lawyer-office-code"
                           type="text"
                           required
                           placeholder="Ex: DEX-4819 ou contato@escritorio.adv.br"
@@ -558,7 +581,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                         />
                       </div>
                     )}
-                  </div>
+                  </fieldset>
 
                   {/* SEÇÃO 1: DADOS PROFISSIONAIS */}
                   <div className="flex items-center gap-3 pt-1">
@@ -571,12 +594,14 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
                   {/* Nome Completo */}
                   <div>
-                    <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                    <label htmlFor="reg-lawyer-name" className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
                       NOME COMPLETO *
                     </label>
                     <input
+                      id="reg-lawyer-name"
                       type="text"
                       required
+                      autoComplete="name"
                       placeholder="Seu nome completo"
                       value={fullName}
                       onChange={e => setFullName(e.target.value)}
@@ -587,10 +612,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   {/* OAB e Telefone */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      <label htmlFor="reg-lawyer-oab" className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
                         OAB COM UF *
                       </label>
                       <input
+                        id="reg-lawyer-oab"
                         type="text"
                         required
                         placeholder="Ex: 184920/SP"
@@ -600,11 +626,13 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      <label htmlFor="reg-lawyer-phone" className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
                         TELEFONE / WHATSAPP
                       </label>
                       <input
+                        id="reg-lawyer-phone"
                         type="tel"
+                        autoComplete="tel"
                         placeholder="(00) 00000-0000"
                         value={phone}
                         onChange={e => handlePhoneChange(e.target.value)}
@@ -615,11 +643,12 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
                   {/* Área Principal */}
                   <div>
-                    <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                    <label htmlFor="reg-lawyer-area" className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
                       ÁREA DE ATUAÇÃO PRINCIPAL
                     </label>
                     <div className="relative">
                       <select
+                        id="reg-lawyer-area"
                         value={primaryArea}
                         onChange={e => setPrimaryArea(e.target.value)}
                         className="w-full appearance-none px-3.5 py-2.5 bg-[#fafafa] border border-stone-200 rounded-xl text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-400 focus:bg-white focus:ring-1 focus:ring-stone-400/20 transition-all pr-8 cursor-pointer"
@@ -634,7 +663,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                         <option value="Direito Previdenciário">Direito Previdenciário</option>
                         <option value="Direito Imobiliário">Direito Imobiliário</option>
                       </select>
-                      <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 top-3 pointer-events-none" />
+                      <ChevronDown className="w-4 h-4 text-stone-400 absolute right-2.5 top-3 pointer-events-none" aria-hidden="true" />
                     </div>
                   </div>
 
@@ -649,12 +678,14 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
                   {/* E-mail */}
                   <div>
-                    <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                    <label htmlFor="reg-lawyer-email" className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
                       E-MAIL *
                     </label>
                     <input
+                      id="reg-lawyer-email"
                       type="email"
                       required
+                      autoComplete="email"
                       placeholder="seu@email.com"
                       value={email}
                       onChange={e => setEmail(e.target.value)}
@@ -665,13 +696,15 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   {/* Senha e Confirmação */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      <label htmlFor="reg-lawyer-password" className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
                         SENHA *
                       </label>
                       <div className="relative">
                         <input
+                          id="reg-lawyer-password"
                           type={showPassword ? 'text' : 'password'}
                           required
+                          autoComplete="new-password"
                           placeholder="Minimo 6 caracteres"
                           value={password}
                           onChange={e => setPassword(e.target.value)}
@@ -680,21 +713,23 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-2.5 top-2.5 text-stone-400 hover:text-stone-700 cursor-pointer"
-                          tabIndex={-1}
+                          aria-label={showPassword ? 'Ocultar senha' : 'Exibir senha'}
+                          className="absolute right-2.5 top-2.5 text-stone-400 hover:text-stone-700 cursor-pointer p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-stone-400"
                         >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          {showPassword ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
                         </button>
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      <label htmlFor="reg-lawyer-confirm-password" className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1">
                         CONFIRMAR SENHA *
                       </label>
                       <div className="relative">
                         <input
+                          id="reg-lawyer-confirm-password"
                           type={showConfirmPassword ? 'text' : 'password'}
                           required
+                          autoComplete="new-password"
                           placeholder="Repita a senha"
                           value={confirmPassword}
                           onChange={e => setConfirmPassword(e.target.value)}
@@ -703,10 +738,10 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                         <button
                           type="button"
                           onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="absolute right-2.5 top-2.5 text-stone-400 hover:text-stone-700 cursor-pointer"
-                          tabIndex={-1}
+                          aria-label={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Exibir confirmação de senha'}
+                          className="absolute right-2.5 top-2.5 text-stone-400 hover:text-stone-700 cursor-pointer p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-stone-400"
                         >
-                          {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          {showConfirmPassword ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
                         </button>
                       </div>
                     </div>

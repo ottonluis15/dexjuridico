@@ -18,6 +18,7 @@ export interface User {
   address?: string; // Endereço da sede
   primaryArea?: string; // Área de atuação principal
   isIndependent?: boolean; // Verdadeiro se for advogado autônomo sem vínculo
+  isDemo?: boolean; // Conta de demonstração para potenciais clientes
   passwordHash?: string; // Hash seguro com salt da senha
   salt?: string; // Salt criptográfico
 }
@@ -247,6 +248,8 @@ export interface WallPost {
   likedBy?: string[]; // IDs dos usuários que curtiram
   commentsCount: number;
   officeId?: string;
+  officeName?: string;
+  officeLogoUrl?: string;
   deleted_at?: string | null;
   deleted_by?: string | null;
 }

@@ -13,7 +13,9 @@ import {
   Bell, 
   Settings, 
   LogOut,
-  Globe
+  Globe,
+  Briefcase,
+  Building2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -59,36 +61,55 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
   setIsOpen
 }) => {
-  const { currentUser, isAppAdmin, logout } = useAuth();
-  const { userCases } = useData();
+  const { currentUser, isAdmin, isAppAdmin, logout } = useAuth();
+  const { userCases, personalCases } = useData();
 
   const sections: NavSection[] = [
     {
       title: 'PRINCIPAL',
       items: [
+        ...(isAdmin ? [
+          {
+            id: 'dashboard' as TabType,
+            label: 'Gestão do Escritório',
+            icon: Building2,
+          },
+          {
+            id: 'lawyer-workbench' as TabType,
+            label: 'Minha Área Individual',
+            icon: Briefcase,
+            badge: personalCases.length > 0 ? personalCases.length : null,
+          }
+        ] : [
+          {
+            id: 'lawyer-workbench' as TabType,
+            label: 'Minha Área de Trabalho',
+            icon: Briefcase,
+          },
+          {
+            id: 'dashboard' as TabType,
+            label: 'Dashboard Geral',
+            icon: LayoutDashboard,
+          }
+        ]),
         {
-          id: 'dashboard',
-          label: 'Dashboard',
-          icon: LayoutDashboard,
-        },
-        {
-          id: 'ai-assistant',
+          id: 'ai-assistant' as TabType,
           label: 'Assistente de IA',
           icon: Bot,
         },
         {
-          id: 'cases',
+          id: 'cases' as TabType,
           label: 'Processos',
           icon: Scale,
           badge: userCases.length,
         },
         {
-          id: 'clients',
+          id: 'clients' as TabType,
           label: 'Clientes',
           icon: Users,
         },
         {
-          id: 'documents',
+          id: 'documents' as TabType,
           label: 'Modelos',
           icon: FileText,
         },
@@ -180,7 +201,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Navigation items grouped by sections */}
-        <div className="flex-1 px-4 py-2 overflow-y-auto custom-scrollbar space-y-6">
+        <nav aria-label="Menu Principal" className="flex-1 px-4 py-2 overflow-y-auto custom-scrollbar space-y-6">
           {sections.map((section) => (
             <div key={section.title} className="space-y-1">
               <div className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-neutral-400">
@@ -198,7 +219,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       setActiveTab(item.id);
                       setIsOpen(false);
                     }}
-                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-[13px] font-medium transition-all group ${
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-[13px] font-medium transition-all group cursor-pointer ${
                       isActive
                         ? 'bg-[#222222] text-white shadow-sm font-semibold'
                         : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/90'
@@ -221,7 +243,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               })}
             </div>
           ))}
-        </div>
+        </nav>
 
         {/* User Profile Footer */}
         <div className="p-3.5 border-t border-neutral-200/70 bg-[#FAFAFA]/90 flex items-center justify-between gap-1">
@@ -241,11 +263,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {currentUser?.avatarUrl ? (
               <img
                 src={currentUser.avatarUrl}
-                alt={userName}
+                alt={`Foto de perfil de ${userName}`}
                 className="w-10 h-10 rounded-full object-cover shrink-0 border border-neutral-300 shadow-sm"
               />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-[#C69255] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-[#C69255] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm" aria-hidden="true">
                 {userInitial}
               </div>
             )}
@@ -266,10 +288,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             onClick={logout}
             title="Sair da conta"
-            className="p-2 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors shrink-0"
-            aria-label="Logout"
+            className="p-2 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors shrink-0 cursor-pointer"
+            aria-label="Sair da conta"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
       </aside>

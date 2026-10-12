@@ -33,15 +33,61 @@ export const supabaseService = {
   },
 
   /**
-   * Salva ou atualiza um usuário no Supabase
+   * Salva ou atualiza um usuário no Supabase com resiliência de schema
    */
   async upsertUser(user: User): Promise<boolean> {
     const client = getSupabaseClient();
     if (!client) return false;
 
     try {
-      const { error } = await client.from('dex_users').upsert([user], { onConflict: 'id' });
+      const payload: Record<string, any> = {
+        id: user.id,
+        name: user.name,
+        email: user.email.trim().toLowerCase(),
+        role: user.role,
+        oab: user.oab || null,
+        phone: user.phone || null,
+        specialties: user.specialties || [],
+        status: user.status || 'ACTIVE',
+        officeId: user.officeId || null,
+        officeName: user.officeName || null,
+        officeCode: user.officeCode || null,
+        isIndependent: !!user.isIndependent,
+        isSuperAdmin: !!user.isSuperAdmin,
+        avatarUrl: user.avatarUrl || null,
+        passwordHash: user.passwordHash || null,
+        salt: user.salt || null
+      };
+
+      if (user.cnpj) payload.cnpj = user.cnpj;
+      if (user.address) payload.address = user.address;
+      if (user.primaryArea) payload.primaryArea = user.primaryArea;
+
+      const { error } = await client.from('dex_users').upsert([payload], { onConflict: 'id' });
       if (error) {
+        // Se falhou por coluna desconhecida no PostgREST, tenta com payload estrito do schema base
+        if (error.message.includes('column') || error.code === 'PGRST204' || error.code === '42703') {
+          const strictPayload = {
+            id: user.id,
+            name: user.name,
+            email: user.email.trim().toLowerCase(),
+            role: user.role,
+            oab: user.oab || null,
+            phone: user.phone || null,
+            specialties: user.specialties || [],
+            status: user.status || 'ACTIVE',
+            officeId: user.officeId || null,
+            officeName: user.officeName || null,
+            officeCode: user.officeCode || null,
+            isIndependent: !!user.isIndependent,
+            isSuperAdmin: !!user.isSuperAdmin,
+            avatarUrl: user.avatarUrl || null,
+            passwordHash: user.passwordHash || null,
+            salt: user.salt || null
+          };
+          const retry = await client.from('dex_users').upsert([strictPayload], { onConflict: 'id' });
+          return !retry.error;
+        }
         console.warn('Supabase upsertUser error:', error.message);
         return false;
       }
@@ -67,14 +113,23 @@ export const supabaseService = {
   },
 
   /**
-   * Busca clientes no Supabase
+   * Busca clientes no Supabase com isolamento rigoroso por escritório ou advogado autônomo
    */
-  async fetchClients(): Promise<Client[] | null> {
+  async fetchClients(officeId?: string, lawyerId?: string): Promise<Client[] | null> {
     const client = getSupabaseClient();
     if (!client) return null;
 
     try {
-      const { data, error } = await client.from('dex_clients').select('*');
+      let query = client.from('dex_clients').select('*');
+      if (officeId) {
+        query = query.eq('officeId', officeId);
+      } else if (lawyerId) {
+        query = query.eq('linkedLawyerId', lawyerId);
+      } else {
+        // Sem escritório nem advogado autônomo, não retorna clientes
+        return [];
+      }
+      const { data, error } = await query;
       if (error) return null;
       return (data as Client[]) || [];
     } catch {
@@ -107,14 +162,20 @@ export const supabaseService = {
   },
 
   /**
-   * Busca advogados no Supabase
+   * Busca advogados no Supabase com filtro de consulta por escritório ou autônomo
    */
-  async fetchLawyers(): Promise<Lawyer[] | null> {
+  async fetchLawyers(officeId?: string, userId?: string): Promise<Lawyer[] | null> {
     const client = getSupabaseClient();
     if (!client) return null;
 
     try {
-      const { data, error } = await client.from('dex_lawyers').select('*');
+      let query = client.from('dex_lawyers').select('*');
+      if (officeId) {
+        query = query.eq('officeId', officeId);
+      } else if (userId) {
+        query = query.eq('userId', userId);
+      }
+      const { data, error } = await query;
       if (error) return null;
       return (data as Lawyer[]) || [];
     } catch {

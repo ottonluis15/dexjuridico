@@ -29,6 +29,9 @@ CREATE TABLE IF NOT EXISTS public.dex_users (
 );
 
 ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "isSuperAdmin" BOOLEAN DEFAULT false;
+ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "cnpj" TEXT;
+ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "address" TEXT;
+ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "primaryArea" TEXT;
 
 -- 2. Tabela de Clientes
 CREATE TABLE IF NOT EXISTS public.dex_clients (
@@ -296,3 +299,49 @@ WHERE "roleTitle" ILIKE '%Advogada Autônoma%';
 UPDATE public.dex_lawyers 
 SET "roleTitle" = REPLACE(REPLACE("roleTitle", 'Sócia', 'Sócio'), 'Advogada', 'Advogado')
 WHERE "roleTitle" ILIKE '%Sócia%' OR "roleTitle" ILIKE '%Advogada%';
+
+-- 13. Migração Tarefa 6: Garantia de Vínculo de Dono e Isolamento por Escritório em Clientes
+-- Preenche officeId a partir do advogado vinculado, quando officeId estiver nulo/vazio
+UPDATE public.dex_clients c
+SET "officeId" = l."officeId"
+FROM public.dex_lawyers l
+WHERE c."linkedLawyerId" = l.id
+  AND (c."officeId" IS NULL OR c."officeId" = '')
+  AND l."officeId" IS NOT NULL;
+
+-- Para registros sem nenhum vínculo remanescente, associa à matriz padrão
+UPDATE public.dex_clients
+SET "officeId" = 'off_dex_principal'
+WHERE ("officeId" IS NULL OR "officeId" = '')
+  AND ("linkedLawyerId" IS NULL OR "linkedLawyerId" = '');
+
+-- 14. Migração Tarefa 5: Suporte a Conta de Demonstração (isDemo = true)
+ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "isDemo" BOOLEAN DEFAULT false;
+
+-- Inserção da conta de demonstração sandbox dedicada
+INSERT INTO public.dex_users (
+    id, name, email, role, oab, phone, specialties, status,
+    "officeId", "officeName", "officeCode", "isSuperAdmin", "isIndependent",
+    salt, "passwordHash", "avatarUrl", "isDemo"
+) VALUES (
+    'usr_demo_apresentacao',
+    'Demonstração Dex',
+    'demo@dexjuridico.adv.br',
+    'ADMIN',
+    '000.000/DEMO',
+    '(11) 99999-0000',
+    '["Direito Geral", "Casos de Demonstração"]'::jsonb,
+    'ACTIVE',
+    'off_demo_sandbox',
+    'Demonstração Comercial Dex',
+    'DEMO-001',
+    false,
+    false,
+    'a1b2c3d4e5f60718',
+    '7ec23d5cbd8c1ff9db5abecfc8c289e6330ef637f917e6a3480bcbf812553d55',
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120',
+    true
+)
+ON CONFLICT (id) DO UPDATE SET "isDemo" = true, "officeId" = 'off_demo_sandbox';
+
+

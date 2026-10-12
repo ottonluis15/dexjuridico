@@ -65,6 +65,10 @@ export const SettingsView: React.FC = () => {
 
   const handleTestAndSaveSupabase = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (currentUser?.isDemo) {
+      showToast('Ação bloqueada: a conta de demonstração não pode alterar credenciais de banco de dados.', 'warning');
+      return;
+    }
     setDbStatus(null);
     setIsTestingDb(true);
 
@@ -86,6 +90,10 @@ export const SettingsView: React.FC = () => {
   };
 
   const handleSyncLocalToSupabase = async () => {
+    if (currentUser?.isDemo) {
+      showToast('Ação bloqueada: a conta de demonstração não pode sincronizar dados com banco externo.', 'warning');
+      return;
+    }
     setIsSyncingDb(true);
     setDbStatus(null);
     try {
@@ -116,6 +124,10 @@ export const SettingsView: React.FC = () => {
   };
 
   const handleExportBackup = () => {
+    if (currentUser?.isDemo) {
+      showToast('Ação bloqueada: a conta de demonstração não possui permissão para exportar dados.', 'warning');
+      return;
+    }
     const jsonStr = storageService.exportAllData();
     const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -130,6 +142,10 @@ export const SettingsView: React.FC = () => {
   };
 
   const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (currentUser?.isDemo) {
+      showToast('Ação bloqueada: a conta de demonstração não possui permissão para importar dados.', 'warning');
+      return;
+    }
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       const reader = new FileReader();

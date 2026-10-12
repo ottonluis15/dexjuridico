@@ -134,7 +134,12 @@ export const App: React.FC = () => {
       case 'profile':
         return <UserProfileView />;
       case 'lawyer-workbench':
-        return <LawyerWorkbench onNavigateToAI={() => handleTabChange('ai-assistant')} />;
+        return (
+          <LawyerWorkbench 
+            onNavigateToAI={() => handleTabChange('ai-assistant')} 
+            onNavigateToOffice={() => handleTabChange('dashboard')} 
+          />
+        );
       case 'cases':
         return <CaseList />;
       case 'deadlines':
@@ -143,7 +148,14 @@ export const App: React.FC = () => {
         return <ClientList />;
       case 'lawyers':
         // Apenas escritório pode gerenciar equipe
-        return isAdmin ? <LawyerList /> : <LawyerWorkbench onNavigateToAI={() => handleTabChange('ai-assistant')} />;
+        return isAdmin ? (
+          <LawyerList />
+        ) : (
+          <LawyerWorkbench 
+            onNavigateToAI={() => handleTabChange('ai-assistant')} 
+            onNavigateToOffice={() => handleTabChange('dashboard')} 
+          />
+        );
       case 'team-wall':
         return <TeamWall />;
       case 'reports':

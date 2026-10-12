@@ -25,10 +25,15 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onRemove
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2.5 max-w-md w-full pointer-events-none">
+    <div 
+      className="fixed bottom-6 right-6 z-50 flex flex-col gap-2.5 max-w-md w-full pointer-events-none"
+      aria-live="polite"
+      aria-atomic="false"
+    >
       {toasts.map(toast => (
         <div
           key={toast.id}
+          role={toast.type === 'error' ? 'alert' : 'status'}
           className={`pointer-events-auto flex items-start gap-3 p-4 rounded-xl border shadow-xl backdrop-blur-md animate-in slide-in-from-bottom-5 duration-300 ${borders[toast.type]}`}
         >
           {icons[toast.type]}
@@ -37,7 +42,8 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onRemove
           </div>
           <button
             onClick={() => onRemove(toast.id)}
-            className="text-slate-400 hover:text-white p-1 rounded-md transition-colors"
+            aria-label="Fechar notificação"
+            className="text-slate-400 hover:text-white p-1 rounded-md transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>

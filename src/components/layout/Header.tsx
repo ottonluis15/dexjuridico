@@ -15,7 +15,8 @@ import {
   LogOut,
   User as UserIcon,
   Building2,
-  Users
+  Users,
+  Briefcase
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -117,17 +118,56 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
+      {/* Alternador de Visões para Dono/Sócio (Item 3) */}
+      {isAdmin && (
+        <div 
+          role="group" 
+          aria-label="Alternar modo de visualização"
+          className="hidden lg:flex items-center bg-slate-950/70 p-1 rounded-2xl border border-slate-800/80 shadow-inner"
+        >
+          <button
+            type="button"
+            onClick={() => setActiveTab('dashboard')}
+            aria-pressed={activeTab !== 'lawyer-workbench'}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              activeTab !== 'lawyer-workbench'
+                ? 'bg-brand-600 text-white shadow-md shadow-brand-600/30'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Building2 className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Gestão do Escritório</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('lawyer-workbench')}
+            aria-pressed={activeTab === 'lawyer-workbench'}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'lawyer-workbench'
+                ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Briefcase className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Minha Área Individual</span>
+          </button>
+        </div>
+      )}
+
       {/* Direita: Ações Rápidas & Menu de Perfil */}
       <div className="flex items-center gap-2.5 sm:gap-3">
         {/* Botão de Ação Rápida */}
         <div className="relative" ref={quickRef}>
           <button
             onClick={() => setIsQuickActionOpen(!isQuickActionOpen)}
+            aria-haspopup="true"
+            aria-expanded={isQuickActionOpen}
+            aria-label="Criar nova ação rápida"
             className="flex items-center gap-2 px-3.5 py-2 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-brand-600/25 transition-all cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4" aria-hidden="true" />
             <span className="hidden md:inline">Nova Ação</span>
-            <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+            <ChevronDown className="w-3.5 h-3.5 opacity-70" aria-hidden="true" />
           </button>
 
           {isQuickActionOpen && (
@@ -184,10 +224,12 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="relative" ref={notifRef}>
           <button
             onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            aria-haspopup="true"
+            aria-expanded={isNotificationsOpen}
+            aria-label={`Notificações: ${urgentCount} prazos com atenção necessária`}
             className="relative p-2.5 text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 rounded-xl border border-slate-700/60 transition-colors cursor-pointer"
-            aria-label="Notificações"
           >
-            <Bell className="w-4 h-4" />
+            <Bell className="w-4 h-4" aria-hidden="true" />
             {urgentCount > 0 && (
               <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-slate-900 animate-pulse">
                 {urgentCount}
@@ -199,7 +241,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-4 z-50 animate-in fade-in zoom-in-95">
               <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                 <div className="flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-brand-400" />
+                  <Bell className="w-4 h-4 text-brand-400" aria-hidden="true" />
                   <span className="text-xs font-bold text-white uppercase tracking-wider">
                     Alertas de Prazos ({urgentCount})
                   </span>
@@ -236,9 +278,9 @@ export const Header: React.FC<HeaderProps> = ({
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 mb-1">
                               {isOverdue ? (
-                                <ShieldAlert className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                                <ShieldAlert className="w-3.5 h-3.5 text-rose-400 shrink-0" aria-hidden="true" />
                               ) : (
-                                <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" aria-hidden="true" />
                               )}
                               <span className="font-semibold truncate">{d.type}</span>
                             </div>
@@ -249,10 +291,11 @@ export const Header: React.FC<HeaderProps> = ({
                           </div>
                           <button
                             onClick={() => toggleDeadlineStatus(d.id)}
+                            aria-label={`Concluir prazo: ${d.description}`}
                             title="Dar baixa"
                             className="p-1.5 text-emerald-400 hover:bg-emerald-950/50 rounded-lg shrink-0 cursor-pointer"
                           >
-                            <CheckCircle2 className="w-4 h-4" />
+                            <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
                           </button>
                         </div>
                       );
@@ -267,16 +310,19 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="relative" ref={userRef}>
           <button
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+            aria-haspopup="true"
+            aria-expanded={isUserMenuOpen}
+            aria-label="Abrir menu da conta do usuário"
             className="flex items-center gap-2.5 p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 transition-colors cursor-pointer"
           >
             {currentUser?.avatarUrl ? (
               <img
                 src={currentUser.avatarUrl}
-                alt={currentUser.name}
+                alt={`Foto de perfil de ${currentUser.name}`}
                 className="w-7 h-7 rounded-lg object-cover border border-slate-600"
               />
             ) : (
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#C69255] to-amber-700 text-white flex items-center justify-center font-bold text-xs border border-amber-500/40 shadow-sm">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#C69255] to-amber-700 text-white flex items-center justify-center font-bold text-xs border border-amber-500/40 shadow-sm" aria-hidden="true">
                 {userInitial}
               </div>
             )}
@@ -288,7 +334,7 @@ export const Header: React.FC<HeaderProps> = ({
                 {currentUser?.role === 'ADMIN' ? 'Escritório / Titular' : (currentUser?.isIndependent ? 'Advogado Autônomo' : 'Advogado Associado')}
               </span>
             </div>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
           </button>
 
           {isUserMenuOpen && (
@@ -321,6 +367,42 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Alternador Rápido de Visões para Dono / Sócio */}
+              {isAdmin && (
+                <div className="p-1 mb-2 bg-slate-950/60 rounded-xl border border-slate-800 flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      setActiveTab('dashboard');
+                    }}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                      activeTab !== 'lawyer-workbench'
+                        ? 'bg-brand-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Building2 className="w-3.5 h-3.5" />
+                    <span>Gestão</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      setActiveTab('lawyer-workbench');
+                    }}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                      activeTab === 'lawyer-workbench'
+                        ? 'bg-amber-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Briefcase className="w-3.5 h-3.5" />
+                    <span>Individual</span>
+                  </button>
+                </div>
+              )}
 
               {/* Se for Escritório, listar apenas os advogados vinculados à sua banca */}
               {isAdmin && (

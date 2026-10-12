@@ -6,6 +6,7 @@ import { useData } from '../../context/DataContext';
 import { CaseModal } from '../cases/CaseModal';
 import { DeadlineModal } from '../deadlines/DeadlineModal';
 import { ClientModal } from '../clients/ClientModal';
+import { AccessibilityPanel } from '../common/AccessibilityPanel';
 
 interface LayoutProps {
   activeTab: TabType;
@@ -27,6 +28,11 @@ export const Layout: React.FC<LayoutProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-brand-500 selection:text-white">
+      {/* Skip Link para Acessibilidade por Teclado */}
+      <a href="#main-content" className="skip-link">
+        Pular para o conteúdo principal
+      </a>
+
       {/* Sidebar */}
       <Sidebar
         activeTab={activeTab}
@@ -46,10 +52,13 @@ export const Layout: React.FC<LayoutProps> = ({
           onOpenNewClientModal={() => setIsClientModalOpen(true)}
         />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto animate-in fade-in duration-200">
+        <main id="main-content" tabIndex={-1} className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto animate-in fade-in duration-200 focus:outline-none">
           {children}
         </main>
       </div>
+
+      {/* Painel de Acessibilidade Flutuante */}
+      <AccessibilityPanel />
 
       {/* Toasts */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />

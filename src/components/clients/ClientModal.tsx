@@ -3,6 +3,7 @@ import { Users, UserPlus } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { Client, ClientType, ClientStatus } from '../../types';
 import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface ClientModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   clientToEdit
 }) => {
   const { addClient, updateClient, lawyers } = useData();
+  const { currentUser } = useAuth();
 
   const [name, setName] = useState('');
   const [type, setType] = useState<ClientType>('PF');
@@ -279,16 +281,23 @@ export const ClientModal: React.FC<ClientModalProps> = ({
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
               Advogado de Relacionamento
             </label>
-            <select
-              value={linkedLawyerId}
-              onChange={e => setLinkedLawyerId(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-            >
-              <option value="">Nenhum específico</option>
-              {lawyers.map(l => (
-                <option key={l.id} value={l.id}>{l.name} ({l.roleTitle})</option>
-              ))}
-            </select>
+            {currentUser?.isIndependent ? (
+              <div className="w-full px-3.5 py-2.5 bg-slate-800/50 border border-slate-700/60 rounded-xl text-xs text-slate-300 flex items-center justify-between">
+                <span>{currentUser.name}</span>
+                <span className="text-[10px] text-amber-400 font-semibold px-2 py-0.5 bg-amber-950/60 rounded border border-amber-800/40">Autônomo</span>
+              </div>
+            ) : (
+              <select
+                value={linkedLawyerId}
+                onChange={e => setLinkedLawyerId(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              >
+                <option value="">Nenhum específico (Geral da banca)</option>
+                {lawyers.map(l => (
+                  <option key={l.id} value={l.id}>{l.name} ({l.roleTitle})</option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>

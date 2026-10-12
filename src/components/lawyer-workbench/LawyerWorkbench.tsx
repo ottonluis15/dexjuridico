@@ -9,7 +9,8 @@ import {
   Plus, 
   AlertTriangle,
   ArrowRight,
-  FileText
+  FileText,
+  Building2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -19,18 +20,21 @@ import { DeadlineModal } from '../deadlines/DeadlineModal';
 import { CaseModal } from '../cases/CaseModal';
 import { LegalCase } from '../../types';
 
-export const LawyerWorkbench: React.FC<{ onNavigateToAI: () => void }> = ({ onNavigateToAI }) => {
-  const { currentUser } = useAuth();
-  const { userCases, userDeadlines, toggleDeadlineStatus, clients } = useData();
+export const LawyerWorkbench: React.FC<{ 
+  onNavigateToAI: () => void;
+  onNavigateToOffice?: () => void;
+}> = ({ onNavigateToAI, onNavigateToOffice }) => {
+  const { currentUser, isAdmin } = useAuth();
+  const { personalCases, personalDeadlines, toggleDeadlineStatus, clients } = useData();
 
   const [selectedCase, setSelectedCase] = useState<LegalCase | null>(null);
   const [isNewDeadlineOpen, setIsNewDeadlineOpen] = useState(false);
   const [isNewCaseOpen, setIsNewCaseOpen] = useState(false);
 
   const today = new Date().toISOString().substring(0, 10);
-  const todayDeadlines = userDeadlines.filter(d => d.dueDate === today && d.status !== 'COMPLETED');
-  const pendingDeadlines = userDeadlines.filter(d => d.status === 'PENDING').slice(0, 6);
-  const activeCases = userCases.filter(c => c.status !== 'ARQUIVADO');
+  const todayDeadlines = personalDeadlines.filter(d => d.dueDate === today && d.status !== 'COMPLETED');
+  const pendingDeadlines = personalDeadlines.filter(d => d.status === 'PENDING').slice(0, 6);
+  const activeCases = personalCases.filter(c => c.status !== 'ARQUIVADO');
 
   return (
     <div className="space-y-6">
@@ -58,17 +62,26 @@ export const LawyerWorkbench: React.FC<{ onNavigateToAI: () => void }> = ({ onNa
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {isAdmin && onNavigateToOffice && (
+            <button
+              onClick={onNavigateToOffice}
+              className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-2xl border border-slate-700 transition-all cursor-pointer"
+            >
+              <Building2 className="w-4 h-4 text-brand-400" />
+              <span>Gestão do Escritório</span>
+            </button>
+          )}
           <button
             onClick={onNavigateToAI}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-cyan-600 to-brand-600 hover:from-cyan-500 hover:to-brand-500 text-white text-xs font-bold rounded-2xl shadow-lg shadow-cyan-950/40 border border-cyan-400/30 transition-all"
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-cyan-600 to-brand-600 hover:from-cyan-500 hover:to-brand-500 text-white text-xs font-bold rounded-2xl shadow-lg shadow-cyan-950/40 border border-cyan-400/30 transition-all cursor-pointer"
           >
             <Sparkles className="w-4 h-4 text-cyan-200" />
             <span>Triagem com IA</span>
           </button>
           <button
             onClick={() => setIsNewDeadlineOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-2xl shadow-lg shadow-amber-600/30 transition-all"
+            className="flex items-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-2xl shadow-lg shadow-amber-600/30 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Agendar Prazo</span>
@@ -102,7 +115,7 @@ export const LawyerWorkbench: React.FC<{ onNavigateToAI: () => void }> = ({ onNa
           <div>
             <span className="text-xs text-slate-400 font-medium">Total de Prazos Pendentes</span>
             <p className="text-xl font-bold text-white mt-0.5">
-              {userDeadlines.filter(d => d.status === 'PENDING').length}
+              {personalDeadlines.filter(d => d.status === 'PENDING').length}
             </p>
           </div>
           <div className="p-2.5 rounded-xl bg-slate-800 text-slate-300 border border-slate-700">

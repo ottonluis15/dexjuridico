@@ -9,6 +9,7 @@ import {
   FolderKanban, 
   Edit, 
   Trash2,
+  UserMinus,
   Award
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
@@ -20,7 +21,7 @@ import { EmptyState } from '../common/EmptyState';
 
 export const LawyerList: React.FC = () => {
   const { lawyers, cases, deleteLawyer } = useData();
-  const { isAdmin } = useAuth();
+  const { isAdmin, currentUser } = useAuth();
 
   const [search, setSearch] = useState('');
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
@@ -48,10 +49,10 @@ export const LawyerList: React.FC = () => {
         {isAdmin && (
           <button
             onClick={() => setIsNewModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-brand-600/30 transition-all self-start sm:self-auto"
+            className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-brand-600/30 transition-all self-start sm:self-auto cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            Novo Advogado
+            Adicionar Advogado
           </button>
         )}
       </div>
@@ -76,13 +77,14 @@ export const LawyerList: React.FC = () => {
           title="Nenhum advogado encontrado"
           description="Nenhum membro do corpo jurídico corresponde à busca."
           icon={UserCheck}
-          actionLabel={isAdmin ? 'Cadastrar Advogado' : undefined}
+          actionLabel={isAdmin ? 'Adicionar Advogado' : undefined}
           onAction={isAdmin ? () => setIsNewModalOpen(true) : undefined}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredLawyers.map(lawyer => {
             const activeCases = cases.filter(c => c.lawyerId === lawyer.id && c.status !== 'ARQUIVADO').length;
+            const isSelf = currentUser && (currentUser.id === lawyer.userId || currentUser.email.toLowerCase() === lawyer.email.toLowerCase());
 
             return (
               <div
@@ -155,17 +157,19 @@ export const LawyerList: React.FC = () => {
                       <button
                         onClick={() => setEditingLawyer(lawyer)}
                         title="Editar advogado"
-                        className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={() => setLawyerToDelete(lawyer)}
-                        title="Excluir advogado"
-                        className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {!isSelf && (
+                        <button
+                          onClick={() => setLawyerToDelete(lawyer)}
+                          title="Remover vínculo da equipe (manter conta como autônomo)"
+                          className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-amber-950/30 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <UserMinus className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -185,7 +189,7 @@ export const LawyerList: React.FC = () => {
         lawyerToEdit={editingLawyer}
       />
 
-      {/* Delete confirmation */}
+      {/* Dialog de Confirmação para Remoção de Vínculo */}
       {lawyerToDelete && (
         <ConfirmDialog
           isOpen={!!lawyerToDelete}
@@ -196,8 +200,10 @@ export const LawyerList: React.FC = () => {
               setLawyerToDelete(null);
             }
           }}
-          title="Excluir Advogado"
-          message={`Tem certeza que deseja remover ${lawyerToDelete.name} do corpo jurídico?`}
+          title="Remover Vínculo da Equipe"
+          message={`Tem certeza de que deseja remover o vínculo de ${lawyerToDelete.name} com este escritório? A conta de acesso do profissional será preservada (como advogado autônomo), mas ele não terá mais acesso aos casos, clientes e dados do escritório.`}
+          confirmLabel="Remover Vínculo"
+          variant="danger"
         />
       )}
     </div>

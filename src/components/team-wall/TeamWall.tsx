@@ -13,7 +13,9 @@ import {
   Trophy, 
   Megaphone,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Building2,
+  UserCheck
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -249,9 +251,24 @@ export const TeamWall: React.FC = () => {
                       {post.authorInitial}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-bold text-white">{post.authorName}</span>
                         <span className="text-[10px] text-slate-400">• {post.authorRole}</span>
+                        {post.officeName && !post.officeName.toLowerCase().includes('autônom') && post.officeId ? (
+                          <span className="text-[10px] text-cyan-300 font-medium px-2 py-0.5 rounded-full bg-cyan-950/60 border border-cyan-800/50 flex items-center gap-1">
+                            {post.officeLogoUrl ? (
+                              <img src={post.officeLogoUrl} alt="" className="w-3 h-3 rounded-full object-cover" />
+                            ) : (
+                              <Building2 className="w-2.5 h-2.5 text-cyan-400 shrink-0" />
+                            )}
+                            <span className="truncate max-w-[220px]">{post.officeName}</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-amber-300 font-medium px-2 py-0.5 rounded-full bg-amber-950/60 border border-amber-800/50 flex items-center gap-1">
+                            <UserCheck className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                            <span>Advogado autônomo</span>
+                          </span>
+                        )}
                       </div>
                       <span className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
                         <Clock className="w-3 h-3" />

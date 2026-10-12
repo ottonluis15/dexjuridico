@@ -56,3 +56,94 @@
 .animate-pulse-subtle {
   animation: pulseGlow 3s ease-in-out infinite;
 }
+
+/* ==========================================================================
+   ACESSIBILIDADE (WCAG 2.1 AA)
+   ========================================================================== */
+
+/* Foco Visível e Nítido para navegação por teclado */
+:focus-visible {
+  outline: 2px solid #0284c7 !important;
+  outline-offset: 2px !important;
+}
+
+/* Link Pular para o Conteúdo Principal (Skip Link) */
+.skip-link {
+  position: absolute;
+  top: -120px;
+  left: 1.5rem;
+  background: #0284c7;
+  color: #ffffff;
+  padding: 0.75rem 1.25rem;
+  font-weight: 700;
+  font-size: 0.875rem;
+  border-radius: 0.75rem;
+  z-index: 99999;
+  text-decoration: none;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(255, 255, 255, 0.4);
+  transition: top 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  top: 1.25rem;
+  outline: 3px solid #38bdf8 !important;
+  outline-offset: 2px;
+}
+
+/* Escalas de Tamanho de Fonte (Salvas em Preferência de Acessibilidade) */
+html.a11y-font-normal {
+  font-size: 16px;
+}
+
+html.a11y-font-large {
+  font-size: 18px;
+}
+
+html.a11y-font-xlarge {
+  font-size: 20px;
+}
+
+/* Modo Alto Contraste */
+html.a11y-high-contrast {
+  filter: contrast(115%);
+}
+
+html.a11y-high-contrast body {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+html.a11y-high-contrast button,
+html.a11y-high-contrast input,
+html.a11y-high-contrast select,
+html.a11y-high-contrast textarea {
+  border-color: #ffffff !important;
+}
+
+html.a11y-high-contrast :focus-visible {
+  outline: 3px solid #ffff00 !important;
+  outline-offset: 3px !important;
+}
+
+/* Respeito a prefers-reduced-motion ou alternador manual */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+html.a11y-reduced-motion *,
+html.a11y-reduced-motion ::before,
+html.a11y-reduced-motion ::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+

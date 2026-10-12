@@ -65,17 +65,35 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     e.preventDefault();
     setError(null);
 
-    const cleanEmail = email.trim();
-    if (!cleanEmail || !password.trim()) {
-      setError('Por favor, informe seu e-mail institucional e a sua senha de acesso.');
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    if (!cleanEmail && !cleanPassword) {
+      setError('Por favor, informe seu e-mail e a senha de acesso.');
+      return;
+    }
+
+    if (!cleanEmail) {
+      setError('Por favor, informe seu e-mail institucional.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      setError('Por favor, informe um endereço de e-mail válido (exemplo: usuario@escritorio.adv.br).');
+      return;
+    }
+
+    if (!cleanPassword) {
+      setError('Por favor, informe sua senha de acesso.');
       return;
     }
 
     setIsLoading(true);
     try {
-      const res = await login(cleanEmail, password);
+      const res = await login(cleanEmail, cleanPassword);
       if (!res.success) {
-        setError(res.error || 'Não foi possível autenticar. Verifique suas credenciais.');
+        setError(res.error || 'E-mail ou senha incorretos. Verifique suas credenciais e tente novamente.');
       }
     } catch {
       setError('Ocorreu um erro ao processar o login. Tente novamente em instantes.');
@@ -120,20 +138,28 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-200 text-xs leading-relaxed animate-in fade-in">
+              <div 
+                id="login-error"
+                role="alert"
+                className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-200 text-xs leading-relaxed animate-in fade-in"
+              >
                 {error}
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <label htmlFor="login-email" className="block text-xs font-semibold text-slate-300 mb-1.5">
                 E-mail Institucional *
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" aria-hidden="true" />
                 <input
+                  id="login-email"
                   type="email"
                   required
+                  autoComplete="username email"
+                  aria-invalid={!!error}
+                  aria-describedby={error ? 'login-error' : undefined}
                   placeholder="usuario@escritorio.adv.br"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
@@ -143,14 +169,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <label htmlFor="login-password" className="block text-xs font-semibold text-slate-300 mb-1.5">
                 Senha de Acesso *
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" aria-hidden="true" />
                 <input
+                  id="login-password"
                   type={showPassword ? 'text' : 'password'}
                   required
+                  autoComplete="current-password"
+                  aria-invalid={!!error}
+                  aria-describedby={error ? 'login-error' : undefined}
                   placeholder="••••••••••••"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
@@ -159,10 +189,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-slate-400 hover:text-white cursor-pointer"
-                  tabIndex={-1}
+                  aria-label={showPassword ? 'Ocultar senha' : 'Exibir senha'}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-white cursor-pointer p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-brand-500"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
                 </button>
               </div>
               <div className="flex justify-end mt-1.5">
@@ -399,48 +429,57 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       {/* Modal de Redefinição de Senha */}
       {showResetModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
-          <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl relative space-y-5">
+          <div 
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reset-modal-title"
+            className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl relative space-y-5"
+          >
             <button
               type="button"
               onClick={() => setShowResetModal(false)}
-              className="absolute top-5 right-5 text-slate-400 hover:text-white cursor-pointer"
+              aria-label="Fechar janela de redefinição de senha"
+              className="absolute top-5 right-5 text-slate-400 hover:text-white cursor-pointer p-1 rounded-lg"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5" aria-hidden="true" />
             </button>
 
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400" aria-hidden="true">
                 <KeyRound className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">Redefinir Senha de Acesso</h3>
+                <h3 id="reset-modal-title" className="text-base font-bold text-white">Redefinir Senha de Acesso</h3>
                 <p className="text-xs text-slate-400">Defina uma nova senha para sua conta</p>
               </div>
             </div>
 
             {resetStatus && (
               <div
+                role="status"
                 className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
                   resetStatus.success
                     ? 'bg-emerald-950/60 border border-emerald-800 text-emerald-200'
                     : 'bg-rose-950/60 border border-rose-800 text-rose-200'
                 }`}
               >
-                {resetStatus.success && <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />}
+                {resetStatus.success && <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" aria-hidden="true" />}
                 <span>{resetStatus.message}</span>
               </div>
             )}
 
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label htmlFor="reset-email" className="block text-xs font-semibold text-slate-300 mb-1">
                   E-mail Institucional Cadastrado
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" aria-hidden="true" />
                   <input
+                    id="reset-email"
                     type="email"
                     required
+                    autoComplete="email"
                     value={resetEmail}
                     onChange={e => setResetEmail(e.target.value)}
                     placeholder="ex: otton.luis.alcaraz@gmail.com"
@@ -450,14 +489,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label htmlFor="reset-password" className="block text-xs font-semibold text-slate-300 mb-1">
                   Nova Senha de Acesso (Mínimo 6 dígitos)
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" aria-hidden="true" />
                   <input
+                    id="reset-password"
                     type="password"
                     required
+                    autoComplete="new-password"
                     value={resetPassword}
                     onChange={e => setResetPassword(e.target.value)}
                     placeholder="Digite sua nova senha"

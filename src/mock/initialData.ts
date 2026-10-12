@@ -185,6 +185,27 @@ export const INITIAL_USERS: User[] = [
     salt: DEFAULT_SALT,
     passwordHash: DEFAULT_HASH,
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop',
+  },
+  // 10. CONTA DE DEMONSTRAÇÃO EXCLUSIVA (Item 5)
+  // Destinada a apresentações a potenciais clientes, marcada com isDemo = true
+  {
+    id: 'usr_demo_apresentacao',
+    name: 'Demonstração Dex',
+    email: (import.meta.env.VITE_DEMO_EMAIL || 'demo@dexjuridico.adv.br').toLowerCase(),
+    role: 'ADMIN',
+    isSuperAdmin: false,
+    isDemo: true,
+    oab: '000.000/DEMO',
+    phone: '(11) 99999-0000',
+    specialties: ['Direito Geral', 'Casos de Demonstração'],
+    status: 'ACTIVE',
+    officeId: 'off_demo_sandbox',
+    officeName: 'Demonstração Comercial Dex',
+    officeCode: 'DEMO-001',
+    isIndependent: false,
+    salt: DEFAULT_SALT,
+    passwordHash: DEFAULT_HASH,
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop',
   }
 ];
 
@@ -324,6 +345,21 @@ export const INITIAL_LAWYERS: Lawyer[] = [
     status: 'ACTIVE',
     roleTitle: 'Advogada Autônoma',
     assignedCasesCount: 1,
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop',
+  },
+  // 10. ADVOGADO DE DEMONSTRAÇÃO
+  {
+    id: 'law_demo_apresentacao',
+    userId: 'usr_demo_apresentacao',
+    name: 'Demonstração Dex',
+    email: (import.meta.env.VITE_DEMO_EMAIL || 'demo@dexjuridico.adv.br').toLowerCase(),
+    phone: '(11) 99999-0000',
+    oab: '000.000/DEMO',
+    specialties: ['Direito Geral', 'Casos de Demonstração'],
+    status: 'ACTIVE',
+    roleTitle: 'Apresentação Comercial Dex',
+    assignedCasesCount: 1,
+    officeId: 'off_demo_sandbox',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop',
   }
 ];
@@ -546,6 +582,27 @@ export const INITIAL_CLIENTS: Client[] = [
     status: 'ACTIVE',
     linkedLawyerId: 'law_mariana',
     officeId: PRIMARY_OFFICE_ID
+  },
+  {
+    id: 'cli_demo_sandbox',
+    name: 'Exemplo Sandbox Demonstração Ltda',
+    type: 'PJ',
+    document: '00.000.000/0001-00',
+    email: 'contato@exemplodemo.com.br',
+    phone: '(11) 99999-0000',
+    address: {
+      street: 'Av. Demonstração',
+      number: '100',
+      neighborhood: 'Bela Vista',
+      city: 'São Paulo',
+      state: 'SP',
+      zipCode: '01310-000'
+    },
+    notes: 'Cliente fictício isolado em ambiente sandbox para apresentação do Dex.',
+    createdAt: '2026-03-01',
+    status: 'ACTIVE',
+    linkedLawyerId: 'law_demo_apresentacao',
+    officeId: 'off_demo_sandbox'
   }
 ];
 
@@ -793,6 +850,23 @@ export const INITIAL_CASES: LegalCase[] = [
     description: 'Disputa contra multinacional de infraestrutura em nuvem por faturamento errôneo de consumo extraordinário de tokens de inteligência artificial.',
     updatedAt: '2026-03-11',
     officeId: PRIMARY_OFFICE_ID
+  },
+  // 16. PROCESSO SANDBOX PARA CONTA DE DEMONSTRAÇÃO
+  {
+    id: 'case_demo_sandbox',
+    caseNumber: '1000000-00.2026.8.26.0100',
+    court: '1ª Vara Cível do Foro Central da Capital / SP',
+    clientId: 'cli_demo_sandbox',
+    lawyerId: 'law_demo_apresentacao',
+    legalArea: 'Cível',
+    actionType: 'Ação de Demonstração Interativa',
+    status: 'INSTRUCAO',
+    value: 50000.00,
+    distributionDate: '2026-03-01',
+    description: 'Processo demonstrativo isolado em ambiente sandbox comercial.',
+    notes: 'Dados puramente ilustrativos para apresentação do sistema a potenciais clientes.',
+    updatedAt: '2026-03-01',
+    officeId: 'off_demo_sandbox'
   }
 ];
 
@@ -1065,6 +1139,7 @@ export const INITIAL_TEAM_POSTS: WallPost[] = [
     likedBy: ['usr_admin_1', 'usr_admin_otton', 'usr_law_camila'],
     commentsCount: 4,
     officeId: PRIMARY_OFFICE_ID,
+    officeName: PRIMARY_OFFICE_NAME,
     deleted_at: null,
     deleted_by: null
   },
@@ -1083,6 +1158,7 @@ export const INITIAL_TEAM_POSTS: WallPost[] = [
     likedBy: ['usr_admin_1', 'usr_law_lucas'],
     commentsCount: 2,
     officeId: PRIMARY_OFFICE_ID,
+    officeName: PRIMARY_OFFICE_NAME,
     deleted_at: null,
     deleted_by: null
   },
@@ -1101,6 +1177,7 @@ export const INITIAL_TEAM_POSTS: WallPost[] = [
     likedBy: ['usr_admin_otton'],
     commentsCount: 1,
     officeId: PRIMARY_OFFICE_ID,
+    officeName: PRIMARY_OFFICE_NAME,
     deleted_at: null,
     deleted_by: null
   }

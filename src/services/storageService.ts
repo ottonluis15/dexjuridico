@@ -20,7 +20,8 @@ import {
   INITIAL_AUDIT_LOGS, 
   INITIAL_USERS, 
   INITIAL_TEMPLATES,
-  INITIAL_TEAM_POSTS 
+  INITIAL_TEAM_POSTS,
+  PRIMARY_OFFICE_ID 
 } from '../mock/initialData';
 import { cryptoService } from './cryptoService';
 
@@ -50,28 +51,54 @@ export const storageService = {
       const isOutdated = storedVersion !== CURRENT_SEED_VERSION;
 
       const rawUsers = localStorage.getItem(STORAGE_KEYS.USERS);
-      if (isOutdated || !rawUsers || rawUsers === '[]' || rawUsers === 'null') {
+      if (!rawUsers || rawUsers === '[]' || rawUsers === 'null') {
         localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
       } else {
         try {
           const users: User[] = JSON.parse(rawUsers);
           let changed = false;
+          // Preserva todos os usuários cadastrados e assegura que as contas padrão do seed existam
+          for (const initUser of INITIAL_USERS) {
+            if (!users.some(u => u.email.trim().toLowerCase() === initUser.email.trim().toLowerCase())) {
+              users.push(initUser);
+              changed = true;
+            }
+          }
           users.forEach(u => {
             if (u.id === 'usr_admin_otton' && !u.isSuperAdmin) {
               u.isSuperAdmin = true;
               changed = true;
             }
           });
-          if (changed) {
+          if (changed || isOutdated) {
             localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
           }
-        } catch {}
+        } catch {
+          localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+        }
       }
 
       const rawClients = localStorage.getItem(STORAGE_KEYS.CLIENTS);
-      if (isOutdated || !rawClients || rawClients === '[]' || rawClients === 'null') {
+      if (!rawClients || rawClients === '[]' || rawClients === 'null') {
         localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(INITIAL_CLIENTS));
+      } else {
+        try {
+          const storedClients: Client[] = JSON.parse(rawClients);
+          let changed = false;
+          for (const initClient of INITIAL_CLIENTS) {
+            if (!storedClients.some(c => c.id === initClient.id)) {
+              storedClients.push(initClient);
+              changed = true;
+            }
+          }
+          if (changed) {
+            localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(storedClients));
+          }
+        } catch {
+          localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(INITIAL_CLIENTS));
+        }
       }
+      this.migrateClientsOwnerBinding();
 
       const rawLawyers = localStorage.getItem(STORAGE_KEYS.LAWYERS);
       if (isOutdated || !rawLawyers || rawLawyers === '[]' || rawLawyers === 'null') {
@@ -104,9 +131,26 @@ export const storageService = {
       }
 
       const rawTeamPosts = localStorage.getItem(STORAGE_KEYS.TEAM_POSTS);
-      if (isOutdated || !rawTeamPosts || rawTeamPosts === '[]' || rawTeamPosts === 'null') {
+      if (!rawTeamPosts || rawTeamPosts === '[]' || rawTeamPosts === 'null') {
         localStorage.setItem(STORAGE_KEYS.TEAM_POSTS, JSON.stringify(INITIAL_TEAM_POSTS));
+      } else {
+        try {
+          const storedPosts: WallPost[] = JSON.parse(rawTeamPosts);
+          let changed = false;
+          for (const initPost of INITIAL_TEAM_POSTS) {
+            if (!storedPosts.some(p => p.id === initPost.id)) {
+              storedPosts.push(initPost);
+              changed = true;
+            }
+          }
+          if (changed) {
+            localStorage.setItem(STORAGE_KEYS.TEAM_POSTS, JSON.stringify(storedPosts));
+          }
+        } catch {
+          localStorage.setItem(STORAGE_KEYS.TEAM_POSTS, JSON.stringify(INITIAL_TEAM_POSTS));
+        }
       }
+      this.migrateTeamPostsOffice();
 
       const rawAudit = localStorage.getItem(STORAGE_KEYS.AUDIT_LOGS);
       if (!rawAudit) {
@@ -217,7 +261,10 @@ export const storageService = {
   },
 
   // Exportação e Importação de Dados entre dispositivos
-  exportAllData(): string {
+  exportAllData(currentUser?: User | null): string {
+    if (currentUser?.isDemo) {
+      return '';
+    }
     const backup = {
       users: this.getUsers(),
       clients: this.getClients(),
@@ -253,11 +300,11 @@ export const storageService = {
   findUserByEmail(email: string): User | undefined {
     const query = email.trim().toLowerCase();
     const users = this.getUsers();
-    const found = users.find(u => u.email.toLowerCase() === query);
+    const found = users.find(u => (u.email || '').trim().toLowerCase() === query);
     if (found) return found;
 
     // Contingência direta nos usuários iniciais caso não esteja no storage
-    const fallback = INITIAL_USERS.find(u => u.email.toLowerCase() === query);
+    const fallback = INITIAL_USERS.find(u => (u.email || '').trim().toLowerCase() === query);
     if (fallback) {
       const merged = [...users, fallback];
       this.saveUsers(merged);
@@ -341,6 +388,227 @@ export const storageService = {
     localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(clients));
   },
 
+  // Migração de vínculo de proprietário para clientes legados (Item 6)
+  migrateClientsOwnerBinding(): { migratedCount: number } {
+    const clients = this.getClients();
+    const lawyers = this.getLawyers();
+    let migratedCount = 0;
+
+    const updated = clients.map(c => {
+      let changed = false;
+      let newOfficeId = c.officeId;
+      let newLinkedLawyerId = c.linkedLawyerId;
+
+      if (!newOfficeId && !newLinkedLawyerId) {
+        newOfficeId = PRIMARY_OFFICE_ID;
+        changed = true;
+      } else if (!newOfficeId && newLinkedLawyerId) {
+        const lawyer = lawyers.find(l => l.id === newLinkedLawyerId);
+        if (lawyer && lawyer.officeId) {
+          newOfficeId = lawyer.officeId;
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        migratedCount++;
+        return { ...c, officeId: newOfficeId, linkedLawyerId: newLinkedLawyerId };
+      }
+      return c;
+    });
+
+    if (migratedCount > 0) {
+      this.saveClients(updated);
+    }
+    return { migratedCount };
+  },
+
+  // Busca de clientes com isolamento estrito por escritório / advogado (Item 6)
+  getClientsForUser(
+    currentUser: User | null,
+    currentLawyer?: Lawyer | null,
+    userCases?: LegalCase[]
+  ): Client[] {
+    if (!currentUser) return [];
+    const all = this.getClients();
+
+    // Dono/sócio: vê SOMENTE clientes do seu escritório
+    if (currentUser.role === 'ADMIN' && currentUser.officeId) {
+      return all.filter(c => c.officeId === currentUser.officeId);
+    }
+
+    // Advogado autônomo: vê SOMENTE os clientes cadastrados por ele (vinculados a ele)
+    if (currentUser.isIndependent || !currentUser.officeId) {
+      const myId = currentLawyer?.id || currentUser.id;
+      return all.filter(c => c.linkedLawyerId === myId || c.linkedLawyerId === currentUser.id);
+    }
+
+    // Advogado associado/vinculado:
+    // Vê os clientes do seu escritório que lhe foram atribuídos
+    if (currentUser.officeId) {
+      const myLawyerId = currentLawyer?.id || currentUser.id;
+      const myCaseClientIds = new Set((userCases || []).map(cs => cs.clientId));
+      return all.filter(c => 
+        c.officeId === currentUser.officeId && 
+        (c.linkedLawyerId === myLawyerId || myCaseClientIds.has(c.id))
+      );
+    }
+
+    return [];
+  },
+
+  // Validação de acesso a cliente individual (403/404)
+  getClientById(
+    id: string,
+    currentUser: User | null,
+    currentLawyer?: Lawyer | null,
+    userCases?: LegalCase[]
+  ): { client: Client | null; status: 200 | 403 | 404 } {
+    const all = this.getClients();
+    const client = all.find(c => c.id === id);
+    if (!client) {
+      return { client: null, status: 404 };
+    }
+    const userClients = this.getClientsForUser(currentUser, currentLawyer, userCases);
+    const hasAccess = userClients.some(c => c.id === id);
+    if (!hasAccess) {
+      return { client: null, status: 403 };
+    }
+    return { client, status: 200 };
+  },
+
+  // Cadastro de cliente com vinculação automática e validação
+  addClientForUser(
+    clientData: Omit<Client, 'id' | 'createdAt'>,
+    currentUser: User | null,
+    currentLawyer?: Lawyer | null
+  ): { client?: Client; error?: string; status: 200 | 403 } {
+    if (!currentUser) {
+      return { error: 'Usuário não autenticado', status: 403 };
+    }
+    const all = this.getClients();
+    const newClient: Client = {
+      ...clientData,
+      id: `cli_${Date.now()}`,
+      createdAt: new Date().toISOString().substring(0, 10),
+      officeId: currentUser.isIndependent ? undefined : currentUser.officeId,
+      linkedLawyerId: currentUser.isIndependent 
+        ? (currentLawyer?.id || currentUser.id)
+        : (clientData.linkedLawyerId || currentLawyer?.id)
+    };
+    this.saveClients([newClient, ...all]);
+    return { client: newClient, status: 200 };
+  },
+
+  // Edição com validação estrita de permissão (403/404)
+  updateClientForUser(
+    id: string,
+    updates: Partial<Client>,
+    currentUser: User | null,
+    currentLawyer?: Lawyer | null,
+    userCases?: LegalCase[]
+  ): { client?: Client; error?: string; status: 200 | 403 | 404 } {
+    const { client, status } = this.getClientById(id, currentUser, currentLawyer, userCases);
+    if (status !== 200 || !client) {
+      return { error: status === 404 ? 'Cliente não encontrado' : 'Acesso negado: cliente pertence a outro escritório', status };
+    }
+    const all = this.getClients();
+    const updatedClient: Client = {
+      ...client,
+      ...updates,
+      officeId: client.officeId, // Não permite alterar escritório de dono
+      linkedLawyerId: currentUser?.isIndependent ? client.linkedLawyerId : (updates.linkedLawyerId || client.linkedLawyerId)
+    };
+    const updated = all.map(c => c.id === id ? updatedClient : c);
+    this.saveClients(updated);
+    return { client: updatedClient, status: 200 };
+  },
+
+  // Exclusão com validação estrita (403/404)
+  deleteClientForUser(
+    id: string,
+    currentUser: User | null,
+    currentLawyer?: Lawyer | null,
+    userCases?: LegalCase[]
+  ): { success: boolean; error?: string; status: 200 | 403 | 404 } {
+    const { client, status } = this.getClientById(id, currentUser, currentLawyer, userCases);
+    if (status !== 200 || !client) {
+      return { success: false, error: status === 404 ? 'Cliente não encontrado' : 'Acesso negado: cliente pertence a outro escritório', status };
+    }
+    if (!currentUser?.isIndependent && currentUser?.role !== 'ADMIN') {
+      return { success: false, error: 'Apenas sócios administradores ou o advogado autônomo responsável podem excluir clientes', status: 403 };
+    }
+    const all = this.getClients();
+    this.saveClients(all.filter(c => c.id !== id));
+    return { success: true, status: 200 };
+  },
+
+  // Exportação CSV restrita à carteira do usuário (Item 6)
+  exportClientsCsvForUser(
+    currentUser: User | null,
+    currentLawyer?: Lawyer | null,
+    userCases?: LegalCase[]
+  ): { csv: string; count: number; status: 200 | 403 } {
+    if (!currentUser) {
+      return { csv: '', count: 0, status: 403 };
+    }
+    // Conta de demonstração não pode exportar dados (Item 5)
+    if (currentUser.isDemo) {
+      return { csv: '', count: 0, status: 403 };
+    }
+    const authorizedClients = this.getClientsForUser(currentUser, currentLawyer, userCases);
+    const headers = ['ID', 'Nome', 'Tipo', 'Documento', 'Email', 'Telefone', 'Cidade', 'Estado', 'Status', 'DataCadastro'];
+    const rows = authorizedClients.map(c => [
+      c.id,
+      `"${c.name.replace(/"/g, '""')}"`,
+      c.type,
+      `"${c.document}"`,
+      `"${c.email}"`,
+      `"${c.phone}"`,
+      `"${c.address.city}"`,
+      `"${c.address.state}"`,
+      c.status,
+      c.createdAt
+    ]);
+    const csvContent = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
+    return { csv: csvContent, count: authorizedClients.length, status: 200 };
+  },
+
+  // Controle de cota de uso do Assistente de IA para Conta Demo (Item 5)
+  checkDemoAiRateLimit(): { allowed: boolean; remaining: number; resetMinutes: number } {
+    const KEY = 'dex_demo_ai_rate_limit';
+    const MAX_REQUESTS_PER_HOUR = 5;
+    try {
+      const raw = localStorage.getItem(KEY);
+      const now = Date.now();
+      let data: { count: number; firstRequestTime: number } = raw 
+        ? JSON.parse(raw) 
+        : { count: 0, firstRequestTime: now };
+
+      const ONE_HOUR = 60 * 60 * 1000;
+      if (now - data.firstRequestTime > ONE_HOUR) {
+        data = { count: 1, firstRequestTime: now };
+        localStorage.setItem(KEY, JSON.stringify(data));
+        return { allowed: true, remaining: MAX_REQUESTS_PER_HOUR - 1, resetMinutes: 60 };
+      }
+
+      if (data.count >= MAX_REQUESTS_PER_HOUR) {
+        const resetMinutes = Math.max(1, Math.ceil((data.firstRequestTime + ONE_HOUR - now) / (60 * 1000)));
+        return { allowed: false, remaining: 0, resetMinutes };
+      }
+
+      data.count++;
+      localStorage.setItem(KEY, JSON.stringify(data));
+      return { 
+        allowed: true, 
+        remaining: MAX_REQUESTS_PER_HOUR - data.count, 
+        resetMinutes: Math.max(1, Math.ceil((data.firstRequestTime + ONE_HOUR - now) / (60 * 1000))) 
+      };
+    } catch {
+      return { allowed: true, remaining: 5, resetMinutes: 60 };
+    }
+  },
+
   // Advogados
   getLawyers(): Lawyer[] {
     const data = localStorage.getItem(STORAGE_KEYS.LAWYERS);
@@ -367,6 +635,105 @@ export const storageService = {
     }
     // Advogado autônomo vê apenas a si mesmo
     return lawyers.filter(l => l.userId === currentUser.id);
+  },
+
+  removeLawyerAffiliation(lawyerId: string): { success: boolean; message: string } {
+    const lawyers = this.getLawyers();
+    const lIdx = lawyers.findIndex(l => l.id === lawyerId);
+    if (lIdx === -1) {
+      return { success: false, message: 'Advogado não encontrado no sistema.' };
+    }
+
+    const lawyer = lawyers[lIdx];
+    const users = this.getUsers();
+    const uIdx = users.findIndex(u => u.id === lawyer.userId || (u.email && u.email.toLowerCase() === lawyer.email.toLowerCase()));
+
+    // Protege contra desvincular o próprio sócio fundador / admin
+    if (uIdx !== -1 && users[uIdx].role === 'ADMIN') {
+      return { success: false, message: 'Não é permitido remover o vínculo do sócio administrador titular.' };
+    }
+
+    // Desvincula no registro de advogado (sem apagar a conta)
+    lawyers[lIdx] = {
+      ...lawyer,
+      officeId: undefined,
+      roleTitle: 'Advogado Autônomo'
+    };
+    this.saveLawyers(lawyers);
+
+    // Desvincula na conta de usuário (mantém a conta ativa com perfil independente)
+    if (uIdx !== -1) {
+      users[uIdx] = {
+        ...users[uIdx],
+        officeId: undefined,
+        officeName: undefined,
+        officeCode: undefined,
+        isIndependent: true
+      };
+      this.saveUsers(users);
+    }
+
+    return { 
+      success: true, 
+      message: `Vínculo com o advogado ${lawyer.name} removido com sucesso. A conta pessoal foi preservada como advogado autônomo.` 
+    };
+  },
+
+  linkExistingLawyerToOffice(identifier: string, officeId: string, officeName: string): { success: boolean; lawyer?: Lawyer; error?: string } {
+    const clean = identifier.trim().toLowerCase();
+    const cleanOab = identifier.trim().toUpperCase();
+    const users = this.getUsers();
+    const lawyers = this.getLawyers();
+
+    // Localiza usuário por e-mail ou OAB
+    const targetUser = users.find(u => 
+      (u.email || '').trim().toLowerCase() === clean ||
+      (u.oab || '').trim().toUpperCase() === cleanOab
+    );
+
+    if (!targetUser) {
+      return { success: false, error: 'Nenhum advogado encontrado com este e-mail ou inscrição na OAB.' };
+    }
+
+    if (targetUser.officeId === officeId) {
+      return { success: false, error: `O advogado ${targetUser.name} já faz parte da equipe deste escritório.` };
+    }
+
+    if (targetUser.officeId && targetUser.officeId !== officeId) {
+      return { success: false, error: `O advogado ${targetUser.name} já está vinculado ao escritório "${targetUser.officeName || 'outro escritório'}". Ele precisa desvincular-se previamente.` };
+    }
+
+    // Vincula o usuário ao escritório
+    targetUser.officeId = officeId;
+    targetUser.officeName = officeName;
+    targetUser.isIndependent = false;
+    this.saveUsers(users);
+
+    // Atualiza ou cria o registro Lawyer
+    let targetLawyer = lawyers.find(l => l.userId === targetUser.id || (l.email && l.email.toLowerCase() === targetUser.email.toLowerCase()));
+    if (targetLawyer) {
+      targetLawyer.officeId = officeId;
+      targetLawyer.roleTitle = `Associado • ${officeName}`;
+    } else {
+      targetLawyer = {
+        id: `law_${Date.now()}`,
+        userId: targetUser.id,
+        name: targetUser.name,
+        email: targetUser.email,
+        phone: targetUser.phone || '',
+        oab: targetUser.oab || '',
+        specialties: targetUser.specialties || ['Direito Civil'],
+        status: 'ACTIVE',
+        roleTitle: `Associado • ${officeName}`,
+        assignedCasesCount: 0,
+        officeId: officeId,
+        avatarUrl: targetUser.avatarUrl
+      };
+      lawyers.push(targetLawyer);
+    }
+    this.saveLawyers(lawyers);
+
+    return { success: true, lawyer: targetLawyer };
   },
 
   // Processos
@@ -510,21 +877,81 @@ export const storageService = {
     localStorage.setItem(STORAGE_KEYS.API_SETTINGS, JSON.stringify(settings));
   },
 
-  // Publicações do Mural da Equipe
-  getTeamPosts(officeId?: string): WallPost[] {
+  // Publicações do Mural da Equipe com isolamento rigoroso por escritório (Item 4)
+  getTeamPosts(officeId?: string, isIndependent?: boolean, userId?: string): WallPost[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.TEAM_POSTS);
       if (!data) return [];
       const posts: WallPost[] = JSON.parse(data);
-      // Filtra estritamente deleted_at IS NULL e por officeId
       return posts.filter(p => {
         if (p.deleted_at) return false;
-        if (!officeId) return true;
-        return !p.officeId || p.officeId === officeId;
+        if (isIndependent) {
+          // Advogado autônomo: vê publicações próprias ou sem vínculo corporativo
+          return p.authorId === userId || !p.officeId;
+        }
+        if (officeId) {
+          // Escritório: vê apenas publicações pertencentes à sua banca
+          return p.officeId === officeId;
+        }
+        return true;
       });
     } catch {
       return [];
     }
+  },
+
+  // Migração para derivar escritório ou status autônomo para publicações legadas (Item 4)
+  migrateTeamPostsOffice(): { migratedCount: number } {
+    const raw = this.getAllRawTeamPosts();
+    const users = this.getUsers();
+    const lawyers = this.getLawyers();
+    let migratedCount = 0;
+
+    const updated = raw.map(post => {
+      let changed = false;
+      let officeId = post.officeId;
+      let officeName = post.officeName;
+
+      if (!officeName) {
+        const authorUser = users.find(u => u.id === post.authorId);
+        if (authorUser) {
+          if (authorUser.isIndependent) {
+            officeName = 'Advogado autônomo';
+            officeId = undefined;
+          } else {
+            officeName = authorUser.officeName || 'Moreira & Alcaraz Advogados Associados';
+            officeId = authorUser.officeId || PRIMARY_OFFICE_ID;
+          }
+          changed = true;
+        } else {
+          const authorLawyer = lawyers.find(l => l.userId === post.authorId || l.id === post.authorId);
+          if (authorLawyer) {
+            if (authorLawyer.officeId) {
+              officeId = authorLawyer.officeId;
+              officeName = 'Moreira & Alcaraz Advogados Associados';
+            } else {
+              officeName = 'Advogado autônomo';
+            }
+            changed = true;
+          } else {
+            officeId = PRIMARY_OFFICE_ID;
+            officeName = 'Moreira & Alcaraz Advogados Associados';
+            changed = true;
+          }
+        }
+      }
+
+      if (changed) {
+        migratedCount++;
+        return { ...post, officeId, officeName };
+      }
+      return post;
+    });
+
+    if (migratedCount > 0) {
+      this.saveTeamPosts(updated);
+    }
+    return { migratedCount };
   },
 
   getAllRawTeamPosts(): WallPost[] {
