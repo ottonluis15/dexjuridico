@@ -60,7 +60,7 @@ export const AccessibilityPanel: React.FC = () => {
     }
   }, [prefs]);
 
-  // Teclado: fechar no Escape e devolver foco
+  // Teclado: fechar no Escape e devolver foco; fechar ao clicar fora
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -68,8 +68,25 @@ export const AccessibilityPanel: React.FC = () => {
         buttonRef.current?.focus();
       }
     };
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        isOpen &&
+        panelRef.current &&
+        !panelRef.current.contains(e.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(e.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, [isOpen]);
 
   const updateFontSize = (size: FontSizeOption) => {
@@ -89,7 +106,7 @@ export const AccessibilityPanel: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-6 left-6 z-40">
+    <div className="fixed bottom-6 right-6 z-40">
       {/* Botão de Gatilho de Acessibilidade */}
       <button
         ref={buttonRef}
@@ -111,7 +128,7 @@ export const AccessibilityPanel: React.FC = () => {
           ref={panelRef}
           role="region"
           aria-label="Controles de Acessibilidade"
-          className="absolute bottom-14 left-0 w-80 sm:w-96 bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-xl p-5 text-slate-100 z-50 animate-in fade-in slide-in-from-bottom-3 duration-200"
+          className="absolute bottom-14 right-0 w-80 sm:w-96 max-w-[calc(100vw-2rem)] bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-xl p-5 text-slate-100 z-50 animate-in fade-in slide-in-from-bottom-3 duration-200"
         >
           {/* Cabeçalho */}
           <div className="flex items-center justify-between pb-3.5 border-b border-slate-800">

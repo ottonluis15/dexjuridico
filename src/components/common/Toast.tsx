@@ -26,7 +26,7 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onRemove
 
   return (
     <div 
-      className="fixed bottom-6 right-6 z-50 flex flex-col gap-2.5 max-w-md w-full pointer-events-none"
+      className="fixed bottom-20 right-6 z-50 flex flex-col gap-2.5 max-w-md w-full pointer-events-none"
       aria-live="polite"
       aria-atomic="false"
     >
