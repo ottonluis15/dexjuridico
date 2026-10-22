@@ -128,11 +128,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           label: 'Agenda',
           icon: Calendar,
         },
-        {
-          id: 'lawyers',
+        ...(isAdmin ? [{
+          id: 'lawyers' as TabType,
           label: 'Equipe',
           icon: UserCircle,
-        },
+        }] : []),
         {
           id: 'team-wall',
           label: 'Mural da Equipe',

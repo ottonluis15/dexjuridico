@@ -96,8 +96,17 @@ export const App: React.FC = () => {
   }, [isAuthenticated, cleanPath]);
 
   // Proteção de abas por perfil (RBAC):
-  // 1. Se advogado tentar gerenciar equipe, redireciona para a workbench
+  // 1. Se advogado tentar gerenciar equipe ou estiver na aba sem permissão, redireciona para a workbench
   // 2. Se usuário não for o admin do aplicativo (Dex Super Admin), bloqueia Configurações
+  useEffect(() => {
+    if (activeTab === 'lawyers' && !isAdmin) {
+      setActiveTab('lawyer-workbench');
+    }
+    if (activeTab === 'settings' && !isAppAdmin) {
+      setActiveTab('dashboard');
+    }
+  }, [activeTab, isAdmin, isAppAdmin]);
+
   const handleTabChange = (tab: TabType) => {
     if (tab === 'landing') {
       navigate('/');
