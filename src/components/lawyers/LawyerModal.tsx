@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserCheck, Scale, Lock, Camera, Trash2, AlertTriangle, Eye, EyeOff, UserPlus, Link2, Search } from 'lucide-react';
+import { UserCheck, Camera, Trash2, Eye, EyeOff, UserPlus, Link2 } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { Lawyer } from '../../types';
 import { useData } from '../../context/DataContext';
@@ -98,8 +98,13 @@ export const LawyerModal: React.FC<LawyerModalProps> = ({
     try {
       const res = linkExistingLawyer(existingIdentifier.trim());
       if (res.success) {
+        showToast('Advogado vinculado com sucesso à equipe!', 'success');
         onClose();
+      } else {
+        showToast(res.error || 'Advogado não encontrado no sistema.', 'error');
       }
+    } catch {
+      showToast('Erro ao vincular advogado.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -109,19 +114,14 @@ export const LawyerModal: React.FC<LawyerModalProps> = ({
     e.preventDefault();
 
     if (!name.trim() || !email.trim() || !oab.trim()) {
-      showToast('Por favor, preencha os campos obrigatórios (*).', 'error');
-      return;
-    }
-
-    if (!lawyerToEdit && (!password || password.length < 6)) {
-      showToast('A senha inicial de acesso do advogado deve conter no mínimo 6 caracteres.', 'error');
+      showToast('Preencha os campos obrigatórios (*).', 'warning');
       return;
     }
 
     const specialties = specialtiesText
       .split(',')
       .map(s => s.trim())
-      .filter(Boolean);
+      .filter(s => s.length > 0);
 
     setIsSubmitting(true);
 
@@ -129,39 +129,37 @@ export const LawyerModal: React.FC<LawyerModalProps> = ({
       if (lawyerToEdit) {
         updateLawyer(lawyerToEdit.id, {
           name: name.trim(),
-          email: email.trim().toLowerCase(),
+          email: email.trim(),
           phone: phone.trim(),
           oab: oab.trim().toUpperCase(),
           roleTitle: roleTitle.trim(),
-          specialties,
+          specialties: specialties.length > 0 ? specialties : ['Geral'],
           status,
           avatarUrl: photoPreview
         });
-        showToast('Dados do advogado atualizados com sucesso.', 'success');
+        showToast('Dados do advogado atualizados com sucesso!', 'success');
         onClose();
       } else {
         const res = await addLawyerByOffice({
           name: name.trim(),
-          email: email.trim().toLowerCase(),
+          email: email.trim(),
           oab: oab.trim().toUpperCase(),
           phone: phone.trim(),
-          password,
+          password: password || 'Dex@2026',
           roleTitle: roleTitle.trim(),
-          specialties,
+          specialties: specialties.length > 0 ? specialties : ['Geral'],
           avatarUrl: photoPreview
         });
 
-        if (!res.success) {
+        if (res.success) {
+          showToast('Advogado adicionado à equipe com sucesso!', 'success');
+          onClose();
+        } else {
           showToast(res.error || 'Erro ao cadastrar advogado.', 'error');
-          setIsSubmitting(false);
-          return;
         }
-
-        showToast(`Advogado ${name} cadastrado e vinculado ao escritório com sucesso!`, 'success');
-        onClose();
       }
     } catch {
-      showToast('Ocorreu um erro ao salvar.', 'error');
+      showToast('Erro inesperado ao salvar advogado.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -171,288 +169,253 @@ export const LawyerModal: React.FC<LawyerModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={lawyerToEdit ? 'Editar Advogado' : 'Membro da Equipe do Escritório'}
-      subtitle="Gerencie os advogados e associados vinculados à sua banca"
+      title={lawyerToEdit ? 'Editar Dados do Advogado' : 'Adicionar Membro à Equipe'}
+      subtitle={lawyerToEdit ? 'Atualize as informações cadastrais do profissional' : 'Cadastre um novo advogado ou vincule um já existente'}
       maxWidth="2xl"
-      icon={<UserCheck className="w-5 h-5 text-brand-400" />}
+      icon={<UserCheck className="w-5 h-5 text-dex-coral" />}
     >
-      {/* Seletor de Modalidade: Novo Cadastro vs Vincular Já Cadastrado */}
       {!lawyerToEdit && (
-        <div className="flex rounded-xl bg-slate-800/80 p-1 mb-5 border border-slate-700/60">
+        <div className="flex items-center gap-2 p-1 bg-dex-navy-950 rounded-xl mb-5">
           <button
             type="button"
             onClick={() => setCreationMode('NEW')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex-1 py-2 text-xs font-serif font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${
               creationMode === 'NEW'
-                ? 'bg-brand-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-dex-coral text-white shadow-md'
+                : 'text-slate-300 hover:text-white'
             }`}
           >
-            <UserPlus className="w-4 h-4" />
-            <span>Cadastrar Novo Advogado</span>
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>Cadastrar Novo</span>
           </button>
           <button
             type="button"
             onClick={() => setCreationMode('LINK')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex-1 py-2 text-xs font-serif font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${
               creationMode === 'LINK'
-                ? 'bg-brand-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-dex-coral text-white shadow-md'
+                : 'text-slate-300 hover:text-white'
             }`}
           >
-            <Link2 className="w-4 h-4" />
-            <span>Vincular por E-mail / OAB</span>
+            <Link2 className="w-3.5 h-3.5" />
+            <span>Vincular Existente</span>
           </button>
         </div>
       )}
 
-      {/* MODALIDADE 1: VINCULAR ADVOGADO EXISTENTE */}
-      {!lawyerToEdit && creationMode === 'LINK' ? (
+      {creationMode === 'LINK' && !lawyerToEdit ? (
         <form onSubmit={handleLinkSubmit} className="space-y-4">
-          <div className="p-4 rounded-2xl bg-brand-950/30 border border-brand-800/40 text-xs text-brand-200 leading-relaxed">
-            Informe o <strong>e-mail institucional</strong> ou a <strong>inscrição na OAB</strong> de um advogado já cadastrado no DEX para vinculá-lo à equipe da sua banca.
+          <div className="p-4 rounded-xl bg-dex-navy-950 border border-dex-teal-500/20 text-xs text-slate-300 leading-relaxed font-serif">
+            Digite o e-mail ou número de inscrição na OAB do advogado para vinculá-lo imediatamente ao seu escritório.
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              E-mail ou Inscrição OAB do Advogado *
+            <label className="block text-xs font-serif italic text-[#C2D6DC] mb-1.5">
+              E-mail ou OAB do Advogado *
             </label>
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-              <input
-                type="text"
-                required
-                placeholder="Ex: advogado@exemplo.adv.br ou 184920/SP"
-                value={existingIdentifier}
-                onChange={e => setExistingIdentifier(e.target.value)}
-                className="w-full pl-9 pr-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
-              />
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1">
-              O advogado será adicionado à lista de membros e passará a ter acesso compartilhado aos processos distribuídos à equipe.
-            </p>
+            <input
+              type="text"
+              required
+              placeholder="Ex: advogado@exemplo.adv.br ou SP123456"
+              value={existingIdentifier}
+              onChange={e => setExistingIdentifier(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
+            />
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+          <div className="pt-4 border-t border-white/10 flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 rounded-xl transition-colors cursor-pointer"
+              className="px-4 py-2.5 text-xs text-slate-300 hover:text-white transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-brand-600/30 transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2"
+              className="px-5 py-2.5 bg-dex-coral hover:bg-dex-coral/90 disabled:opacity-50 text-white text-xs font-serif font-bold rounded-xl shadow-lg transition-all"
             >
-              {isSubmitting ? (
-                <>
-                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Vinculando...</span>
-                </>
-              ) : (
-                <>
-                  <Link2 className="w-3.5 h-3.5" />
-                  <span>Vincular à Equipe</span>
-                </>
-              )}
+              {isSubmitting ? 'Vinculando...' : 'Vincular ao Escritório'}
             </button>
           </div>
         </form>
       ) : (
-        /* MODALIDADE 2: CADASTRAR OU EDITAR ADVOGADO */
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Foto do Advogado (Opcional) */}
-          <div className="flex items-center gap-4 p-3 rounded-2xl bg-slate-800/50 border border-slate-700/60">
+          {/* Photo Preview & Upload */}
+          <div className="flex items-center gap-4 p-3 rounded-2xl bg-dex-navy-950 border border-white/5">
             <div className="relative">
               {photoPreview ? (
                 <img
                   src={photoPreview}
-                  alt="Foto"
-                  className="w-16 h-16 rounded-2xl object-cover border-2 border-brand-500/50 shadow-md"
+                  alt="Prévia"
+                  className="w-14 h-14 rounded-full object-cover border-2 border-dex-coral"
                 />
               ) : (
-                <div className="w-16 h-16 rounded-2xl bg-slate-800 border-2 border-dashed border-slate-700 flex items-center justify-center text-slate-400">
-                  <Camera className="w-6 h-6" />
+                <div className="w-14 h-14 rounded-full bg-dex-kpi-peach text-dex-navy-950 font-serif font-bold text-xl flex items-center justify-center">
+                  {name ? name.charAt(0) : <UserCheck className="w-6 h-6" />}
                 </div>
               )}
             </div>
 
-            <div className="space-y-1 flex-1">
-              <span className="text-xs font-semibold text-white block">Foto de Perfil (Opcional)</span>
-              <span className="text-[11px] text-slate-400 block">JPG, PNG ou WEBP • Máx 2 MB</span>
-              <div className="flex items-center gap-2 pt-1">
-                <label className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors">
-                  Escolher Arquivo
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                  />
-                </label>
-                {photoPreview && (
-                  <button
-                    type="button"
-                    onClick={() => setPhotoPreview(undefined)}
-                    className="p-1 text-slate-400 hover:text-rose-400 transition-colors"
-                    title="Remover foto"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-              {photoError && <span className="text-[11px] text-rose-400 block">{photoError}</span>}
-            </div>
-          </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Nome Completo *
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="Ex: Dr. Fernando Vasconcelos"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Inscrição OAB (com UF) *
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="Ex: 123.456/SP"
-              value={oab}
-              onChange={e => setOab(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs font-mono text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50 uppercase"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              E-mail Institucional *
-            </label>
-            <input
-              type="email"
-              required
-              placeholder="advogado@escritorio.adv.br"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Telefone / WhatsApp
-            </label>
-            <input
-              type="text"
-              placeholder="(11) 98765-4321"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
-            />
-          </div>
-
-          {/* Senha de Acesso (só para novo cadastro) */}
-          {!lawyerToEdit && (
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Senha Inicial de Acesso do Advogado *
-              </label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <div className="flex-1 space-y-1">
+              <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-dex-slate hover:bg-slate-700 text-white text-xs font-serif rounded-xl cursor-pointer transition-colors">
+                <Camera className="w-3.5 h-3.5" />
+                <span>Escolher Foto</span>
                 <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  placeholder="Mínimo 6 caracteres"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="w-full pl-9 pr-10 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
                 />
+              </label>
+              {photoPreview && (
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-slate-400 hover:text-white cursor-pointer"
+                  onClick={() => setPhotoPreview(undefined)}
+                  className="text-xs text-dex-coral hover:underline ml-3 font-serif"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  Remover
                 </button>
-              </div>
-              <p className="text-[10px] text-slate-400 mt-1">
-                O advogado usará este e-mail e senha para fazer login no sistema e acessar seus processos.
-              </p>
+              )}
+              {photoError && <p className="text-[11px] text-dex-coral font-serif">{photoError}</p>}
             </div>
-          )}
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Cargo / Papel na Banca
-            </label>
-            <input
-              type="text"
-              placeholder="Ex: Advogado Associado, Sócio"
-              value={roleTitle}
-              onChange={e => setRoleTitle(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
-            />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Status Operacional
-            </label>
-            <select
-              value={status}
-              onChange={e => setStatus(e.target.value as any)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-serif italic text-[#C2D6DC] mb-1.5">
+                Nome Completo *
+              </label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={e => setName(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-serif italic text-[#C2D6DC] mb-1.5">
+                Número OAB *
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Ex: SP 123.456"
+                value={oab}
+                onChange={e => setOab(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-serif italic text-[#C2D6DC] mb-1.5">
+                E-mail Profissional *
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-serif italic text-[#C2D6DC] mb-1.5">
+                Telefone / WhatsApp
+              </label>
+              <input
+                type="text"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-serif italic text-[#C2D6DC] mb-1.5">
+                Cargo / Função
+              </label>
+              <input
+                type="text"
+                value={roleTitle}
+                onChange={e => setRoleTitle(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-serif italic text-[#C2D6DC] mb-1.5">
+                Status
+              </label>
+              <select
+                value={status}
+                onChange={e => setStatus(e.target.value as any)}
+                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
+              >
+                <option value="ACTIVE">Ativo</option>
+                <option value="ON_LEAVE">Licença</option>
+                <option value="INACTIVE">Inativo</option>
+              </select>
+            </div>
+
+            {!lawyerToEdit && (
+              <div className="md:col-span-2">
+                <label className="block text-xs font-serif italic text-[#C2D6DC] mb-1.5">
+                  Senha Provisória de Acesso
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Deixe em branco para gerar aleatória"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-2.5 text-slate-600 hover:text-dex-navy-950"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="md:col-span-2">
+              <label className="block text-xs font-serif italic text-[#C2D6DC] mb-1.5">
+                Especialidades (separadas por vírgula)
+              </label>
+              <input
+                type="text"
+                value={specialtiesText}
+                onChange={e => setSpecialtiesText(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
+              />
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-white/10 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 text-xs text-slate-300 hover:text-white transition-colors"
             >
-              <option value="ACTIVE">Ativo / Regular</option>
-              <option value="ON_LEAVE">Licenciado / Ausente</option>
-              <option value="INACTIVE">Inativo</option>
-            </select>
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-5 py-2.5 bg-dex-coral hover:bg-dex-coral/90 disabled:opacity-50 text-white text-xs font-serif font-bold rounded-xl shadow-lg transition-all"
+            >
+              {isSubmitting ? 'Salvando...' : lawyerToEdit ? 'Salvar Alterações' : 'Cadastrar Advogado'}
+            </button>
           </div>
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-            Especialidades & Áreas de Atuação (separadas por vírgula)
-          </label>
-          <input
-            type="text"
-            placeholder="Ex: Direito do Trabalho, Contratos, Cível, Tributário"
-            value={specialtiesText}
-            onChange={e => setSpecialtiesText(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
-          />
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 rounded-xl transition-colors cursor-pointer"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-brand-600/30 transition-all cursor-pointer disabled:opacity-50"
-          >
-            {isSubmitting ? 'Salvando...' : (lawyerToEdit ? 'Salvar Alterações' : 'Cadastrar e Vincular')}
-          </button>
-        </div>
-      </form>
+        </form>
       )}
     </Modal>
   );

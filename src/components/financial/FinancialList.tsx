@@ -10,14 +10,9 @@ import {
   Trash2, 
   Edit, 
   Download,
-  Filter,
-  TrendingUp,
-  CreditCard,
-  ShieldCheck,
-  Paperclip,
   Eye,
-  ExternalLink,
-  Image as ImageIcon
+  ArrowUpRight,
+  ArrowDownLeft
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -27,6 +22,7 @@ import { FinancialModal } from './FinancialModal';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { EmptyState } from '../common/EmptyState';
 import { Modal } from '../common/Modal';
+import { InternalPageLayout, SummaryCardItem } from '../layout/InternalPageLayout';
 
 export const FinancialList: React.FC = () => {
   const { userFinancial, clients, cases, deleteFinancial, updateFinancial } = useData();
@@ -42,7 +38,7 @@ export const FinancialList: React.FC = () => {
   const [viewingReceipt, setViewingReceipt] = useState<FinancialEntry | null>(null);
 
   const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(val);
   };
 
   const filteredFinancial = userFinancial.filter(f => {
@@ -58,17 +54,22 @@ export const FinancialList: React.FC = () => {
     return matchesSearch && matchesStatus && matchesType;
   });
 
-  // KPI Metrics
+  const isRevenueType = (t: string) => t !== 'DESPESA' && t !== 'CUSTAS';
+
   const totalPaid = userFinancial
-    .filter(f => f.status === 'PAGO')
+    .filter(f => isRevenueType(f.type) && f.status === 'PAGO')
     .reduce((sum, f) => sum + f.amount, 0);
 
   const totalPending = userFinancial
-    .filter(f => f.status === 'PENDENTE')
+    .filter(f => isRevenueType(f.type) && f.status === 'PENDENTE')
     .reduce((sum, f) => sum + f.amount, 0);
 
   const totalOverdue = userFinancial
     .filter(f => f.status === 'ATRASADO')
+    .reduce((sum, f) => sum + f.amount, 0);
+
+  const totalExpenses = userFinancial
+    .filter(f => (f.type === 'DESPESA' || f.type === 'CUSTAS') && f.status === 'PAGO')
     .reduce((sum, f) => sum + f.amount, 0);
 
   const handleDownloadReceipt = (entry: FinancialEntry) => {
@@ -91,349 +92,272 @@ export const FinancialList: React.FC = () => {
     });
   };
 
+  const formatDateBR = (dateStr: string) => {
+    if (!dateStr) return '-';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  };
+
+  // 4 Cards de Resumo (Anexo 5)
+  const summaryCards: SummaryCardItem[] = [
+    {
+      label: 'Honorários Recebidos',
+      value: formatCurrency(totalPaid),
+      icon: <CheckCircle2 className="w-5 h-5 stroke-[2]" />,
+      iconBgColor: 'bg-[#CBEBD8]',
+      iconTextColor: 'text-[#2B8255]',
+    },
+    {
+      label: 'A Receber / Em Aberto',
+      value: formatCurrency(totalPending),
+      icon: <Clock className="w-5 h-5 stroke-[2]" />,
+      iconBgColor: 'bg-[#F9D9C3]',
+      iconTextColor: 'text-[#C48A5C]',
+    },
+    {
+      label: 'Valores em Atraso',
+      value: formatCurrency(totalOverdue),
+      icon: <AlertCircle className="w-5 h-5 stroke-[2]" />,
+      iconBgColor: 'bg-[#E0D7F5]',
+      iconTextColor: 'text-dex-coral',
+    },
+    {
+      label: 'Despesas Pagas',
+      value: formatCurrency(totalExpenses),
+      icon: <DollarSign className="w-5 h-5 stroke-[2]" />,
+      iconBgColor: 'bg-[#FDF0CD]',
+      iconTextColor: 'text-[#B7791F]',
+    },
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Financeiro & Honorários</h2>
-          <p className="text-xs text-slate-400">
-            {isAdmin 
-              ? 'Gestão de faturamento, honorários contratuais, êxito e controle de custas' 
-              : 'Visão restrita de honorários vinculados aos seus processos conduzidos'}
-          </p>
-        </div>
-
-        <button
-          onClick={() => setIsNewModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-emerald-600/30 transition-all self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          Novo Lançamento
-        </button>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase text-slate-400">Honorários Recebidos</span>
-            <div className="p-2 rounded-xl bg-emerald-950/80 text-emerald-400 border border-emerald-800/60">
-              <CheckCircle2 className="w-4 h-4" />
-            </div>
+    <InternalPageLayout
+      summaryCards={summaryCards}
+      headerTitle="Controle Financeiro & Honorários"
+      headerSubtitle={`${filteredFinancial.length} ${filteredFinancial.length === 1 ? 'lançamento localizado' : 'lançamentos localizados'}`}
+      headerFilters={
+        <>
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="w-4 h-4 text-white/50 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Buscar por título, cliente ou nota..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 bg-white/10 border border-white/15 rounded-xl text-xs text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+            />
           </div>
-          <div className="text-2xl font-extrabold text-emerald-400">{formatCurrency(totalPaid)}</div>
-          <p className="text-xs text-slate-400 mt-1">Liquidado no período</p>
-        </div>
 
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase text-slate-400">A Receber / Em Aberto</span>
-            <div className="p-2 rounded-xl bg-amber-950/80 text-amber-400 border border-amber-800/60">
-              <Clock className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-extrabold text-amber-400">{formatCurrency(totalPending)}</div>
-          <p className="text-xs text-slate-400 mt-1">Faturas a vencer</p>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase text-slate-400">Valores em Atraso</span>
-            <div className="p-2 rounded-xl bg-rose-950/80 text-rose-400 border border-rose-800/60">
-              <AlertCircle className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-extrabold text-rose-400">{formatCurrency(totalOverdue)}</div>
-          <p className="text-xs text-slate-400 mt-1">Cobranças vencidas</p>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800/80 grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-          <input
-            type="text"
-            placeholder="Buscar por descrição ou cliente..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3.5 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-          />
-        </div>
-
-        <div>
-          <select
-            value={selectedStatus}
-            onChange={e => setSelectedStatus(e.target.value)}
-            className="w-full px-3.5 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-          >
-            <option value="ALL">Todos os Status</option>
-            <option value="PENDENTE">Pendente</option>
-            <option value="PAGO">Pago</option>
-            <option value="ATRASADO">Em Atraso</option>
-            <option value="CANCELADO">Cancelado</option>
-          </select>
-        </div>
-
-        <div>
           <select
             value={selectedType}
             onChange={e => setSelectedType(e.target.value)}
-            className="w-full px-3.5 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            className="px-3 py-2 bg-white/10 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
           >
-            <option value="ALL">Todos os Tipos</option>
-            <option value="HONORARIOS_INICIAIS">Honorários Iniciais</option>
-            <option value="HONORARIOS_EXITO">Honorários de Êxito</option>
-            <option value="MENSALIDADE">Mensalidades (Retainers)</option>
-            <option value="CUSTAS">Custas Processuais</option>
-            <option value="DESPESA">Despesas</option>
+            <option value="ALL" className="bg-[#162B37] text-white">Todos os Tipos</option>
+            <option value="RECEITA" className="bg-[#162B37] text-white">Receitas / Honorários</option>
+            <option value="DESPESA" className="bg-[#162B37] text-white">Despesas / Custas</option>
           </select>
-        </div>
-      </div>
 
-      {/* Table */}
+          <select
+            value={selectedStatus}
+            onChange={e => setSelectedStatus(e.target.value)}
+            className="px-3 py-2 bg-white/10 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+          >
+            <option value="ALL" className="bg-[#162B37] text-white">Todos os Status</option>
+            <option value="PAGO" className="bg-[#162B37] text-white">Liquidado</option>
+            <option value="PENDENTE" className="bg-[#162B37] text-white">A Vencer</option>
+            <option value="ATRASADO" className="bg-[#162B37] text-white">Inadimplente</option>
+            <option value="CANCELADO" className="bg-[#162B37] text-white">Cancelado</option>
+          </select>
+        </>
+      }
+      headerActions={
+        <button
+          onClick={() => setIsNewModalOpen(true)}
+          className="flex items-center gap-2 px-5 py-2.5 bg-dex-coral hover:bg-dex-coral-hover text-white text-xs font-semibold rounded-xl shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer font-serif"
+        >
+          <Plus className="w-4 h-4 stroke-[2.5]" />
+          <span>Novo Lançamento</span>
+        </button>
+      }
+    >
       {filteredFinancial.length === 0 ? (
         <EmptyState
-          title="Nenhum lançamento financeiro"
-          description="Nenhum registro corresponde aos filtros selecionados."
+          title="Nenhum lançamento encontrado"
+          description="Nenhum registro financeiro corresponde aos filtros aplicados."
           icon={DollarSign}
-          actionLabel="Novo Lançamento"
+          actionLabel="Registrar Lançamento"
           onAction={() => setIsNewModalOpen(true)}
         />
       ) : (
-        <div className="rounded-2xl border border-slate-800/80 overflow-hidden bg-slate-900/80 shadow-xl">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-800/80 text-slate-400 font-semibold border-b border-slate-800">
-                <tr>
-                  <th className="py-3.5 px-4">Lançamento / Tipo</th>
-                  <th className="py-3.5 px-4">Cliente / Processo</th>
-                  <th className="py-3.5 px-4">Vencimento</th>
-                  <th className="py-3.5 px-4">Valor</th>
-                  <th className="py-3.5 px-4">Status & Pagamento</th>
-                  <th className="py-3.5 px-4 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {filteredFinancial.map(entry => {
-                  const client = clients.find(c => c.id === entry.clientId);
-                  const linkedCase = cases.find(c => c.id === entry.caseId);
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs text-white">
+            <thead className="bg-[#1A3342] text-[#A6C5CD] font-semibold border-b border-[#214154]">
+              <tr>
+                <th className="py-3.5 px-4 font-serif">Título / Descrição</th>
+                <th className="py-3.5 px-4 font-serif">Cliente / Processo</th>
+                <th className="py-3.5 px-4 font-serif">Status</th>
+                <th className="py-3.5 px-4 font-serif">Vencimento</th>
+                <th className="py-3.5 px-4 font-serif text-right">Valor</th>
+                <th className="py-3.5 px-4 font-serif text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#214154]/50">
+              {filteredFinancial.map(entry => {
+                const client = clients.find(c => c.id === entry.clientId);
+                const linkedCase = cases.find(c => c.id === entry.caseId);
+                const isPaid = entry.status === 'PAGO';
 
-                  return (
-                    <tr key={entry.id} className="hover:bg-slate-800/40 transition-colors">
-                      {/* Title & Type */}
-                      <td className="py-4 px-4 min-w-[200px]">
-                        <span className="font-bold text-white block">{entry.title}</span>
-                        <span className="text-[10px] text-slate-400 block">
-                          {entry.type.replace('_', ' ')}
-                        </span>
-                        {entry.hasReceipt && (
-                          <button
-                            type="button"
-                            onClick={() => setViewingReceipt(entry)}
-                            className="inline-flex items-center gap-1.5 text-[10px] text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-0.5 rounded-lg border border-emerald-500/20 transition-colors mt-1.5 group cursor-pointer"
-                            title="Visualizar ou baixar comprovante"
-                          >
-                            <Paperclip className="w-3 h-3 group-hover:rotate-12 transition-transform" />
-                            <span className="truncate max-w-[140px] font-medium">{entry.receiptName || 'Ver Comprovante'}</span>
-                          </button>
-                        )}
-                      </td>
-
-                      {/* Client / Case */}
-                      <td className="py-4 px-4 min-w-[180px]">
-                        <span className="font-semibold text-slate-200 block truncate">
-                          {client?.name || 'Cliente'}
-                        </span>
-                        {linkedCase ? (
-                          <span className="text-[10px] font-mono text-brand-300 block truncate">
-                            Proc: {linkedCase.caseNumber}
+                return (
+                  <tr
+                    key={entry.id}
+                    className="hover:bg-white/5 transition-colors group"
+                  >
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-2">
+                        {isRevenueType(entry.type) ? (
+                          <span className="p-1 rounded-md bg-[#48BB78]/20 text-[#48BB78]">
+                            <ArrowDownLeft className="w-3.5 h-3.5" />
                           </span>
                         ) : (
-                          <span className="text-[10px] text-slate-400">Sem processo direto</span>
-                        )}
-                      </td>
-
-                      {/* Due date */}
-                      <td className="py-4 px-4 min-w-[130px]">
-                        <span className="font-mono font-medium text-white block">
-                          {entry.dueDate}
-                        </span>
-                        {entry.paymentDate && (
-                          <span className="text-[10px] text-emerald-400 block">
-                            Pago em: {entry.paymentDate}
+                          <span className="p-1 rounded-md bg-dex-coral/20 text-dex-coral">
+                            <ArrowUpRight className="w-3.5 h-3.5" />
                           </span>
                         )}
-                      </td>
-
-                      {/* Amount */}
-                      <td className="py-4 px-4 min-w-[130px]">
-                        <span className="font-extrabold text-sm text-white">
-                          {formatCurrency(entry.amount)}
-                        </span>
-                      </td>
-
-                      {/* Status */}
-                      <td className="py-4 px-4 min-w-[160px]">
-                        <div className="space-y-1">
-                          <FinancialStatusBadge status={entry.status} />
-                          <span className="text-[10px] text-slate-400 block">
-                            Forma: {entry.paymentMethod}
-                          </span>
+                        <div>
+                          <div className="font-bold text-white text-xs">{entry.title}</div>
+                          <div className="text-[11px] text-[#A6C5CD]">{entry.type.replace('_', ' ')}</div>
                         </div>
-                      </td>
+                      </div>
+                    </td>
 
-                      {/* Actions */}
-                      <td className="py-4 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {entry.hasReceipt && (
-                            <button
-                              onClick={() => setViewingReceipt(entry)}
-                              title="Visualizar / Baixar Comprovante"
-                              className="p-1.5 text-emerald-400 hover:text-white hover:bg-emerald-950/40 rounded-lg transition-colors"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                          )}
-                          {entry.status !== 'PAGO' && (
-                            <button
-                              onClick={() => handleMarkAsPaid(entry)}
-                              title="Marcar como pago (Baixar fatura)"
-                              className="p-1.5 text-emerald-400 hover:bg-emerald-950/40 rounded-lg transition-colors"
-                            >
-                              <CheckCircle2 className="w-4 h-4" />
-                            </button>
-                          )}
+                    <td className="py-3.5 px-4">
+                      <div className="text-white font-medium">{client ? client.name : '-'}</div>
+                      {linkedCase && (
+                        <div className="text-[10px] text-[#A6C5CD] font-mono">{linkedCase.caseNumber}</div>
+                      )}
+                    </td>
+
+                    <td className="py-3.5 px-4">
+                      <FinancialStatusBadge status={entry.status} />
+                    </td>
+
+                    <td className="py-3.5 px-4 text-xs font-serif text-white">
+                      {formatDateBR(entry.dueDate)}
+                    </td>
+
+                    <td className={`py-3.5 px-4 text-right font-display font-bold text-sm ${
+                      isRevenueType(entry.type) ? 'text-[#48BB78]' : 'text-dex-coral'
+                    }`}>
+                      {isRevenueType(entry.type) ? '+' : '-'} {formatCurrency(entry.amount)}
+                    </td>
+
+                    <td className="py-3.5 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {!isPaid && (
                           <button
-                            onClick={() => setEditingEntry(entry)}
-                            title="Editar lançamento"
-                            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                            onClick={() => handleMarkAsPaid(entry)}
+                            title="Marcar como Liquidado"
+                            className="p-1.5 rounded-lg bg-white/5 hover:bg-emerald-500 hover:text-white text-[#A6C5CD] transition-colors cursor-pointer"
                           >
-                            <Edit className="w-4 h-4" />
+                            <CheckCircle2 className="w-4 h-4" />
                           </button>
+                        )}
+                        {entry.receiptUrl && (
                           <button
-                            onClick={() => setEntryToDelete(entry)}
-                            title="Excluir lançamento"
-                            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 rounded-lg transition-colors"
+                            onClick={() => setViewingReceipt(entry)}
+                            title="Ver Comprovante"
+                            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-[#A6C5CD] hover:text-white transition-colors cursor-pointer"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <FileText className="w-4 h-4" />
                           </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        )}
+                        <button
+                          onClick={() => setEditingEntry(entry)}
+                          title="Editar"
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-[#A6C5CD] hover:text-white transition-colors cursor-pointer"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setEntryToDelete(entry)}
+                          title="Excluir"
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-dex-coral/20 text-[#A6C5CD] hover:text-dex-coral transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {/* Modal */}
+      {/* Modais */}
       <FinancialModal
         isOpen={isNewModalOpen || !!editingEntry}
         onClose={() => {
           setIsNewModalOpen(false);
           setEditingEntry(null);
         }}
-        entryToEdit={editingEntry}
+        initialEntry={editingEntry || undefined}
       />
 
-      {/* Visualizador de Comprovante */}
+      {/* Modal Visualizar Comprovante */}
       {viewingReceipt && (
         <Modal
           isOpen={!!viewingReceipt}
           onClose={() => setViewingReceipt(null)}
-          title="Comprovante de Pagamento"
-          subtitle={`Lançamento: ${viewingReceipt.title} • Valor: ${formatCurrency(viewingReceipt.amount)}`}
-          maxWidth="2xl"
-          icon={<Paperclip className="w-5 h-5 text-emerald-400" />}
+          title="Comprovante de Lançamento"
+          subtitle={viewingReceipt.title}
+          maxWidth="lg"
         >
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-3.5 bg-slate-800/80 rounded-xl border border-slate-700/60">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-white truncate max-w-[280px]">
-                    {viewingReceipt.receiptName || 'comprovante_anexo'}
-                  </p>
-                  <p className="text-[10px] text-slate-400">
-                    Vencimento: {viewingReceipt.dueDate} • Status: {viewingReceipt.status}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {viewingReceipt.receiptUrl && (
-                  <button
-                    onClick={() => handleDownloadReceipt(viewingReceipt)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-lg shadow-emerald-600/20 transition-colors"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    Baixar
-                  </button>
-                )}
-                {viewingReceipt.receiptUrl && (
-                  <a
-                    href={viewingReceipt.receiptUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-semibold transition-colors"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    Abrir em Nova Aba
-                  </a>
-                )}
-              </div>
-            </div>
-
-            {viewingReceipt.receiptUrl ? (
-              viewingReceipt.receiptType?.startsWith('image/') || viewingReceipt.receiptName?.match(/\.(png|jpe?g|webp)$/i) ? (
-                <div className="rounded-xl overflow-hidden border border-slate-800 bg-slate-950 flex items-center justify-center p-2 max-h-[460px]">
-                  <img
-                    src={viewingReceipt.receiptUrl}
-                    alt={viewingReceipt.receiptName || 'Comprovante'}
-                    className="max-h-[440px] max-w-full object-contain rounded-lg"
-                  />
-                </div>
-              ) : (
-                <div className="rounded-xl overflow-hidden border border-slate-800 bg-slate-950 h-[460px]">
-                  <iframe
-                    src={viewingReceipt.receiptUrl}
-                    title={viewingReceipt.receiptName || 'Comprovante'}
-                    className="w-full h-full border-0"
-                  />
-                </div>
-              )
+          <div className="space-y-4 text-center">
+            {viewingReceipt.receiptUrl?.startsWith('data:image') ? (
+              <img
+                src={viewingReceipt.receiptUrl}
+                alt="Comprovante"
+                className="max-h-96 mx-auto rounded-2xl border border-white/20 shadow-md"
+              />
             ) : (
-              <div className="p-8 text-center text-slate-400 bg-slate-800/30 rounded-xl border border-slate-800">
-                <FileText className="w-10 h-10 mx-auto text-slate-500 mb-2" />
-                <p className="text-xs font-medium text-slate-300">Este lançamento possui apenas o registro nominal do comprovante.</p>
-                <p className="text-[10px] text-slate-500 mt-1">Para anexar um novo arquivo físico, edite o lançamento.</p>
+              <div className="p-8 bg-white/5 rounded-2xl border border-white/10 space-y-2">
+                <FileText className="w-12 h-12 mx-auto text-dex-coral" />
+                <p className="text-xs text-white">{viewingReceipt.receiptName || 'Arquivo anexado'}</p>
               </div>
             )}
+
+            <div className="flex justify-end gap-3 pt-3">
+              <button
+                onClick={() => handleDownloadReceipt(viewingReceipt)}
+                className="px-4 py-2 bg-dex-coral hover:bg-dex-coral-hover text-white text-xs font-semibold rounded-xl shadow flex items-center gap-1.5 cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>Baixar Arquivo</span>
+              </button>
+            </div>
           </div>
         </Modal>
       )}
 
-      {/* Delete confirmation */}
-      {entryToDelete && (
-        <ConfirmDialog
-          isOpen={!!entryToDelete}
-          onClose={() => setEntryToDelete(null)}
-          onConfirm={() => {
-            if (entryToDelete) {
-              deleteFinancial(entryToDelete.id);
-              setEntryToDelete(null);
-            }
-          }}
-          title="Excluir Lançamento Financeiro"
-          message={`Tem certeza que deseja remover o lançamento "${entryToDelete.title}" no valor de ${formatCurrency(entryToDelete.amount)}?`}
-        />
-      )}
-    </div>
+      <ConfirmDialog
+        isOpen={!!entryToDelete}
+        onClose={() => setEntryToDelete(null)}
+        onConfirm={() => {
+          if (entryToDelete) {
+            deleteFinancial(entryToDelete.id);
+            setEntryToDelete(null);
+          }
+        }}
+        title="Excluir Lançamento"
+        message={`Deseja remover o lançamento "${entryToDelete?.title}" de ${entryToDelete ? formatCurrency(entryToDelete.amount) : ''}?`}
+        confirmLabel="Sim, excluir lançamento"
+      />
+    </InternalPageLayout>
   );
 };

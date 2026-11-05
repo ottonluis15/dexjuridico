@@ -2,16 +2,14 @@ import React, { useState } from 'react';
 import { 
   Bell, 
   Clock, 
-  ShieldAlert, 
   CheckCircle2, 
-  Trash2, 
-  Filter, 
-  Calendar,
   AlertTriangle,
   FolderKanban,
   DollarSign
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
+import { InternalPageLayout } from '../layout/InternalPageLayout';
+import { PriorityBadge, DeadlineStatusBadge } from '../common/Badge';
 
 export const NotificationsView: React.FC = () => {
   const { userDeadlines, toggleDeadlineStatus, showToast } = useData();
@@ -19,154 +17,122 @@ export const NotificationsView: React.FC = () => {
 
   const pendingDeadlines = userDeadlines.filter(d => d.status !== 'COMPLETED');
   const completedDeadlines = userDeadlines.filter(d => d.status === 'COMPLETED');
+  const urgentDeadlines = userDeadlines.filter(d => d.priority === 'CRITICAL' || d.priority === 'HIGH');
+  const today = new Date().toISOString().substring(0, 10);
+  const todayDeadlines = userDeadlines.filter(d => d.dueDate === today);
 
   const filteredItems = filterType === 'ALL'
     ? userDeadlines
     : filterType === 'URGENT'
-    ? userDeadlines.filter(d => d.priority === 'CRITICAL' || d.priority === 'HIGH')
+    ? urgentDeadlines
     : completedDeadlines;
 
+  const kpis = [
+    {
+      title: 'Total de Alertas',
+      value: userDeadlines.length,
+      icon: Bell,
+      iconTileColor: 'peach' as const
+    },
+    {
+      title: 'Prazos Críticos',
+      value: urgentDeadlines.length,
+      icon: AlertTriangle,
+      iconTileColor: 'coral' as const
+    },
+    {
+      title: 'Prazos de Hoje',
+      value: todayDeadlines.length,
+      icon: Clock,
+      iconTileColor: 'mint' as const
+    },
+    {
+      title: 'Concluídas / Baixadas',
+      value: completedDeadlines.length,
+      icon: CheckCircle2,
+      iconTileColor: 'purple' as const
+    }
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-            <Bell className="w-5 h-5 text-brand-400" />
-            Central de Notificações & Alertas
-          </h2>
-          <p className="text-xs text-slate-400">
-            Avisos de prazos fatais, audiências agendadas, movimentações processuais e comunicados
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              showToast('Todas as notificações foram marcadas como lidas.', 'success');
-            }}
-            className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-colors"
-          >
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            Marcar todas como lidas
-          </button>
-        </div>
-      </div>
-
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
-        <button
-          onClick={() => setFilterType('ALL')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-            filterType === 'ALL'
-              ? 'bg-brand-600 text-white shadow-md shadow-brand-600/20'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-          }`}
-        >
-          Todas ({userDeadlines.length})
-        </button>
-        <button
-          onClick={() => setFilterType('URGENT')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-            filterType === 'URGENT'
-              ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-          }`}
-        >
-          Urgentes ({userDeadlines.filter(d => d.priority === 'CRITICAL' || d.priority === 'HIGH').length})
-        </button>
-        <button
-          onClick={() => setFilterType('COMPLETED')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-            filterType === 'COMPLETED'
-              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-          }`}
-        >
-          Concluídas ({completedDeadlines.length})
-        </button>
-      </div>
-
-      {/* List */}
-      <div className="space-y-3">
+    <InternalPageLayout
+      title="Notificações & Alertas"
+      subtitle="Avisos de prazos fatais, audiências agendadas, movimentações e comunicados"
+      actionLabel="Marcar todas como lidas"
+      onAction={() => showToast('Todas as notificações foram marcadas como lidas.', 'success')}
+      kpis={kpis}
+      filters={[
+        { label: `Todas (${userDeadlines.length})`, active: filterType === 'ALL', onClick: () => setFilterType('ALL') },
+        { label: `Urgentes (${urgentDeadlines.length})`, active: filterType === 'URGENT', onClick: () => setFilterType('URGENT') },
+        { label: `Concluídas (${completedDeadlines.length})`, active: filterType === 'COMPLETED', onClick: () => setFilterType('COMPLETED') }
+      ]}
+    >
+      <div className="space-y-4">
         {filteredItems.length === 0 ? (
-          <div className="p-12 text-center rounded-2xl bg-slate-900/50 border border-slate-800">
-            <Bell className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-            <p className="text-sm font-bold text-slate-300">Nenhuma notificação encontrada</p>
-            <p className="text-xs text-slate-500 mt-1">Você está em dia com todas as pendências.</p>
+          <div className="p-12 text-center rounded-[24px] bg-dex-navy-800 border border-white/5 space-y-2">
+            <Bell className="w-8 h-8 text-[#8F8A87] mx-auto mb-2" />
+            <h4 className="font-serif text-base font-bold text-white">Nenhuma notificação encontrada</h4>
+            <p className="text-xs text-[#8F8A87] font-serif">Você está em dia com todas as pendências.</p>
           </div>
         ) : (
           filteredItems.map((item) => {
-            const isOverdue = item.status === 'OVERDUE' || (item.status === 'PENDING' && item.dueDate < new Date().toISOString().substring(0, 10));
             const isCompleted = item.status === 'COMPLETED';
 
             return (
               <div
                 key={item.id}
-                className={`p-4 rounded-2xl border transition-all flex items-start justify-between gap-4 ${
-                  isOverdue
-                    ? 'bg-rose-950/20 border-rose-900/50'
-                    : isCompleted
-                    ? 'bg-slate-900/40 border-slate-800 opacity-60'
-                    : 'bg-slate-900/80 border-slate-800/80 hover:border-slate-700'
+                className={`p-5 rounded-[20px] bg-dex-navy-800 border transition-all flex items-start justify-between gap-4 ${
+                  isCompleted 
+                    ? 'border-white/5 opacity-60' 
+                    : item.priority === 'CRITICAL'
+                    ? 'border-dex-coral/50 shadow-md'
+                    : 'border-white/5 hover:border-white/10'
                 }`}
               >
-                <div className="flex items-start gap-3.5">
-                  <div className={`p-2.5 rounded-xl shrink-0 mt-0.5 ${
-                    isOverdue
-                      ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                      : isCompleted
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                  <div className={`p-2.5 rounded-2xl shrink-0 ${
+                    item.priority === 'CRITICAL' || item.priority === 'HIGH'
+                      ? 'bg-dex-coral/20 text-dex-coral'
+                      : 'bg-dex-teal-500/20 text-dex-peach'
                   }`}>
-                    {isOverdue ? (
-                      <ShieldAlert className="w-5 h-5" />
-                    ) : isCompleted ? (
-                      <CheckCircle2 className="w-5 h-5" />
-                    ) : (
-                      <Clock className="w-5 h-5" />
-                    )}
+                    <Clock className="w-5 h-5" />
                   </div>
 
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-white">{item.type}</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                        item.priority === 'CRITICAL'
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                          : item.priority === 'HIGH'
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                          : 'bg-slate-800 text-slate-300'
-                      }`}>
-                        {item.priority}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <DeadlineStatusBadge status={item.status} dueDate={item.dueDate} />
+                      <PriorityBadge priority={item.priority} />
+                      <span className="text-[11px] font-mono text-dex-peach bg-dex-navy-950 px-2 py-0.5 rounded">
+                        Processo #{item.caseId}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-300">{item.description}</p>
-                    <p className="text-[11px] text-slate-400 flex items-center gap-1.5 pt-1">
-                      <Calendar className="w-3.5 h-3.5" />
-                      Vencimento: <strong className="text-slate-200">{item.dueDate} {item.dueTime && `às ${item.dueTime}`}</strong>
+
+                    <h4 className="font-serif text-sm font-bold text-white truncate">
+                      {item.type}: {item.description}
+                    </h4>
+
+                    <p className="text-xs text-[#8F8A87] font-serif mt-1">
+                      Data limite fatal: <strong className="text-slate-200">{item.dueDate} {item.dueTime && `às ${item.dueTime}`}</strong>
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => toggleDeadlineStatus(item.id)}
-                    title={isCompleted ? "Reabrir prazo" : "Concluir / Dar baixa"}
-                    className={`p-2 rounded-xl text-xs font-semibold transition-colors ${
-                      isCompleted
-                        ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                        : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                    }`}
-                  >
-                    {isCompleted ? 'Reabrir' : 'Dar Baixa'}
-                  </button>
-                </div>
+                <button
+                  onClick={() => toggleDeadlineStatus(item.id)}
+                  title={isCompleted ? 'Reabrir prazo' : 'Marcar como concluído'}
+                  className={`p-2 rounded-xl transition-colors shrink-0 ${
+                    isCompleted
+                      ? 'text-dex-chart-green bg-dex-navy-950 hover:bg-dex-navy-900'
+                      : 'text-[#8F8A87] hover:text-dex-chart-green hover:bg-dex-navy-950'
+                  }`}
+                >
+                  <CheckCircle2 className="w-5 h-5" />
+                </button>
               </div>
             );
           })
         )}
       </div>
-    </div>
+    </InternalPageLayout>
   );
 };

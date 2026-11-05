@@ -78,7 +78,6 @@ export const Modal: React.FC<ModalProps> = ({
         clearTimeout(timer);
         document.body.style.overflow = 'unset';
         window.removeEventListener('keydown', handleKeyDown);
-        // Devolve o foco ao elemento anterior quando o modal fecha
         if (previousActiveElement.current) {
           previousActiveElement.current.focus();
         }
@@ -103,7 +102,7 @@ export const Modal: React.FC<ModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity" 
+        className="fixed inset-0 bg-dex-navy-950/75 backdrop-blur-sm transition-opacity" 
         onClick={onClose} 
         aria-hidden="true"
       />
@@ -115,37 +114,38 @@ export const Modal: React.FC<ModalProps> = ({
         aria-modal="true"
         aria-labelledby="modal-title"
         tabIndex={-1}
-        className={`relative w-full ${maxWidthClasses[maxWidth]} bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-10 my-8 animate-in fade-in zoom-in-95 duration-200 outline-none`}
+        className={`relative w-full ${maxWidthClasses[maxWidth]} bg-[#162B37] border border-[#214154] rounded-[28px] shadow-2xl overflow-hidden z-10 my-8 animate-in fade-in zoom-in-95 duration-200 outline-none text-white`}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800/80 bg-slate-900/90">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-[#214154]/70 bg-[#1A3342]/70">
           <div className="flex items-center gap-3">
             {icon && (
-              <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-400" aria-hidden="true">
+              <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-white" aria-hidden="true">
                 {icon}
               </div>
             )}
             <div>
-              <h3 id="modal-title" className="text-lg font-semibold text-white tracking-tight">{title}</h3>
-              {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+              <h3 id="modal-title" className="text-lg font-display font-bold text-white tracking-tight">
+                {title}
+              </h3>
+              {subtitle && <p className="text-xs text-[#A6C5CD] font-serif mt-0.5">{subtitle}</p>}
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/60 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500/50 cursor-pointer"
+            className="w-8 h-8 rounded-full bg-[#EAE0DA] hover:bg-white text-dex-navy-950 flex items-center justify-center transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
             aria-label="Fechar janela"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
+        <div className="p-6 max-h-[80vh] overflow-y-auto custom-scrollbar font-serif">
           {children}
         </div>
       </div>
     </div>
   );
 };
-

@@ -27,13 +27,13 @@ export const Layout: React.FC<LayoutProps> = ({
   const { toasts, removeToast } = useData();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-brand-500 selection:text-white">
+    <div className="min-h-screen bg-[#4A808E] text-white flex flex-col font-serif selection:bg-dex-coral selection:text-white antialiased">
       {/* Skip Link para Acessibilidade por Teclado */}
       <a href="#main-content" className="skip-link">
         Pular para o conteúdo principal
       </a>
 
-      {/* Sidebar */}
+      {/* Sidebar (Teal #5A97A5, Anexo 4) */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -41,8 +41,9 @@ export const Layout: React.FC<LayoutProps> = ({
         setIsOpen={setIsMobileMenuOpen}
       />
 
-      {/* Main Content Area */}
-      <div className="lg:pl-72 flex flex-col min-h-screen flex-1">
+      {/* Área Principal Logada */}
+      <div className="lg:pl-64 flex flex-col min-h-screen flex-1">
+        {/* Topbar (#162B37, Anexo 4) */}
         <Header
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -52,7 +53,12 @@ export const Layout: React.FC<LayoutProps> = ({
           onOpenNewClientModal={() => setIsClientModalOpen(true)}
         />
 
-        <main id="main-content" tabIndex={-1} className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto animate-in fade-in duration-200 focus:outline-none">
+        {/* Conteúdo da Página */}
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto focus:outline-none"
+        >
           {children}
         </main>
       </div>
@@ -60,10 +66,10 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* Painel de Acessibilidade Flutuante */}
       <AccessibilityPanel />
 
-      {/* Toasts */}
+      {/* Toasts de Notificação */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-      {/* Global Quick Creation Modals */}
+      {/* Modais Globais de Ação Rápida */}
       <CaseModal
         isOpen={isCaseModalOpen}
         onClose={() => setIsCaseModalOpen(false)}

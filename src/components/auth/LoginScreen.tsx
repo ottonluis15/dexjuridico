@@ -1,7 +1,17 @@
 import React, { useState } from 'react';
-import { Scale, Lock, Mail, ArrowRight, ShieldCheck, ArrowLeft, Eye, EyeOff, KeyRound, CheckCircle2, X } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  Eye, 
+  EyeOff, 
+  ArrowRight, 
+  X,
+  Lock,
+  Mail,
+  CheckCircle2
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { storageService } from '../../services/storageService';
+import { DexLogo } from '../common/DexLogo';
 
 interface LoginScreenProps {
   onNavigateToRegister?: () => void;
@@ -103,99 +113,169 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 selection:bg-brand-500 selection:text-white relative overflow-hidden">
-      {/* Background Decorative Gradients */}
-      <div className="absolute top-1/4 left-1/4 -mt-32 -ml-32 w-96 h-96 bg-brand-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 -mb-32 -mr-32 w-96 h-96 bg-cyan-600/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-dex-cream flex flex-col justify-center items-center py-8 px-4 sm:px-6 relative font-serif text-dex-navy-950 overflow-x-hidden selection:bg-dex-coral selection:text-white">
+      {/* PENAS DECORATIVAS AO REDOR DO CARD */}
+      <div className="absolute top-10 left-6 sm:top-14 sm:left-16 pointer-events-none z-0">
+        <img
+          src="/img/pena2.png"
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          decoding="async"
+          width="130"
+          height="160"
+          className="w-20 sm:w-28 h-auto drop-shadow-sm opacity-90 animate-feather-drift"
+        />
+      </div>
 
-      <div className="max-w-md w-full relative z-10 space-y-6">
-        {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-500 via-brand-600 to-navy-900 text-white shadow-xl shadow-brand-500/25 border border-brand-400/30 mb-2">
-            <Scale className="w-7 h-7" />
+      <div className="absolute bottom-12 left-8 sm:bottom-16 sm:left-24 pointer-events-none z-0">
+        <img
+          src="/img/pena4.png"
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          decoding="async"
+          width="140"
+          height="140"
+          className="w-20 sm:w-28 h-auto drop-shadow-sm opacity-90"
+        />
+      </div>
+
+      <div className="absolute top-10 right-8 sm:top-12 sm:right-20 pointer-events-none z-0">
+        <img
+          src="/img/pena5.png"
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          decoding="async"
+          width="130"
+          height="190"
+          className="w-20 sm:w-28 h-auto drop-shadow-sm opacity-90 animate-feather-drift"
+        />
+      </div>
+
+      <div className="absolute bottom-8 right-6 sm:bottom-12 sm:right-16 pointer-events-none z-0">
+        <img
+          src="/img/pena3.png"
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          decoding="async"
+          width="150"
+          height="190"
+          className="w-24 sm:w-36 h-auto drop-shadow-sm opacity-95"
+        />
+      </div>
+
+      {/* Navegação Superior */}
+      <div className="max-w-[960px] w-full mx-auto mb-4 flex items-center justify-between px-2 relative z-10">
+        {onNavigateToLanding && (
+          <button
+            onClick={onNavigateToLanding}
+            className="flex items-center gap-1.5 text-xs text-dex-support hover:text-dex-navy-950 transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Voltar ao início</span>
+          </button>
+        )}
+      </div>
+
+      {/* CARD PRINCIPAL PÊSSEGO (Estilo Anexo 3) */}
+      <div className="max-w-[960px] w-full bg-dex-peach rounded-[28px] sm:rounded-[36px] shadow-2xl p-6 sm:p-10 lg:p-12 relative z-10 border border-[#D5B093]/70">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
+          
+          {/* COLUNA ESQUERDA: Logo, Textos e Ilustração */}
+          <div className="lg:col-span-5 flex flex-col justify-between items-center lg:items-start text-center lg:text-left border-b lg:border-b-0 lg:border-r border-[#35474B]/40 pb-8 lg:pb-0 lg:pr-8">
+            <div className="space-y-4 w-full flex flex-col items-center lg:items-start">
+              <DexLogo variant="dark" size="lg" />
+              <p className="text-xs sm:text-sm text-dex-navy-950/80 italic font-serif">
+                Sistema de Advocacia
+              </p>
+
+              <div className="pt-2">
+                <h1 className="text-2xl sm:text-3xl font-display font-bold text-dex-navy-950 leading-tight">
+                  Acesse sua conta
+                </h1>
+                <p className="text-xs sm:text-sm text-dex-support italic mt-1">
+                  Entre com suas credenciais forenses
+                </p>
+              </div>
+
+              <div className="w-3/4 lg:w-full h-[1px] bg-[#35474B]/40 my-3" />
+            </div>
+
+            {/* Ilustração corvo2.png */}
+            <div className="w-full flex justify-center lg:justify-start pt-4 pointer-events-none">
+              <img
+                src="/img/corvo2.png"
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+                decoding="async"
+                width="200"
+                height="200"
+                className="w-40 sm:w-48 h-auto drop-shadow-md select-none transform hover:scale-105 transition-transform"
+              />
+            </div>
           </div>
 
-          <div className="flex items-center justify-center gap-2">
-            <h1 className="text-3xl font-extrabold text-white tracking-tight">DEX</h1>
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-brand-500/20 text-brand-300 border border-brand-500/30">
-              Legal AI
-            </span>
-          </div>
-          <p className="text-xs text-slate-400 max-w-xs mx-auto">
-            Plataforma de Gestão Jurídica Modularizada com Inteligência Artificial
-          </p>
-        </div>
+          {/* COLUNA DIREITA: Formulário e Acessos Rápidos */}
+          <div className="lg:col-span-7 flex flex-col justify-center space-y-6">
+            <div className="text-center">
+              <span className="text-xs sm:text-sm italic font-serif text-dex-navy-950/90 font-medium">
+                Credenciais de acesso
+              </span>
+            </div>
 
-        {/* Main Card */}
-        <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800/80 shadow-2xl backdrop-blur-xl space-y-6">
-          <div className="text-center space-y-1">
-            <h2 className="text-base font-bold text-white">Acesse sua Conta</h2>
-            <p className="text-xs text-slate-400">
-              Informe suas credenciais profissionais para entrar no sistema
-            </p>
-          </div>
-
-          {/* Login Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div 
-                id="login-error"
-                role="alert"
-                className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-200 text-xs leading-relaxed animate-in fade-in"
-              >
+              <div className="p-3.5 rounded-xl bg-dex-coral/20 border border-dex-coral/60 text-dex-navy-950 text-xs font-semibold">
                 {error}
               </div>
             )}
 
-            <div>
-              <label htmlFor="login-email" className="block text-xs font-semibold text-slate-300 mb-1.5">
-                E-mail Institucional *
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" aria-hidden="true" />
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* E-mail */}
+              <div className="space-y-1">
+                <label className="block text-xs italic font-serif text-dex-navy-950">
+                  E-mail institucional
+                </label>
                 <input
-                  id="login-email"
                   type="email"
                   required
-                  autoComplete="username email"
-                  aria-invalid={!!error}
-                  aria-describedby={error ? 'login-error' : undefined}
-                  placeholder="usuario@escritorio.adv.br"
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full pl-9 pr-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="usuario@escritorio.adv.br"
+                  className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-slate-dark transition-all"
                 />
               </div>
-            </div>
 
-            <div>
-              <label htmlFor="login-password" className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Senha de Acesso *
-              </label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" aria-hidden="true" />
+              {/* Senha */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs italic font-serif text-dex-navy-950">
+                    Senha
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-[11px] text-dex-support hover:text-dex-navy-950 cursor-pointer"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? 'Ocultar' : 'Mostrar'}
+                  </button>
+                </div>
                 <input
-                  id="login-password"
                   type={showPassword ? 'text' : 'password'}
                   required
-                  autoComplete="current-password"
-                  aria-invalid={!!error}
-                  aria-describedby={error ? 'login-error' : undefined}
-                  placeholder="••••••••••••"
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="w-full pl-9 pr-10 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Sua senha de acesso"
+                  className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-slate-dark transition-all"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? 'Ocultar senha' : 'Exibir senha'}
-                  className="absolute right-3 top-3 text-slate-400 hover:text-white cursor-pointer p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-brand-500"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
-                </button>
               </div>
-              <div className="flex justify-end mt-1.5">
+
+              {/* Link Recuperar Senha */}
+              <div className="text-right">
                 <button
                   type="button"
                   onClick={() => {
@@ -204,85 +284,88 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     setResetStatus(null);
                     setShowResetModal(true);
                   }}
-                  className="text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+                  className="text-xs text-dex-terracotta hover:underline italic cursor-pointer"
                 >
                   Esqueceu ou deseja redefinir a senha?
                 </button>
               </div>
-            </div>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-brand-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
-            >
-              {isLoading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              {/* Botão Entrar no Sistema */}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-sm font-semibold rounded-xl shadow-md transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+              >
+                {isLoading ? (
                   <span>Validando credenciais...</span>
-                </>
-              ) : (
-                <>
-                  <span>Entrar no Sistema</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
+                ) : (
+                  <>
+                    <span>Entrar no Sistema</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+
+              {/* Link Criar Escritório */}
+              {onNavigateToRegister && (
+                <div className="text-center text-xs text-dex-navy-950 pt-1">
+                  <span>Não tem conta? </span>
+                  <button
+                    type="button"
+                    onClick={onNavigateToRegister}
+                    className="text-dex-terracotta hover:underline font-semibold cursor-pointer italic"
+                  >
+                    Criar escritório
+                  </button>
+                </div>
               )}
-            </button>
-          </form>
+            </form>
 
-          {/* Quick-fill para testes e acesso em qualquer dispositivo / guia anônima */}
-          <div className="pt-3 border-t border-slate-800/80 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-slate-300">
-                Acessos Rápidos da Banca (Senha única: <span className="text-cyan-400 font-mono">Admin123!</span>):
-              </span>
-            </div>
-
-            {/* Administradores */}
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('admin@dexjuridico.adv.br');
-                  setPassword('Admin123!');
-                  setError(null);
-                }}
-                className="p-2 rounded-xl bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/60 text-left transition-colors cursor-pointer group"
-                title="Dra. Helena Moreira - Sócia Administradora"
-              >
-                <div className="text-[11px] font-bold text-white group-hover:text-cyan-300 truncate">
-                  🛡️ Dra. Helena (Sócia Admin)
-                </div>
-                <div className="text-[9px] text-slate-400 truncate">
-                  admin@dexjuridico.adv.br
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('otton.luis.alcaraz@gmail.com');
-                  setPassword('Admin123!');
-                  setError(null);
-                }}
-                className="p-2 rounded-xl bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/60 text-left transition-colors cursor-pointer group"
-                title="Dr. Otton Luis - Sócio Fundador & Super Admin"
-              >
-                <div className="text-[11px] font-bold text-white group-hover:text-cyan-300 truncate">
-                  ⚖️ Dr. Otton (Sócio & App Admin)
-                </div>
-                <div className="text-[9px] text-slate-400 truncate">
-                  otton.luis.alcaraz@gmail.com
-                </div>
-              </button>
-            </div>
-
-            {/* Advogados Associados Especialistas */}
-            <div>
-              <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-1.5">
-                6 Especialistas da Banca & Autônomo:
+            {/* ACESSOS RÁPIDOS DEMO / TESTES */}
+            <div className="pt-4 border-t border-[#35474B]/30 space-y-2">
+              <div className="text-center">
+                <span className="text-[11px] font-semibold text-dex-navy-950/80">
+                  Acessos Rápidos da Banca (Senha: <span className="font-mono text-dex-terracotta font-bold">Admin123!</span>):
+                </span>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('admin@dexjuridico.adv.br');
+                    setPassword('Admin123!');
+                    setError(null);
+                  }}
+                  className="p-2 rounded-xl bg-dex-input/80 hover:bg-dex-input text-left transition-colors cursor-pointer"
+                >
+                  <div className="text-[11px] font-bold text-dex-navy-950 truncate">
+                    ⚖️ Dra. Helena (Sócia Admin)
+                  </div>
+                  <div className="text-[9px] text-dex-support truncate">
+                    admin@dexjuridico.adv.br
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('otton.luis.alcaraz@gmail.com');
+                    setPassword('Admin123!');
+                    setError(null);
+                  }}
+                  className="p-2 rounded-xl bg-dex-input/80 hover:bg-dex-input text-left transition-colors cursor-pointer"
+                >
+                  <div className="text-[11px] font-bold text-dex-navy-950 truncate">
+                    🛡️ Dr. Otton (App Admin)
+                  </div>
+                  <div className="text-[9px] text-dex-support truncate">
+                    otton.luis.alcaraz@gmail.com
+                  </div>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 pt-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -290,11 +373,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     setPassword('Admin123!');
                     setError(null);
                   }}
-                  className="p-1.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/70 border border-slate-700/50 text-left transition-colors cursor-pointer"
-                  title="Dr. Lucas Mendes - Direito do Trabalho"
+                  className="p-1.5 rounded-lg bg-dex-input/60 hover:bg-dex-input text-left transition-colors cursor-pointer"
                 >
-                  <div className="text-[10px] font-bold text-slate-200 truncate">💼 Dr. Lucas</div>
-                  <div className="text-[9px] text-cyan-400 truncate">Trabalhista</div>
+                  <div className="text-[10px] font-bold text-dex-navy-950 truncate">Dr. Lucas</div>
+                  <div className="text-[9px] text-dex-support truncate">Trabalhista</div>
                 </button>
 
                 <button
@@ -304,25 +386,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     setPassword('Admin123!');
                     setError(null);
                   }}
-                  className="p-1.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/70 border border-slate-700/50 text-left transition-colors cursor-pointer"
-                  title="Dra. Camila Rocha - Direito Tributário"
+                  className="p-1.5 rounded-lg bg-dex-input/60 hover:bg-dex-input text-left transition-colors cursor-pointer"
                 >
-                  <div className="text-[10px] font-bold text-slate-200 truncate">📊 Dra. Camila</div>
-                  <div className="text-[9px] text-cyan-400 truncate">Tributário</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail('rafael.silveira@dexjuridico.adv.br');
-                    setPassword('Admin123!');
-                    setError(null);
-                  }}
-                  className="p-1.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/70 border border-slate-700/50 text-left transition-colors cursor-pointer"
-                  title="Dr. Rafael Silveira - Direito Empresarial"
-                >
-                  <div className="text-[10px] font-bold text-slate-200 truncate">🏢 Dr. Rafael</div>
-                  <div className="text-[9px] text-cyan-400 truncate">Empresarial</div>
+                  <div className="text-[10px] font-bold text-dex-navy-950 truncate">Dra. Camila</div>
+                  <div className="text-[9px] text-dex-support truncate">Tributário</div>
                 </button>
 
                 <button
@@ -332,197 +399,79 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     setPassword('Admin123!');
                     setError(null);
                   }}
-                  className="p-1.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/70 border border-slate-700/50 text-left transition-colors cursor-pointer"
-                  title="Dra. Juliana Matsuoka - Direito Digital & LGPD"
+                  className="p-1.5 rounded-lg bg-dex-input/60 hover:bg-dex-input text-left transition-colors cursor-pointer"
                 >
-                  <div className="text-[10px] font-bold text-slate-200 truncate">🔒 Dra. Juliana</div>
-                  <div className="text-[9px] text-cyan-400 truncate">Digital / LGPD</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail('gabriel.fontes@dexjuridico.adv.br');
-                    setPassword('Admin123!');
-                    setError(null);
-                  }}
-                  className="p-1.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/70 border border-slate-700/50 text-left transition-colors cursor-pointer"
-                  title="Dr. Gabriel Fontes - Direito de Família e Sucessões"
-                >
-                  <div className="text-[10px] font-bold text-slate-200 truncate">👨‍👩‍👧 Dr. Gabriel</div>
-                  <div className="text-[9px] text-cyan-400 truncate">Família/Sucessões</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail('mariana.vasconcelos@dexjuridico.adv.br');
-                    setPassword('Admin123!');
-                    setError(null);
-                  }}
-                  className="p-1.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/70 border border-slate-700/50 text-left transition-colors cursor-pointer"
-                  title="Dra. Mariana Vasconcelos - Direito Cível e Imobiliário"
-                >
-                  <div className="text-[10px] font-bold text-slate-200 truncate">🏠 Dra. Mariana</div>
-                  <div className="text-[9px] text-cyan-400 truncate">Cível/Imobiliário</div>
+                  <div className="text-[10px] font-bold text-dex-navy-950 truncate">Dra. Juliana</div>
+                  <div className="text-[9px] text-dex-support truncate">Digital / LGPD</div>
                 </button>
               </div>
             </div>
-
-            <div className="pt-1 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('beatriz.albuquerque@dexjuridico.adv.br');
-                  setPassword('Admin123!');
-                  setError(null);
-                }}
-                className="text-[10px] text-slate-400 hover:text-cyan-300 transition-colors cursor-pointer"
-                title="Testar Perfil de Advogado Autônomo Independente"
-              >
-                👤 Ou testar com Advogada Autônoma (Dra. Beatriz Albuquerque)
-              </button>
-            </div>
           </div>
-
-          {/* Cadastro Link */}
-          {onNavigateToRegister && (
-            <div className="pt-3 border-t border-slate-800 text-center">
-              <span className="text-xs text-slate-400">Ainda não tem cadastro? </span>
-              <button
-                type="button"
-                onClick={onNavigateToRegister}
-                className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
-              >
-                Criar uma conta no DEX
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Back to Landing Page */}
-        {onNavigateToLanding && (
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={onNavigateToLanding}
-              className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Voltar para a Página Inicial</span>
-            </button>
-          </div>
-        )}
-
-        {/* Security & LGPD Footer */}
-        <div className="text-center space-y-1">
-          <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>Ambiente Seguro com Criptografia e Conformidade LGPD</span>
-          </div>
-          <p className="text-[11px] text-slate-500">
-            Dex — Sistema de Gestão Jurídica Inteligente com IA
-          </p>
         </div>
       </div>
 
-      {/* Modal de Redefinição de Senha */}
+      {/* MODAL REDEFINIR SENHA */}
       {showResetModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
-          <div 
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="reset-modal-title"
-            className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl relative space-y-5"
-          >
+        <div className="fixed inset-0 z-50 bg-dex-navy-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-dex-peach rounded-[28px] max-w-md w-full p-6 sm:p-8 border border-dex-border shadow-2xl relative">
             <button
-              type="button"
               onClick={() => setShowResetModal(false)}
-              aria-label="Fechar janela de redefinição de senha"
-              className="absolute top-5 right-5 text-slate-400 hover:text-white cursor-pointer p-1 rounded-lg"
+              className="absolute top-5 right-5 p-1.5 text-dex-support hover:text-dex-navy-950 cursor-pointer"
             >
-              <X className="w-5 h-5" aria-hidden="true" />
+              <X className="w-5 h-5" />
             </button>
 
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400" aria-hidden="true">
-                <KeyRound className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 id="reset-modal-title" className="text-base font-bold text-white">Redefinir Senha de Acesso</h3>
-                <p className="text-xs text-slate-400">Defina uma nova senha para sua conta</p>
-              </div>
-            </div>
+            <h3 className="text-xl font-display font-bold text-dex-navy-950 mb-1">
+              Redefinir Senha
+            </h3>
+            <p className="text-xs text-dex-support mb-4 italic">
+              Informe seu e-mail cadastrado e a nova senha desejada.
+            </p>
 
             {resetStatus && (
-              <div
-                role="status"
-                className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
-                  resetStatus.success
-                    ? 'bg-emerald-950/60 border border-emerald-800 text-emerald-200'
-                    : 'bg-rose-950/60 border border-rose-800 text-rose-200'
-                }`}
-              >
-                {resetStatus.success && <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" aria-hidden="true" />}
-                <span>{resetStatus.message}</span>
+              <div className={`p-3 rounded-xl text-xs mb-4 ${
+                resetStatus.success
+                  ? 'bg-emerald-500/20 text-emerald-900 border border-emerald-500/40'
+                  : 'bg-dex-coral/20 text-dex-navy-950 border border-dex-coral/40'
+              }`}>
+                {resetStatus.message}
               </div>
             )}
 
             <form onSubmit={handleResetPassword} className="space-y-4">
-              <div>
-                <label htmlFor="reset-email" className="block text-xs font-semibold text-slate-300 mb-1">
-                  E-mail Institucional Cadastrado
+              <div className="space-y-1">
+                <label className="block text-xs italic font-serif text-dex-navy-950">
+                  E-mail cadastrado
                 </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" aria-hidden="true" />
-                  <input
-                    id="reset-email"
-                    type="email"
-                    required
-                    autoComplete="email"
-                    value={resetEmail}
-                    onChange={e => setResetEmail(e.target.value)}
-                    placeholder="ex: otton.luis.alcaraz@gmail.com"
-                    className="w-full pl-9 pr-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-                  />
-                </div>
+                <input
+                  type="email"
+                  required
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-slate-dark"
+                />
               </div>
 
-              <div>
-                <label htmlFor="reset-password" className="block text-xs font-semibold text-slate-300 mb-1">
-                  Nova Senha de Acesso (Mínimo 6 dígitos)
+              <div className="space-y-1">
+                <label className="block text-xs italic font-serif text-dex-navy-950">
+                  Nova senha (mínimo 6 dígitos)
                 </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" aria-hidden="true" />
-                  <input
-                    id="reset-password"
-                    type="password"
-                    required
-                    autoComplete="new-password"
-                    value={resetPassword}
-                    onChange={e => setResetPassword(e.target.value)}
-                    placeholder="Digite sua nova senha"
-                    className="w-full pl-9 pr-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-                  />
-                </div>
+                <input
+                  type="password"
+                  required
+                  value={resetPassword}
+                  onChange={(e) => setResetPassword(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-slate-dark"
+                />
               </div>
 
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowResetModal(false)}
-                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={isResetting}
-                  className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-cyan-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
-                >
-                  {isResetting ? 'Atualizando...' : 'Salvar Nova Senha'}
-                </button>
-              </div>
+              <button
+                type="submit"
+                disabled={isResetting}
+                className="w-full py-2.5 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-xs font-semibold rounded-xl shadow transition-all cursor-pointer"
+              >
+                {isResetting ? 'Atualizando senha...' : 'Salvar nova senha'}
+              </button>
             </form>
           </div>
         </div>

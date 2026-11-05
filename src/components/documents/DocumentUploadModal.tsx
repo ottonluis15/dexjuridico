@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileUp, FileText, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { FileUp, FileText, AlertTriangle, CheckCircle2, Upload } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { TemplateCategory } from '../../types';
 import { useData } from '../../context/DataContext';
@@ -22,7 +22,6 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   const [fileError, setFileError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Extensões permitidas para modelos jurídicos
   const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.odt', '.txt'];
   const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -39,14 +38,13 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
       }
 
       if (file.size > MAX_SIZE_BYTES) {
-        setFileError(`O arquivo excede o limite máximo permitido de 10 MB (Tamanho atual: ${(file.size / (1024 * 1024)).toFixed(2)} MB).`);
+        setFileError(`O arquivo excede o limite máximo permitido de 10 MB.`);
         setSelectedFile(null);
         return;
       }
 
       setSelectedFile(file);
       if (!title.trim()) {
-        // Sugere o nome do arquivo limpo como título
         const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
         setTitle(nameWithoutExt.replace(/[-_]/g, ' '));
       }
@@ -69,7 +67,6 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
     setIsUploading(true);
 
     try {
-      // Leitura e codificação em Data URL para persistência e download funcional
       const reader = new FileReader();
       reader.onload = () => {
         const fileData = reader.result as string;
@@ -85,31 +82,21 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
         });
 
         setIsUploading(false);
+        showToast(`Modelo "${selectedFile.name}" enviado com sucesso!`, 'success');
         onClose();
-        // Reset form
-        setTitle('');
-        setDescription('');
-        setSelectedFile(null);
-        setFileError(null);
       };
-
-      reader.onerror = () => {
-        setFileError('Falha ao processar o arquivo. Tente novamente.');
-        setIsUploading(false);
-      };
-
       reader.readAsDataURL(selectedFile);
     } catch {
-      setFileError('Ocorreu um erro inesperado ao fazer upload.');
+      setFileError('Erro ao processar o arquivo. Tente novamente.');
       setIsUploading(false);
     }
   };
 
   const categories: { label: string; value: TemplateCategory }[] = [
     { label: 'Petição Inicial', value: 'PETICAO_INICIAL' },
-    { label: 'Contestação / Defesa', value: 'CONTESTACAO' },
+    { label: 'Contestação', value: 'CONTESTACAO' },
     { label: 'Recurso / Apelação', value: 'RECURSO' },
-    { label: 'Contrato de Honorários / Prestação', value: 'CONTRATO' },
+    { label: 'Contrato de Honorários', value: 'CONTRATO' },
     { label: 'Procuração Ad Judicia', value: 'PROCURACAO' },
     { label: 'Notificação Extrajudicial', value: 'NOTIFICACAO' },
     { label: 'Parecer Jurídico', value: 'PARECER' },
@@ -120,107 +107,119 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Novo Modelo Jurídico"
-      subtitle="Envie minutas e peças processuais para a base do escritório"
+      title="Enviar Modelo de Documento"
+      subtitle="Disponibilize minutas institucionais padronizadas para toda a banca"
       maxWidth="2xl"
-      icon={<FileUp className="w-5 h-5 text-brand-400" />}
+      icon={<FileUp className="w-5 h-5 text-dex-coral" />}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Dropzone de Upload */}
-        <div className="border-2 border-dashed border-slate-700 hover:border-brand-500 rounded-2xl p-6 text-center bg-slate-800/40 transition-colors">
-          <input
-            type="file"
-            id="templateFileInput"
-            className="hidden"
-            accept=".pdf,.doc,.docx,.odt,.txt"
-            onChange={handleFileChange}
-          />
-          <label htmlFor="templateFileInput" className="cursor-pointer block">
-            <div className="w-12 h-12 rounded-xl bg-brand-500/10 text-brand-400 flex items-center justify-center mx-auto mb-3">
-              <FileUp className="w-6 h-6" />
-            </div>
-            <p className="text-xs font-semibold text-white">
-              {selectedFile ? selectedFile.name : 'Clique para selecionar arquivo do computador'}
-            </p>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Formatos aceitos: PDF, DOC, DOCX, ODT e TXT (Tamanho máximo: 10 MB)
-            </p>
-            {selectedFile && (
-              <span className="inline-flex items-center gap-1.5 mt-2 text-xs text-emerald-400 font-medium">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                {(selectedFile.size / 1024).toFixed(1)} KB carregados
-              </span>
-            )}
-          </label>
-        </div>
-
         {fileError && (
-          <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-800/80 text-rose-200 text-xs flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-            <span>{fileError}</span>
+          <div className="p-3 rounded-xl bg-dex-coral/20 border border-dex-coral/50 text-white text-xs">
+            {fileError}
           </div>
         )}
 
-        {/* Título do Modelo */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-            Título do Modelo *
-          </label>
-          <input
-            type="text"
-            required
-            placeholder="Ex: Petição Inicial - Reclamatória Trabalhista com Horas Extras"
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
-          />
+        {/* Linha 1: Título e Categoria */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              Título do Modelo*
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Ex: Petição Inicial - Revisional de Contrato Bancário"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              Categoria Jurídica*
+            </label>
+            <select
+              value={category}
+              onChange={e => setCategory(e.target.value as TemplateCategory)}
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+            >
+              {categories.map(c => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {/* Categoria */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-            Categoria da Peça / Documento *
-          </label>
-          <select
-            value={category}
-            onChange={e => setCategory(e.target.value as TemplateCategory)}
-            className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
-          >
-            {categories.map(cat => (
-              <option key={cat.value} value={cat.value}>{cat.label}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Descrição */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-            Descrição e Orientações de Uso (Opcional)
+        {/* Linha 2: Descrição */}
+        <div className="space-y-1">
+          <label className="block text-xs italic font-serif text-[#C2D6DC]">
+            Descrição / Recomendações de Uso
           </label>
           <textarea
-            rows={3}
-            placeholder="Ex: Utilizar preferencialmente em demandas que envolvam cargo de confiança e ausência de controle biométrico..."
+            rows={2}
+            placeholder="Orientações sobre jurisprudência aplicável, teses ou preenchimento de variáveis..."
             value={description}
             onChange={e => setDescription(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50 resize-none"
+            className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
           />
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+        {/* Upload de Arquivo */}
+        <div className="space-y-2 p-5 rounded-2xl bg-white/5 border border-white/10 text-center">
+          <input
+            type="file"
+            id="template-file"
+            accept=".pdf,.doc,.docx,.odt,.txt"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+
+          {selectedFile ? (
+            <div className="space-y-2">
+              <div className="w-12 h-12 rounded-2xl bg-dex-coral/20 text-dex-coral mx-auto flex items-center justify-center">
+                <FileText className="w-6 h-6" />
+              </div>
+              <div className="text-xs text-white font-medium">{selectedFile.name}</div>
+              <span className="text-[11px] text-[#A6C5CD]">{(selectedFile.size / 1024).toFixed(1)} KB</span>
+              <div>
+                <label
+                  htmlFor="template-file"
+                  className="inline-block text-xs text-dex-coral hover:underline cursor-pointer"
+                >
+                  Substituir arquivo
+                </label>
+              </div>
+            </div>
+          ) : (
+            <label
+              htmlFor="template-file"
+              className="cursor-pointer flex flex-col items-center justify-center gap-2 py-4"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-white/10 text-white flex items-center justify-center">
+                <Upload className="w-6 h-6" />
+              </div>
+              <span className="text-xs font-semibold text-white">Clique para selecionar o arquivo</span>
+              <span className="text-[11px] text-[#A6C5CD]">Formatos aceitos: PDF, Word (DOC/DOCX), ODT, TXT (até 10 MB)</span>
+            </label>
+          )}
+        </div>
+
+        {/* Botões de Ação */}
+        <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#214154]/70">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 rounded-xl transition-colors cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition-colors cursor-pointer"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={isUploading}
-            className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-brand-600/30 transition-all cursor-pointer disabled:opacity-50"
+            className="px-6 py-2.5 rounded-xl bg-dex-coral hover:bg-dex-coral-hover text-white text-xs font-bold shadow transition-all hover:scale-105 active:scale-95 disabled:opacity-60 cursor-pointer"
           >
-            {isUploading ? 'Processando envio...' : 'Salvar Modelo'}
+            {isUploading ? 'Enviando...' : 'Salvar Modelo'}
           </button>
         </div>
       </form>

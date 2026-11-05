@@ -3,58 +3,66 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    font-family: 'Lora', Georgia, serif;
+    scroll-behavior: smooth;
+  }
+  
   body {
-    @apply bg-slate-900 text-slate-100 antialiased font-sans;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    @apply antialiased font-serif text-dex-navy-950;
+    background-color: #F9ECE2;
+    font-feature-settings: "kern", "liga", "calt";
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'DM Serif Display', 'Lora', Georgia, serif;
   }
 }
 
-/* Custom scrollbars */
+/* Scrollbars estilizadas no tema Dex */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(15, 39, 51, 0.15);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.4);
+  background: rgba(74, 128, 142, 0.5);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.6);
+  background: rgba(74, 128, 142, 0.8);
 }
 
-/* Glassmorphism effects */
-.glass-panel {
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+/* Animações sutis e elegantes */
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(0.8deg);
+  }
 }
 
-.glass-card {
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+.animate-float-gentle {
+  animation: floatGentle 5s ease-in-out infinite;
 }
 
-.glass-dropdown {
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+@keyframes featherDrift {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(-1.5deg);
+  }
 }
 
-/* Animation utilities */
-@keyframes pulseGlow {
-  0%, 100% { opacity: 0.8; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.02); }
-}
-
-.animate-pulse-subtle {
-  animation: pulseGlow 3s ease-in-out infinite;
+.animate-feather-drift {
+  animation: featherDrift 6s ease-in-out infinite;
 }
 
 /* ==========================================================================
@@ -63,7 +71,7 @@
 
 /* Foco Visível e Nítido para navegação por teclado */
 :focus-visible {
-  outline: 2px solid #0284c7 !important;
+  outline: 2px solid #F4665C !important;
   outline-offset: 2px !important;
 }
 
@@ -72,26 +80,27 @@
   position: absolute;
   top: -120px;
   left: 1.5rem;
-  background: #0284c7;
-  color: #ffffff;
+  background: #0F2733;
+  color: #F9ECE2;
   padding: 0.75rem 1.25rem;
   font-weight: 700;
   font-size: 0.875rem;
   border-radius: 0.75rem;
   z-index: 99999;
   text-decoration: none;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(255, 255, 255, 0.4);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(244, 102, 92, 0.4);
   transition: top 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: 'DM Serif Display', serif;
 }
 
 .skip-link:focus,
 .skip-link:focus-visible {
   top: 1.25rem;
-  outline: 3px solid #38bdf8 !important;
+  outline: 3px solid #F4665C !important;
   outline-offset: 2px;
 }
 
-/* Escalas de Tamanho de Fonte (Salvas em Preferência de Acessibilidade) */
+/* Escalas de Tamanho de Fonte */
 html.a11y-font-normal {
   font-size: 16px;
 }
@@ -106,7 +115,7 @@ html.a11y-font-xlarge {
 
 /* Modo Alto Contraste */
 html.a11y-high-contrast {
-  filter: contrast(115%);
+  filter: contrast(120%);
 }
 
 html.a11y-high-contrast body {
@@ -126,7 +135,7 @@ html.a11y-high-contrast :focus-visible {
   outline-offset: 3px !important;
 }
 
-/* Respeito a prefers-reduced-motion ou alternador manual */
+/* Respeito estrito a prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
   *,
   ::before,

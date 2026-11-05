@@ -5,19 +5,18 @@ import {
   User, 
   ShieldCheck, 
   Save, 
-  Sliders,
-  Camera,
-  Trash2,
-  Check,
-  AlertCircle,
-  Database,
-  Cloud,
-  RefreshCw,
-  FileDown,
-  CheckCircle2,
-  ExternalLink,
-  KeyRound,
-  Upload
+  Sliders, 
+  Camera, 
+  Trash2, 
+  Check, 
+  AlertCircle, 
+  Database, 
+  Cloud, 
+  RefreshCw, 
+  FileDown, 
+  CheckCircle2, 
+  KeyRound, 
+  Upload 
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -30,6 +29,7 @@ import {
 } from '../../services/supabaseClient';
 import { supabaseService } from '../../services/supabaseService';
 import { storageService } from '../../services/storageService';
+import { DecorativeBars } from '../common/DecorativeBars';
 
 export const SettingsView: React.FC = () => {
   const { currentUser, isAdmin, updateProfilePhoto, updateProfileData } = useAuth();
@@ -249,105 +249,112 @@ export const SettingsView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Header Banner */}
+      <div className="p-6 md:p-8 rounded-[24px] bg-dex-navy-900 border border-white/5 shadow-2xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-            <Settings className="w-5 h-5 text-brand-400" />
+          <DecorativeBars className="mb-2" />
+          <h2 className="font-serif text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-2">
             Configurações do Sistema
           </h2>
-          <p className="text-xs text-slate-400">
-            Gerencie seu perfil profissional, foto, dados institucionais e conformidade LGPD
+          <p className="text-xs text-[#8F8A87] font-serif mt-1">
+            Painel administrativo reservado ao gerenciamento de integrações, nuvem, conformidade e perfil
           </p>
         </div>
+
+        {/* Subtle crow background watermark */}
+        <img
+          src="/img/corvo1.png"
+          alt=""
+          aria-hidden="true"
+          className="absolute right-0 bottom-0 w-32 opacity-10 pointer-events-none -mr-4 -mb-6"
+        />
       </div>
 
-      {/* Sub Tabs */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-3">
+      {/* Sub Tabs Pill Navigation */}
+      <div className="flex flex-wrap items-center gap-2 p-1.5 bg-dex-navy-900 rounded-2xl border border-white/5">
+        <button
+          onClick={() => setActiveSubTab('database')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all ${
+            activeSubTab === 'database'
+              ? 'bg-dex-coral text-white shadow-md'
+              : 'text-[#8F8A87] hover:text-white'
+          }`}
+        >
+          <Database className="w-4 h-4" />
+          <span>Banco de Dados &amp; Nuvem</span>
+        </button>
+
         <button
           onClick={() => setActiveSubTab('profile')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all ${
             activeSubTab === 'profile'
-              ? 'bg-brand-600 text-white shadow-md shadow-brand-600/20'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              ? 'bg-dex-coral text-white shadow-md'
+              : 'text-[#8F8A87] hover:text-white'
           }`}
         >
           <User className="w-4 h-4" />
-          Meu Perfil & Foto
+          <span>Meu Perfil &amp; Foto</span>
         </button>
 
         {isAdmin && (
           <button
             onClick={() => setActiveSubTab('general')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all ${
               activeSubTab === 'general'
-                ? 'bg-brand-600 text-white shadow-md shadow-brand-600/20'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                ? 'bg-dex-coral text-white shadow-md'
+                : 'text-[#8F8A87] hover:text-white'
             }`}
           >
             <Building2 className="w-4 h-4" />
-            Dados da Sociedade / Escritório
+            <span>Dados da Sociedade</span>
           </button>
         )}
 
         <button
           onClick={() => setActiveSubTab('security')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all ${
             activeSubTab === 'security'
-              ? 'bg-brand-600 text-white shadow-md shadow-brand-600/20'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              ? 'bg-dex-coral text-white shadow-md'
+              : 'text-[#8F8A87] hover:text-white'
           }`}
         >
           <ShieldCheck className="w-4 h-4" />
-          Segurança & LGPD
+          <span>Segurança &amp; LGPD</span>
         </button>
 
         <button
           onClick={() => setActiveSubTab('integrations')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all ${
             activeSubTab === 'integrations'
-              ? 'bg-brand-600 text-white shadow-md shadow-brand-600/20'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              ? 'bg-dex-coral text-white shadow-md'
+              : 'text-[#8F8A87] hover:text-white'
           }`}
         >
           <Sliders className="w-4 h-4" />
-          Integrações & IA
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab('database')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-            activeSubTab === 'database'
-              ? 'bg-brand-600 text-white shadow-md shadow-brand-600/20'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-          }`}
-        >
-          <Database className="w-4 h-4" />
-          Banco de Dados & Nuvem
+          <span>Integrações</span>
         </button>
       </div>
 
-      {/* Tab: Perfil & Foto (Tarefa 5) */}
+      {/* Tab: Perfil & Foto */}
       {activeSubTab === 'profile' && (
-        <form onSubmit={handleSaveProfile} className="p-6 sm:p-8 rounded-2xl bg-slate-900/80 border border-slate-800/80 space-y-6 max-w-3xl">
+        <form onSubmit={handleSaveProfile} className="p-6 md:p-8 rounded-[24px] bg-dex-navy-900 border border-white/5 space-y-6 max-w-3xl">
           <div>
-            <h3 className="text-sm font-bold text-white">Meu Perfil Profissional</h3>
-            <p className="text-xs text-slate-400">
+            <h3 className="font-serif text-base font-bold text-white">Meu Perfil Profissional</h3>
+            <p className="text-xs text-[#8F8A87] font-serif mt-1">
               Personalize sua foto de identificação e seus dados cadastrais
             </p>
           </div>
 
-          {/* Gerenciador de Foto de Perfil */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-slate-800/40 border border-slate-700/60 flex flex-col sm:flex-row sm:items-center gap-5">
+          <div className="p-5 rounded-2xl bg-dex-navy-800 border border-white/5 flex flex-col sm:flex-row sm:items-center gap-5">
             <div className="relative shrink-0">
               {photoPreview ? (
                 <img
                   src={photoPreview}
                   alt={userName}
-                  className="w-20 h-20 rounded-2xl object-cover border-2 border-brand-500 shadow-lg"
+                  className="w-20 h-20 rounded-full object-cover border-2 border-dex-coral shadow-lg"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-2xl bg-[#C69255] text-white flex items-center justify-center font-bold text-2xl shadow-lg border border-amber-500/30">
+                <div className="w-20 h-20 rounded-full bg-dex-kpi-peach text-dex-navy-950 flex items-center justify-center font-serif font-bold text-2xl shadow-lg">
                   {userInitial}
                 </div>
               )}
@@ -355,21 +362,21 @@ export const SettingsView: React.FC = () => {
 
             <div className="space-y-2 flex-1">
               <div>
-                <span className="text-xs font-bold text-white block">Foto do Perfil</span>
-                <span className="text-[11px] text-slate-400 block">
+                <span className="font-serif text-xs font-bold text-white block">Foto do Perfil</span>
+                <span className="text-[11px] text-[#8F8A87] block font-serif">
                   Formatos aceitos: JPG, PNG ou WEBP. Tamanho máximo de 2 MB.
                 </span>
               </div>
 
               {photoError && (
-                <div className="flex items-center gap-1.5 text-[11px] text-rose-400">
+                <div className="flex items-center gap-1.5 text-[11px] text-dex-coral font-serif">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   <span>{photoError}</span>
                 </div>
               )}
 
               <div className="flex flex-wrap items-center gap-2 pt-1">
-                <label className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold rounded-xl cursor-pointer transition-colors shadow-sm">
+                <label className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-dex-slate hover:bg-slate-700 text-white text-xs font-serif font-bold rounded-xl cursor-pointer transition-colors shadow-sm">
                   <Camera className="w-3.5 h-3.5" />
                   <span>{photoPreview ? 'Trocar Foto' : 'Enviar Foto'}</span>
                   <input
@@ -384,7 +391,7 @@ export const SettingsView: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleSavePhoto}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer shadow-sm"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-dex-coral hover:bg-dex-coral/90 text-white text-xs font-serif font-bold rounded-xl transition-colors shadow-sm"
                   >
                     <Check className="w-3.5 h-3.5" />
                     <span>Salvar Foto</span>
@@ -395,7 +402,7 @@ export const SettingsView: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleRemovePhoto}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800 text-rose-300 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-dex-navy-950 hover:bg-dex-navy-900 border border-white/5 text-[#8F8A87] hover:text-dex-coral text-xs font-serif rounded-xl transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Remover Foto</span>
@@ -405,73 +412,54 @@ export const SettingsView: React.FC = () => {
             </div>
           </div>
 
-          {/* Dados Pessoais e Profissionais */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1.5">Nome Completo *</label>
+              <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5">Nome Completo *</label>
               <input
                 type="text"
                 required
                 value={userName}
                 onChange={e => setUserName(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1.5">E-mail Institucional</label>
+              <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5">E-mail Institucional</label>
               <input
                 type="email"
                 disabled
                 value={userEmail}
-                className="w-full px-3.5 py-2.5 bg-slate-800/40 border border-slate-800 rounded-xl text-xs text-slate-400 cursor-not-allowed"
-                title="O e-mail é a chave de login e não pode ser alterado diretamente"
+                className="w-full px-3.5 py-2.5 bg-dex-navy-950 text-slate-400 font-serif rounded-xl text-xs border border-white/5 cursor-not-allowed"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1.5">Inscrição OAB / UF *</label>
+              <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5">Inscrição OAB / UF *</label>
               <input
                 type="text"
                 required
                 value={userOab}
                 onChange={e => setUserOab(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white uppercase font-mono focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1.5">Telefone / WhatsApp</label>
+              <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5">Telefone / WhatsApp</label>
               <input
                 type="text"
                 value={userPhone}
                 onChange={e => setUserPhone(e.target.value)}
-                placeholder="(11) 98765-4321"
-                className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
               />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="text-xs font-semibold text-slate-300 block mb-1.5">Perfil de Acesso & Vínculo</label>
-              <div className="p-3 bg-slate-800/50 border border-slate-700/60 rounded-xl text-xs text-slate-300 flex items-center justify-between">
-                <span>
-                  {currentUser?.role === 'ADMIN' 
-                    ? `👑 Administrador da Banca • ${currentUser.officeName || 'Escritório'}` 
-                    : (currentUser?.isIndependent ? '⚖️ Advogado Autônomo' : `⚖️ Advogado Associado • ${currentUser?.officeName || 'Escritório'}`)}
-                </span>
-                {currentUser?.officeCode && (
-                  <span className="font-mono text-cyan-300 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800/60">
-                    Código do Escritório: {currentUser.officeCode}
-                  </span>
-                )}
-              </div>
             </div>
           </div>
 
-          <div className="pt-2 border-t border-slate-800 flex justify-end">
+          <div className="pt-3 border-t border-white/10 flex justify-end">
             <button
               type="submit"
-              className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-brand-600/30 transition-all cursor-pointer"
+              className="flex items-center gap-2 px-6 py-2.5 bg-dex-coral hover:bg-dex-coral/90 text-white text-xs font-serif font-bold rounded-xl shadow-lg transition-all"
             >
               <Save className="w-4 h-4" />
               <span>Salvar Alterações do Perfil</span>
@@ -480,67 +468,67 @@ export const SettingsView: React.FC = () => {
         </form>
       )}
 
-      {/* Tab: Dados da Sociedade (Somente Escritório) */}
+      {/* Tab: Dados da Sociedade */}
       {activeSubTab === 'general' && isAdmin && (
-        <form onSubmit={handleSaveOffice} className="p-6 sm:p-8 rounded-2xl bg-slate-900/80 border border-slate-800/80 space-y-4 max-w-3xl">
-          <h3 className="text-sm font-bold text-white mb-2">Informações Institucionais do Escritório</h3>
+        <form onSubmit={handleSaveOffice} className="p-6 md:p-8 rounded-[24px] bg-dex-navy-900 border border-white/5 space-y-5 max-w-3xl">
+          <h3 className="font-serif text-base font-bold text-white mb-2">Informações Institucionais do Escritório</h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1.5">Razão Social / Nome da Banca</label>
+              <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5">Razão Social / Nome da Banca</label>
               <input
                 type="text"
                 value={officeName}
                 onChange={e => setOfficeName(e.target.value)}
-                className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1.5">CNPJ da Sociedade</label>
+              <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5">CNPJ da Sociedade</label>
               <input
                 type="text"
                 value={officeCnpj}
                 onChange={e => setOfficeCnpj(e.target.value)}
-                className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1.5">Registro OAB Sociedade</label>
+              <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5">Registro OAB Sociedade</label>
               <input
                 type="text"
                 value={officeOab}
                 onChange={e => setOfficeOab(e.target.value)}
-                className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1.5">Telefone Comercial</label>
+              <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5">Telefone Comercial</label>
               <input
                 type="text"
                 value={officePhone}
                 onChange={e => setOfficePhone(e.target.value)}
-                className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
               />
             </div>
 
             <div className="sm:col-span-2">
-              <label className="text-xs font-semibold text-slate-300 block mb-1.5">Endereço Comercial</label>
+              <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5">Endereço Comercial</label>
               <input
                 type="text"
                 value={officeAddress}
                 onChange={e => setOfficeAddress(e.target.value)}
-                className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
               />
             </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-800 flex justify-end">
+          <div className="pt-3 border-t border-white/10 flex justify-end">
             <button
               type="submit"
-              className="flex items-center gap-2 px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-brand-600/30 transition-all cursor-pointer"
+              className="flex items-center gap-2 px-6 py-2.5 bg-dex-coral hover:bg-dex-coral/90 text-white text-xs font-serif font-bold rounded-xl shadow-lg transition-all"
             >
               <Save className="w-4 h-4" />
               <span>Salvar Dados da Sociedade</span>
@@ -556,26 +544,26 @@ export const SettingsView: React.FC = () => {
 
       {/* Tab: Integrações */}
       {activeSubTab === 'integrations' && (
-        <div className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800/80 space-y-4 max-w-3xl">
-          <h3 className="text-sm font-bold text-white mb-2">Conectividade & Inteligência Artificial</h3>
+        <div className="p-6 md:p-8 rounded-[24px] bg-dex-navy-900 border border-white/5 space-y-5 max-w-3xl">
+          <h3 className="font-serif text-base font-bold text-white mb-2">Conectividade &amp; Inteligência Artificial</h3>
 
-          <div className="space-y-3">
-            <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 flex items-center justify-between">
+          <div className="space-y-4">
+            <div className="p-5 rounded-2xl bg-dex-navy-800 border border-white/5 flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold text-white">Motor Dex AI (Triagem Jurídica & Jurisprudência)</p>
-                <p className="text-[11px] text-slate-400">Ativado para triagem fática, resumo de documentos e estruturação de petições.</p>
+                <p className="font-serif text-xs font-bold text-white">Motor Dex AI (Triagem Jurídica & Jurisprudência)</p>
+                <p className="text-[11px] text-[#8F8A87] font-serif">Ativado para triagem fática, resumo de documentos e estruturação de petições.</p>
               </div>
-              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <span className="text-[10px] font-serif font-bold px-3 py-1 rounded-full bg-dex-kpi-mint text-dex-navy-950">
                 Ativo
               </span>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 flex items-center justify-between">
+            <div className="p-5 rounded-2xl bg-dex-navy-800 border border-white/5 flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold text-white">Integração CNJ / Tribunais (PJe, e-SAJ, Projudi)</p>
-                <p className="text-[11px] text-slate-400">Sincronização de andamentos processuais e publicação de intimações.</p>
+                <p className="font-serif text-xs font-bold text-white">Integração CNJ / Tribunais (PJe, e-SAJ, Projudi)</p>
+                <p className="text-[11px] text-[#8F8A87] font-serif">Sincronização de andamentos processuais e publicação de intimações.</p>
               </div>
-              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+              <span className="text-[10px] font-serif font-bold px-3 py-1 rounded-full bg-dex-kpi-peach text-dex-navy-950">
                 Conectado
               </span>
             </div>
@@ -587,48 +575,44 @@ export const SettingsView: React.FC = () => {
       {activeSubTab === 'database' && (
         <div className="space-y-6 max-w-3xl">
           {/* Status Geral */}
-          <div className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800/80 space-y-4">
+          <div className="p-6 md:p-8 rounded-[24px] bg-dex-navy-900 border border-white/5 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
-                  isSupabaseConfigured()
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                    : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-                }`}>
-                  <Cloud className="w-5 h-5" />
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-dex-kpi-mint text-dex-navy-950 flex items-center justify-center shadow-md">
+                  <Cloud className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <h3 className="font-serif text-sm font-bold text-white flex items-center gap-2">
                     {isSupabaseConfigured()
                       ? 'Nuvem Conectada (Supabase / PostgreSQL)'
                       : 'Armazenamento Local (Navegador)'}
                   </h3>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-[#8F8A87] font-serif">
                     {isSupabaseConfigured()
                       ? 'Cadastros e dados sincronizados em tempo real entre todos os dispositivos.'
                       : 'Os dados estão salvos apenas neste navegador. Para salvar globalmente, conecte o Supabase.'}
                   </p>
                 </div>
               </div>
-              <span className={`text-[10px] font-bold px-3 py-1 rounded-full border ${
+              <span className={`text-[10px] font-serif font-bold px-3 py-1 rounded-full ${
                 isSupabaseConfigured()
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                  : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                  ? 'bg-dex-kpi-mint text-dex-navy-950'
+                  : 'bg-dex-kpi-peach text-dex-navy-950'
               }`}>
                 {isSupabaseConfigured() ? 'Online • Nuvem' : 'Modo Offline / Local'}
               </span>
             </div>
 
             {dbStatus && (
-              <div className={`p-3.5 rounded-xl text-xs flex items-center gap-2 ${
+              <div className={`p-4 rounded-xl text-xs font-serif flex items-center gap-2 ${
                 dbStatus.success
-                  ? 'bg-emerald-950/60 border border-emerald-800 text-emerald-200'
-                  : 'bg-rose-950/60 border border-rose-800 text-rose-200'
+                  ? 'bg-dex-chart-green/20 border border-dex-chart-green/30 text-dex-beige'
+                  : 'bg-dex-coral/20 border border-dex-coral/30 text-dex-coral'
               }`}>
                 {dbStatus.success ? (
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-dex-chart-green" />
                 ) : (
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                  <AlertCircle className="w-4 h-4 shrink-0 text-dex-coral" />
                 )}
                 <span>{dbStatus.message}</span>
               </div>
@@ -636,20 +620,20 @@ export const SettingsView: React.FC = () => {
           </div>
 
           {/* Configuração Supabase */}
-          <form onSubmit={handleTestAndSaveSupabase} className="p-6 sm:p-8 rounded-2xl bg-slate-900/80 border border-slate-800/80 space-y-5">
+          <form onSubmit={handleTestAndSaveSupabase} className="p-6 md:p-8 rounded-[24px] bg-dex-navy-900 border border-white/5 shadow-2xl space-y-5">
             <div>
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Database className="w-4 h-4 text-cyan-400" />
+              <h3 className="font-serif text-base font-bold text-white flex items-center gap-2">
+                <Database className="w-4 h-4 text-dex-coral" />
                 Conectar Banco de Dados Supabase
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[#8F8A87] font-serif mt-1">
                 Insira as credenciais do seu projeto Supabase para habilitar salvamento na nuvem.
               </p>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-serif italic text-[#C2D6DC] mb-1.5">
                   URL do Projeto Supabase (Project URL)
                 </label>
                 <input
@@ -657,12 +641,12 @@ export const SettingsView: React.FC = () => {
                   placeholder="https://xyzabcdefg.supabase.co"
                   value={supabaseUrl}
                   onChange={e => setSupabaseUrl(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
+                  className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-mono rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-serif italic text-[#C2D6DC] mb-1.5">
                   Chave Pública Anon (Anon Public Key)
                 </label>
                 <input
@@ -670,7 +654,7 @@ export const SettingsView: React.FC = () => {
                   placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                   value={supabaseKey}
                   onChange={e => setSupabaseKey(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono"
+                  className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-mono rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
                 />
               </div>
             </div>
@@ -679,7 +663,7 @@ export const SettingsView: React.FC = () => {
               <button
                 type="submit"
                 disabled={isTestingDb}
-                className="py-2.5 px-5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-cyan-600/30 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-60"
+                className="py-2.5 px-6 bg-dex-coral hover:bg-dex-coral/90 text-white text-xs font-serif font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 disabled:opacity-60"
               >
                 {isTestingDb ? (
                   <>
@@ -699,36 +683,36 @@ export const SettingsView: React.FC = () => {
                   type="button"
                   onClick={handleSyncLocalToSupabase}
                   disabled={isSyncingDb}
-                  className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-60"
+                  className="py-2.5 px-4 bg-dex-slate hover:bg-slate-700 text-white text-xs font-serif font-bold rounded-xl transition-all flex items-center gap-2 disabled:opacity-60"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 text-cyan-400 ${isSyncingDb ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncingDb ? 'animate-spin' : ''}`} />
                   <span>{isSyncingDb ? 'Sincronizando...' : 'Enviar Dados Deste PC para o Supabase'}</span>
                 </button>
               )}
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-700/50 space-y-2 text-xs text-slate-300 leading-relaxed">
-              <p className="font-semibold text-white flex items-center gap-1.5">
-                <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+            <div className="p-4 rounded-xl bg-dex-navy-950 border border-white/5 space-y-2 text-xs text-slate-300 font-serif">
+              <p className="font-bold text-white flex items-center gap-1.5">
+                <KeyRound className="w-3.5 h-3.5 text-dex-peach" />
                 Como configurar no Vercel (Produção):
               </p>
-              <ol className="list-decimal pl-4 space-y-1 text-slate-400 text-[11px]">
+              <ol className="list-decimal pl-4 space-y-1 text-[#8F8A87] text-[11px]">
                 <li>Acesse o dashboard do seu projeto no <strong>Vercel</strong> &gt; <strong>Settings</strong> &gt; <strong>Environment Variables</strong>.</li>
-                <li>Adicione <code className="text-cyan-300 font-mono">VITE_SUPABASE_URL</code> com a URL do seu Supabase.</li>
-                <li>Adicione <code className="text-cyan-300 font-mono">VITE_SUPABASE_ANON_KEY</code> com a chave anon pública.</li>
-                <li>O script de criação de tabelas está no arquivo <code className="text-cyan-300 font-mono">supabase_schema.sql</code> na raiz do projeto.</li>
+                <li>Adicione <code className="text-dex-coral font-mono">VITE_SUPABASE_URL</code> com a URL do seu Supabase.</li>
+                <li>Adicione <code className="text-dex-coral font-mono">VITE_SUPABASE_ANON_KEY</code> com a chave anon pública.</li>
+                <li>O script de criação de tabelas está no arquivo <code className="text-dex-coral font-mono">supabase_schema.sql</code> na raiz do projeto.</li>
               </ol>
             </div>
           </form>
 
           {/* Backup e Exportação Manual */}
-          <div className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800/80 space-y-4">
+          <div className="p-6 md:p-8 rounded-[24px] bg-dex-navy-900 border border-white/5 shadow-xl space-y-4">
             <div>
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <FileDown className="w-4 h-4 text-emerald-400" />
+              <h3 className="font-serif text-base font-bold text-white flex items-center gap-2">
+                <FileDown className="w-4 h-4 text-dex-peach" />
                 Backup Manual e Transferência Entre Computadores
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[#8F8A87] font-serif mt-1">
                 Baixe todos os dados em um arquivo JSON para transferir entre dispositivos ou restaurar a qualquer momento.
               </p>
             </div>
@@ -737,14 +721,14 @@ export const SettingsView: React.FC = () => {
               <button
                 type="button"
                 onClick={handleExportBackup}
-                className="py-2.5 px-4 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold rounded-xl transition-colors flex items-center gap-2 cursor-pointer"
+                className="py-2.5 px-5 bg-dex-slate hover:bg-slate-700 text-white text-xs font-serif font-bold rounded-xl transition-colors flex items-center gap-2"
               >
                 <FileDown className="w-4 h-4" />
                 Exportar Backup Completo (.JSON)
               </button>
 
-              <label className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold rounded-xl transition-colors flex items-center gap-2 cursor-pointer">
-                <Upload className="w-4 h-4 text-cyan-400" />
+              <label className="py-2.5 px-5 bg-dex-navy-800 hover:bg-dex-navy-700 text-dex-beige border border-white/10 text-xs font-serif font-bold rounded-xl transition-colors flex items-center gap-2 cursor-pointer">
+                <Upload className="w-4 h-4 text-dex-coral" />
                 Importar Arquivo de Backup (.JSON)
                 <input
                   type="file"

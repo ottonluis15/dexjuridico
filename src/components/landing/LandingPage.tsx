@@ -6,25 +6,24 @@ import {
   Clock, 
   ArrowRight, 
   CheckCircle2, 
-  FolderKanban, 
-  DollarSign, 
   Users, 
   FileText, 
-  Zap, 
+  DollarSign, 
   ChevronDown, 
   Play, 
-  Star, 
-  Lock, 
-  HelpCircle, 
-  BookOpen, 
-  ShieldAlert, 
   Check, 
-  Cpu, 
   Building2, 
   Award,
   Globe,
-  ExternalLink
+  ExternalLink,
+  Bot,
+  Calendar,
+  Layers,
+  FolderKanban
 } from 'lucide-react';
+import { DexLogo } from '../common/DexLogo';
+import { DecorativeBars, DecorativeDots } from '../common/DecorativeBars';
+import { HeroDashboardMockup } from './HeroDashboardMockup';
 
 interface LandingPageProps {
   onNavigateToLogin: () => void;
@@ -49,7 +48,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       title: 'Trabalhista — Horas Extras e Dano Moral',
       area: 'Trabalhista',
       urgency: 'ALTA',
-      urgencyColor: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
+      urgencyColor: 'text-[#C48A5C] bg-[#F9D9C3]/70 border-[#C48A5C]/40',
       prompt: 'Trabalhei por 3 anos em uma transportadora fazendo jornadas diárias de 14 horas sem receber adicional de horas extras. Fui demitido sem justa causa e sofria humilhações constantes do encarregado perante toda a equipe.',
       framing: 'Reclamatória Trabalhista c/c Pedido de Horas Extras (art. 59 CLT) e Indenização por Danos Morais (art. 223-B CLT).',
       questions: [
@@ -63,8 +62,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     {
       title: 'Consumidor — Cancelamento e Extravio de Bagagem',
       area: 'Consumidor / Cível',
-      urgency: 'MEDIA',
-      urgencyColor: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
+      urgency: 'MÉDIA',
+      urgencyColor: 'text-[#4A808E] bg-[#DCE5E4] border-[#4A808E]/40',
       prompt: 'Minha viagem de férias para Fortaleza foi arruinada. O voo atrasou 9 horas sem assistência material e minha mala só foi devolvida 5 dias depois, com itens danificados.',
       framing: 'Ação de Indenização por Danos Morais e Materiais (Resolução 400 ANAC e art. 14 CDC). Responsabilidade objetiva da companhia aérea.',
       questions: [
@@ -77,8 +76,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     {
       title: 'Família — Execução e Prisão Civil de Alimentos',
       area: 'Família e Sucessões',
-      urgency: 'CRITICA',
-      urgencyColor: 'text-rose-400 bg-rose-500/10 border-rose-500/30',
+      urgency: 'CRÍTICA',
+      urgencyColor: 'text-[#F4665C] bg-[#F0CBAE]/60 border-[#F4665C]/40',
       prompt: 'O genitor não paga a pensão alimentícia fixada em juízo há 3 meses consecutivos. As crianças estão sem material escolar e com mensalidades atrasadas.',
       framing: 'Cumprimento de Sentença de Obrigação de Pagar Alimentos sob Rito de Prisão Civil (art. 528 CPC). Súmula 309 do STJ.',
       questions: [
@@ -113,802 +112,537 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     }
   ];
 
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-cyan-500 selection:text-slate-950 font-sans antialiased overflow-x-hidden">
-      {/* Glow decorative blurs */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-gradient-to-b from-brand-600/15 via-cyan-500/10 to-transparent blur-3xl pointer-events-none -z-10" />
-      <div className="fixed top-[800px] left-0 w-[500px] h-[500px] bg-brand-700/10 rounded-full blur-3xl pointer-events-none -z-10" />
-
-      {/* Top Bar Navigation */}
-      <nav className="sticky top-0 z-50 backdrop-blur-xl bg-slate-950/80 border-b border-slate-800/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-cyan-500 via-brand-600 to-slate-900 text-white flex items-center justify-center shadow-lg shadow-cyan-500/20 border border-cyan-400/30">
-              <Scale className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-serif text-2xl font-black tracking-tight text-white">DEX</span>
-                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                  Legal AI
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-400 font-medium">Gestão Jurídica Inteligente</p>
-            </div>
+    <div className="min-h-screen bg-dex-cream text-dex-navy-950 font-serif selection:bg-dex-coral selection:text-white antialiased overflow-x-hidden">
+      {/* Header (Anexo 1) */}
+      <header className="sticky top-0 z-50 bg-dex-cream/95 backdrop-blur-md border-b border-[#D8C3B5]/90 transition-all">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 h-20 flex items-center justify-between">
+          {/* Logo à esquerda */}
+          <div 
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} 
+            className="cursor-pointer transition-transform hover:scale-105"
+          >
+            <DexLogo variant="dark" size="md" />
           </div>
 
-          {/* Navigation Links (Desktop) */}
-          <div className="hidden lg:flex items-center gap-8 text-xs font-semibold text-slate-300">
-            <a href="#recursos" className="hover:text-cyan-400 transition-colors">Recursos</a>
-            <a href="#dex-ai" className="hover:text-cyan-400 transition-colors flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              Dex AI 2.0
-            </a>
-            <a href="#modulos" className="hover:text-cyan-400 transition-colors">Módulos</a>
-            <a href="#planos" className="hover:text-cyan-400 transition-colors">Planos & Preços</a>
-            <a href="#seguranca" className="hover:text-cyan-400 transition-colors">LGPD & OAB</a>
-            <a href="#faq" className="hover:text-cyan-400 transition-colors">FAQ</a>
-          </div>
-
-          {/* Action CTAs */}
-          <div className="flex items-center gap-3">
-            {isLoggedIn && onBackToApp ? (
+          {/* Links e Ações à direita */}
+          <div className="flex items-center gap-6 sm:gap-10">
+            <nav className="hidden md:flex items-center gap-8 text-sm text-dex-support font-medium">
               <button
-                onClick={onBackToApp}
-                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold border border-slate-700 transition-all flex items-center gap-2"
+                onClick={() => scrollToSection('recursos')}
+                className="hover:text-dex-navy-950 transition-colors cursor-pointer"
               >
-                <span>Voltar ao Sistema</span>
-                <ArrowRight className="w-3.5 h-3.5 text-cyan-400" />
+                Recursos
               </button>
-            ) : (
-              <>
+              <button
+                onClick={() => scrollToSection('sobre')}
+                className="hover:text-dex-navy-950 transition-colors cursor-pointer"
+              >
+                Sobre nós
+              </button>
+              <button
+                onClick={() => scrollToSection('planos')}
+                className="hover:text-dex-navy-950 transition-colors cursor-pointer"
+              >
+                Planos
+              </button>
+            </nav>
+
+            <div className="flex items-center gap-3 sm:gap-4">
+              {isLoggedIn && onBackToApp ? (
                 <button
-                  onClick={onNavigateToLogin}
-                  className="px-4 py-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 text-xs font-semibold border border-slate-700/80 transition-all"
+                  onClick={onBackToApp}
+                  className="px-5 py-2.5 rounded-xl bg-dex-navy-950 hover:bg-dex-navy-900 text-white text-xs font-semibold shadow-md transition-all flex items-center gap-2 cursor-pointer"
                 >
-                  Entrar
-                </button>
-                <button
-                  onClick={() => onNavigateToRegister('Escritório Pro')}
-                  className="px-4 sm:px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 via-brand-600 to-brand-500 hover:from-cyan-400 hover:to-brand-400 text-white text-xs font-bold shadow-lg shadow-cyan-500/25 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
-                >
-                  <span>Cadastre-se Grátis</span>
+                  <span>Voltar ao Sistema</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
-              </>
-            )}
+              ) : (
+                <>
+                  <button
+                    onClick={onNavigateToLogin}
+                    className="text-sm font-medium text-dex-support hover:text-dex-navy-950 transition-colors px-2 py-1 cursor-pointer"
+                  >
+                    Entrar
+                  </button>
+                  <button
+                    onClick={() => onNavigateToRegister('Escritório Pro')}
+                    className="px-5 sm:px-6 py-2.5 rounded-xl bg-dex-navy-950 hover:bg-dex-navy-900 text-white text-xs sm:text-sm font-semibold shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                  >
+                    Criar conta
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </nav>
+      </header>
 
-      {/* Hero Section */}
-      <section className="relative pt-12 pb-20 lg:pt-20 lg:pb-32 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
-        {/* Floating Release Pill */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 text-xs font-semibold mb-8 backdrop-blur-md shadow-lg shadow-cyan-950/50 animate-bounce duration-1000">
-          <Sparkles className="w-4 h-4 text-cyan-400" />
-          <span>Nova Versão 2.0 com Dex AI & Conformidade Total OAB/LGPD</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-        </div>
+      {/* HERO SECTION (Fiel ao Anexo 1) */}
+      <section className="relative pt-12 pb-20 lg:pt-20 lg:pb-28 px-4 sm:px-6 lg:px-12 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+          {/* Coluna Esquerda: Textos e CTAs */}
+          <div className="lg:col-span-6 space-y-6 text-left">
+            {/* Barras decorativas coral e teal empilhadas */}
+            <DecorativeBars coralWidth="w-28 sm:w-36" tealWidth="w-28 sm:w-36" height="h-2" />
 
-        {/* Hero Title */}
-        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white max-w-5xl mx-auto leading-[1.1] mb-6">
-          Gestão Jurídica de Alta Precisão com o Poder da{' '}
-          <span className="bg-gradient-to-r from-cyan-400 via-brand-300 to-brand-500 bg-clip-text text-transparent">
-            Inteligência Artificial
-          </span>
-        </h1>
-
-        {/* Hero Subtitle */}
-        <p className="text-base sm:text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed mb-10">
-          Centralize processos no padrão CNJ, blinde seu escritório contra perda de prazos fatais com controle militar, controle honorários e realize triagens preditivas de casos em segundos com o <strong>Dex AI</strong>.
-        </p>
-
-        {/* Hero CTAs */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto mb-16">
-          <button
-            onClick={() => onNavigateToRegister('Escritório Pro')}
-            className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-brand-600 to-brand-500 hover:from-cyan-400 hover:to-brand-400 text-white text-sm font-bold shadow-xl shadow-cyan-500/30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-3 cursor-pointer"
-          >
-            <span>Iniciar Avaliação Grátis</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-
-          <button
-            onClick={onNavigateToLogin}
-            className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 text-sm font-bold border border-slate-700/80 transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <Play className="w-4 h-4 text-cyan-400 fill-cyan-400" />
-            <span>Ver Demonstração ao Vivo</span>
-          </button>
-        </div>
-
-        {/* Trust Stats Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto pt-8 border-t border-slate-800/80">
-          <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800/60">
-            <div className="text-2xl sm:text-3xl font-extrabold text-white mb-1">+15.000</div>
-            <div className="text-xs text-slate-400 font-medium">Processos CNJ Gerenciados</div>
-          </div>
-          <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800/60">
-            <div className="text-2xl sm:text-3xl font-extrabold text-cyan-400 mb-1">99.8%</div>
-            <div className="text-xs text-slate-400 font-medium">Precisão em Prazos Fatais</div>
-          </div>
-          <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800/60">
-            <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400 mb-1">100%</div>
-            <div className="text-xs text-slate-400 font-medium">Conformidade OAB & LGPD</div>
-          </div>
-          <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800/60">
-            <div className="text-2xl sm:text-3xl font-extrabold text-brand-300 mb-1">14h/sem</div>
-            <div className="text-xs text-slate-400 font-medium">Economizadas por Advogado</div>
-          </div>
-        </div>
-
-        {/* Interactive App Preview Showcase */}
-        <div className="mt-16 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl p-4 sm:p-6 text-left relative overflow-hidden backdrop-blur-2xl">
-          {/* Mock Window Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-slate-800 gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-rose-500/80" />
-                <div className="w-3 h-3 rounded-full bg-amber-500/80" />
-                <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
-              </div>
-              <span className="text-xs font-mono text-slate-400 pl-2">
-                dex-juridico.adv.br • Cockpit Operacional
+            {/* Título Principal Fiel ao Anexo 1 */}
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold leading-[1.15] text-dex-coral tracking-tight">
+              Onde a advocacia encontra sua{' '}
+              <span className="block italic text-dex-navy-950 font-serif font-normal mt-1">
+                melhor versão.
               </span>
+            </h1>
+
+            {/* Parágrafo de Apoio Cinza */}
+            <p className="text-base sm:text-lg text-dex-support leading-relaxed max-w-xl">
+              Deixamos a burocracia invisível. Centralize prazos, honorários e o andamento processual do seu escritório em uma interface desenhada para não atrapalhar o seu dia.
+            </p>
+
+            {/* CTAs */}
+            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+              <button
+                onClick={() => onNavigateToRegister('Escritório Pro')}
+                className="px-8 py-3.5 rounded-xl bg-dex-navy-950 hover:bg-dex-navy-900 text-white text-sm font-semibold shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>Criar conta gratuitamente</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={onNavigateToLogin}
+                className="px-6 py-3.5 rounded-xl bg-dex-peach/60 hover:bg-dex-peach text-dex-navy-950 text-sm font-semibold border border-dex-border transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>Fazer login</span>
+              </button>
             </div>
 
-            {/* Interactive Preview Tabs */}
-            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-800/90 border border-slate-700/60 text-xs">
-              <button
-                onClick={() => setActivePreviewTab('ai')}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
-                  activePreviewTab === 'ai' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Dex AI</span>
-              </button>
-              <button
-                onClick={() => setActivePreviewTab('deadlines')}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
-                  activePreviewTab === 'deadlines' ? 'bg-brand-600 text-white shadow' : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                <Clock className="w-3.5 h-3.5" />
-                <span>Prazos Fatais</span>
-              </button>
-              <button
-                onClick={() => setActivePreviewTab('finance')}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
-                  activePreviewTab === 'finance' ? 'bg-emerald-600 text-white shadow' : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                <DollarSign className="w-3.5 h-3.5" />
-                <span>Honorários</span>
-              </button>
-              <button
-                onClick={() => setActivePreviewTab('overview')}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
-                  activePreviewTab === 'overview' ? 'bg-slate-700 text-white shadow' : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                <span>Visão Geral</span>
-              </button>
+            {/* Micro badges de confiança */}
+            <div className="pt-4 flex flex-wrap items-center gap-6 text-xs text-dex-support font-medium">
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-dex-coral stroke-[2.5]" />
+                <span>14 dias grátis sem cartão</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-dex-teal stroke-[2.5]" />
+                <span>Provimento OAB 205/2021</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-dex-terracotta stroke-[2.5]" />
+                <span>Blindagem LGPD</span>
+              </div>
             </div>
           </div>
 
-          {/* Dynamic Mock Content */}
-          <div className="pt-6">
-            {activePreviewTab === 'ai' && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                <div className="p-4 rounded-2xl bg-cyan-950/30 border border-cyan-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300 bg-cyan-500/20 px-2 py-0.5 rounded">
-                      Análise Cognitiva Automática
-                    </span>
-                    <h3 className="text-sm font-bold text-white mt-1">
-                      Ação Indenizatória por Extravio de Carga & Danos Morais
-                    </h3>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-emerald-400 font-mono">Valor Estimado: R$ 64.000,00</span>
-                    <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                      Urgência: ALTA
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                  <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60 space-y-2">
-                    <span className="font-bold text-cyan-300 uppercase text-[11px] block">1. Enquadramento Legal</span>
-                    <p className="text-slate-300 leading-relaxed font-mono text-[11px]">
-                      Art. 749 e 750 do Código Civil c/c Art. 14 do CDC. Responsabilidade objetiva do transportador e indenização punitiva.
-                    </p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60 space-y-2">
-                    <span className="font-bold text-amber-300 uppercase text-[11px] block">2. Perguntas de Instrução</span>
-                    <ul className="text-slate-300 space-y-1 list-disc list-inside">
-                      <li>Houve declaração de valor da carga na emissão da nota fiscal?</li>
-                      <li>Houve contratação de seguro próprio pela transportadora?</li>
-                    </ul>
-                  </div>
-                  <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60 space-y-2">
-                    <span className="font-bold text-emerald-300 uppercase text-[11px] block">3. Checklist de Documentos</span>
-                    <ul className="text-slate-300 space-y-1 list-disc list-inside">
-                      <li>Conhecimento de Transporte Eletrônico (CT-e)</li>
-                      <li>Boletim de Ocorrência Policial</li>
-                      <li>Notas fiscais de aquisição das mercadorias</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activePreviewTab === 'deadlines' && (
-              <div className="space-y-3 animate-in fade-in duration-200">
-                <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/30 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-3">
-                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
-                    <div>
-                      <span className="font-bold text-white block">Contestação — Proc. 1024589-32.2024.8.26.0100</span>
-                      <span className="text-slate-400 text-[11px]">3ª Vara Cível Central • Dra. Helena Moreira</span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="font-bold text-rose-400 block">VENCE HOJE (18:00)</span>
-                    <span className="text-[10px] text-slate-400">Classificação: CRÍTICA</span>
-                  </div>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/60 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="font-bold text-white block">Audiência de Instrução — Proc. 0001248-89.2024.5.02.0012</span>
-                    <span className="text-slate-400 text-[11px]">12ª Vara do Trabalho de SP • Dr. Lucas Mendes</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="font-bold text-amber-300 block">Em 3 dias (14:30)</span>
-                    <span className="text-[10px] text-slate-400">Classificação: ALTA</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activePreviewTab === 'finance' && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-xs">
-                    <span className="text-slate-400 text-[11px] block">Honorários Recebidos (Mês)</span>
-                    <span className="text-xl font-bold text-emerald-400 mt-1 block">R$ 54.200,00</span>
-                  </div>
-                  <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/30 text-xs">
-                    <span className="text-slate-400 text-[11px] block">Honorários a Receber</span>
-                    <span className="text-xl font-bold text-amber-300 mt-1 block">R$ 28.500,00</span>
-                  </div>
-                  <div className="p-3.5 rounded-xl bg-brand-950/40 border border-brand-500/30 text-xs">
-                    <span className="text-slate-400 text-[11px] block">Contratos de Êxito Ativos</span>
-                    <span className="text-xl font-bold text-brand-300 mt-1 block">18 Demandas</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activePreviewTab === 'overview' && (
-              <div className="p-6 rounded-2xl bg-slate-800/40 border border-slate-700/60 text-center space-y-2">
-                <div className="text-sm font-bold text-white">Cockpit Completo de Gestão Jurídica Modular</div>
-                <p className="text-xs text-slate-300 max-w-xl mx-auto">
-                  Acesse em uma única tela: lista de processos no formato CNJ, status de honorários contratuais, repositório de documentos sob sigilo e mural de comunicação da banca.
-                </p>
-              </div>
-            )}
+          {/* Coluna Direita: Mockup do Dashboard com Corvo e Penas (Anexo 1) */}
+          <div className="lg:col-span-6 flex justify-center lg:justify-end pt-8 lg:pt-0">
+            <HeroDashboardMockup />
           </div>
         </div>
       </section>
 
-      {/* Interactive Dex AI Simulation Section */}
-      <section id="dex-ai" className="py-20 bg-slate-900/60 border-y border-slate-800/80 relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 inline-flex items-center gap-1.5 mb-3">
-              <Sparkles className="w-3.5 h-3.5" />
-              Simulador Interativo
+      {/* SEÇÃO DE RECURSOS / BENTO GRID (Fiel ao Anexo 2) */}
+      <section id="recursos" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-12 max-w-7xl mx-auto border-t border-[#D8C3B5]/70">
+        {/* Cabeçalho da Seção Centralizado */}
+        <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-dex-navy-950 tracking-tight">
+            Construído para quem vive o{' '}
+            <span className="relative inline-block">
+              Direito
+              {/* Duas barras decorativas sublinhando a palavra Direito */}
+              <span className="block mt-2">
+                <DecorativeBars centered coralWidth="w-28 sm:w-36" tealWidth="w-28 sm:w-36" height="h-1.5" />
+              </span>
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-              Veja o Dex AI em Ação em Segundos
-            </h2>
-            <p className="text-sm text-slate-400 mt-2">
-              Escolha um relato fático real abaixo e veja como a IA estrutura instantaneamente o enquadramento, perguntas probatórias e cálculo preliminar de urgência.
-            </p>
+          </h2>
+
+          <p className="text-base sm:text-lg text-dex-support leading-relaxed max-w-2xl mx-auto pt-2">
+            Menos abas abertas, menos planilhas perdidas. O Dex unifica o que realmente importa para a saúde do seu escritório.
+          </p>
+        </div>
+
+        {/* Grade Bento do Anexo 2 */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          {/* Card Grande à Esquerda: Painel de Controle */}
+          <div className="lg:col-span-7 bg-dex-cream rounded-[24px] border border-[#222222]/80 p-8 sm:p-10 flex flex-col justify-between shadow-sm relative overflow-hidden">
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 items-center">
+              {/* Texto explicativo */}
+              <div className="sm:col-span-7 space-y-4">
+                <h3 className="text-2xl sm:text-3xl font-display font-bold text-dex-navy-950">
+                  Painel de Controle
+                </h3>
+                <p className="text-sm sm:text-base text-dex-support leading-relaxed">
+                  O pulso do seu escritório em uma única tela. Receitas, andamentos e alertas críticos disponíveis no momento em que você acessa o sistema.
+                </p>
+              </div>
+
+              {/* Painel bege com barras decorativas (Anexo 2) */}
+              <div className="sm:col-span-5 bg-dex-beige rounded-2xl p-6 flex items-end justify-center gap-4 h-48 border border-[#D8C3B5]/60">
+                <div className="w-10 h-28 rounded-full border border-dex-navy-950/60 bg-transparent" />
+                <div className="w-10 h-40 rounded-full border border-dex-navy-950/60 bg-transparent" />
+              </div>
+            </div>
           </div>
 
-          {/* Scenario Tabs */}
-          <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
-            {aiDemoCases.map((item, idx) => (
-              <button
-                key={idx}
-                onClick={() => setActiveAiDemoIndex(idx)}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                  activeAiDemoIndex === idx
-                    ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/25 scale-105'
-                    : 'bg-slate-800/80 hover:bg-slate-800 text-slate-300 border border-slate-700/60'
-                }`}
-              >
-                <span>{item.title}</span>
-              </button>
-            ))}
-          </div>
+          {/* Coluna Direita com 2 Cards Empilhados */}
+          <div className="lg:col-span-5 flex flex-col gap-6">
+            {/* Card Superior: Acompanhamento */}
+            <div className="flex-1 bg-dex-cream rounded-[24px] border border-[#222222]/80 p-7 sm:p-8 flex flex-col justify-between shadow-sm">
+              <div className="space-y-3">
+                <div className="w-10 h-10 text-dex-navy-950">
+                  <Scale className="w-7 h-7 stroke-[1.8]" />
+                </div>
+                <h3 className="text-xl sm:text-2xl font-display font-bold text-dex-navy-950">
+                  Acompanhamento
+                </h3>
+                <p className="text-sm text-dex-support leading-relaxed">
+                  Cada movimentação ou mudança de status organizada em uma linha do tempo clara.
+                </p>
+              </div>
+            </div>
 
-          {/* AI Simulator Output Card */}
-          {(() => {
-            const currentCase = aiDemoCases[activeAiDemoIndex];
-            return (
-              <div className="max-w-4xl mx-auto rounded-3xl bg-slate-950 border border-cyan-500/30 p-6 sm:p-8 shadow-2xl space-y-6">
-                <div>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                    Relato Bruto Apresentado pelo Cliente:
+            {/* Card Inferior: Carteira de Clientes */}
+            <div className="flex-1 bg-dex-cream rounded-[24px] border border-[#222222]/80 p-7 sm:p-8 flex flex-col justify-between shadow-sm">
+              <div className="space-y-3">
+                <div className="w-10 h-10 text-dex-navy-950">
+                  <Users className="w-7 h-7 stroke-[1.8]" />
+                </div>
+                <h3 className="text-xl sm:text-2xl font-display font-bold text-dex-navy-950">
+                  Carteira de Clientes
+                </h3>
+                <p className="text-sm text-dex-support leading-relaxed">
+                  Mantenha o histórico completo de contratos, processos e comunicações.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SEÇÃO DEX AI 2.0 INTERATIVA */}
+      <section id="dex-ai" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-12 max-w-7xl mx-auto border-t border-[#D8C3B5]/70">
+        <div className="text-center max-w-3xl mx-auto mb-14 space-y-4">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-dex-peach/80 border border-dex-terracotta/40 text-dex-navy-950 text-xs font-semibold shadow-sm">
+            <Sparkles className="w-3.5 h-3.5 text-dex-coral" />
+            <span>Motor Dex AI 2.0 • Triagem Jurídica de Casos</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-dex-navy-950">
+            Inteligência que entende o ritual forense
+          </h2>
+          <p className="text-base sm:text-lg text-dex-support">
+            Cole um relato informal, áudio do WhatsApp ou entrevista com o cliente. O Dex AI identifica a área jurídica, extrai os fatos essenciais, formula a tese e calcula a estimativa da causa.
+          </p>
+        </div>
+
+        {/* Seletor de Casos de Demonstração */}
+        <div className="flex flex-wrap justify-center gap-3 mb-8">
+          {aiDemoCases.map((item, idx) => (
+            <button
+              key={item.title}
+              onClick={() => setActiveAiDemoIndex(idx)}
+              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                activeAiDemoIndex === idx
+                  ? 'bg-dex-navy-950 text-white shadow-md'
+                  : 'bg-dex-beige hover:bg-dex-peach text-dex-navy-950 border border-dex-border'
+              }`}
+            >
+              {item.title}
+            </button>
+          ))}
+        </div>
+
+        {/* Card Interativo do Caso Selecionado */}
+        {(() => {
+          const current = aiDemoCases[activeAiDemoIndex];
+          return (
+            <div className="bg-dex-beige/70 rounded-[28px] border border-[#222222]/60 p-6 sm:p-10 shadow-md max-w-5xl mx-auto space-y-8">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                {/* Relato Bruto do Cliente */}
+                <div className="lg:col-span-5 space-y-3 bg-white/70 p-6 rounded-2xl border border-dex-border">
+                  <span className="text-xs font-bold uppercase tracking-wider text-dex-support">
+                    Relato Bruto do Cliente:
                   </span>
-                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-200 italic leading-relaxed">
-                    "{currentCase.prompt}"
-                  </div>
-                </div>
-
-                {/* AI Processing Banner */}
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-cyan-950/40 to-slate-900 border border-cyan-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase text-cyan-400">Enquadramento Automático</span>
-                    <h3 className="text-sm font-bold text-white mt-0.5">{currentCase.framing}</h3>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs font-bold text-emerald-400 font-mono">Causa: {currentCase.value}</span>
-                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${currentCase.urgencyColor}`}>
-                      Urgência: {currentCase.urgency}
+                  <p className="text-sm text-dex-navy-950 italic leading-relaxed">
+                    "{current.prompt}"
+                  </p>
+                  <div className="pt-2">
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${current.urgencyColor}`}>
+                      Urgência: {current.urgency}
                     </span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
-                      <HelpCircle className="w-4 h-4" />
-                      Perguntas para a Entrevista de Instrução
+                {/* Estruturação Jurídica da IA */}
+                <div className="lg:col-span-7 space-y-6">
+                  <div className="space-y-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-dex-support">
+                      Enquadramento Jurídico Sugerido:
                     </span>
-                    <ul className="text-xs text-slate-300 space-y-2 pt-1">
-                      {currentCase.questions.map((q, i) => (
-                        <li key={i} className="flex items-start gap-2">
-                          <span className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-300 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
-                            {i + 1}
-                          </span>
+                    <h4 className="text-lg font-bold text-dex-navy-950">
+                      {current.framing}
+                    </h4>
+                  </div>
+
+                  {/* Perguntas Cruciais */}
+                  <div className="space-y-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-dex-support">
+                      Perguntas Fundamentais para a Entrevista:
+                    </span>
+                    <ul className="space-y-2">
+                      {current.questions.map((q, i) => (
+                        <li key={i} className="text-xs sm:text-sm text-dex-navy-950 flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-dex-coral shrink-0 mt-0.5" />
                           <span>{q}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4" />
-                      Checklist Probatório Recomendado
+                  {/* Documentos Exigidos */}
+                  <div className="space-y-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-dex-support">
+                      Checklist Probatório Recomendado:
                     </span>
-                    <ul className="text-xs text-slate-300 space-y-2 pt-1">
-                      {currentCase.documents.map((doc, i) => (
-                        <li key={i} className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-                          <span>{doc}</span>
-                        </li>
+                    <div className="flex flex-wrap gap-2">
+                      {current.documents.map((d, i) => (
+                        <span key={i} className="text-xs bg-dex-input px-3 py-1 rounded-lg text-dex-navy-950 font-medium border border-dex-border/60">
+                          {d}
+                        </span>
                       ))}
-                    </ul>
+                    </div>
                   </div>
-                </div>
 
-                {/* Call to Action Button to Open or Test */}
-                <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-800/80">
-                  <div className="text-xs text-slate-400">
-                    O Dex converte esta análise diretamente em um processo CNJ com 1 clique.
+                  {/* Valor Estimado */}
+                  <div className="pt-2 flex items-center justify-between border-t border-dex-border">
+                    <span className="text-xs text-dex-support font-medium">Estimativa do Pedido:</span>
+                    <span className="text-xl font-bold font-display text-dex-coral">{current.value}</span>
                   </div>
-                  <button
-                    onClick={() => onNavigateToRegister('Escritório Pro')}
-                    className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow-lg shadow-cyan-950/50 transition-all flex items-center gap-2 cursor-pointer"
-                  >
-                    <span>Testar Gratuitamente no seu Escritório</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
                 </div>
               </div>
-            );
-          })()}
+            </div>
+          );
+        })()}
+      </section>
+
+      {/* SEÇÃO PLANOS & PREÇOS */}
+      <section id="planos" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-12 max-w-7xl mx-auto border-t border-[#D8C3B5]/70">
+        <div className="text-center max-w-3xl mx-auto mb-14 space-y-4">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-dex-navy-950">
+            Investimento transparente para cada fase da sua banca
+          </h2>
+          <p className="text-base sm:text-lg text-dex-support">
+            Sem fidelidade forçada. Cancele ou altere seu plano quando desejar.
+          </p>
+
+          {/* Alternador Mensal / Anual */}
+          <div className="inline-flex items-center gap-2 p-1 rounded-full bg-dex-beige border border-dex-border mt-4">
+            <button
+              onClick={() => setBillingCycle('monthly')}
+              className={`px-5 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                billingCycle === 'monthly' ? 'bg-dex-navy-950 text-white shadow' : 'text-dex-support hover:text-dex-navy-950'
+              }`}
+            >
+              Mensal
+            </button>
+            <button
+              onClick={() => setBillingCycle('yearly')}
+              className={`px-5 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                billingCycle === 'yearly' ? 'bg-dex-navy-950 text-white shadow' : 'text-dex-support hover:text-dex-navy-950'
+              }`}
+            >
+              <span>Anual</span>
+              <span className="px-2 py-0.5 rounded-full bg-dex-coral text-white text-[10px] font-bold">
+                -20%
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Grid de 3 Planos */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch max-w-6xl mx-auto">
+          {/* Plano 1: Advogado Individual */}
+          <div className="bg-dex-cream rounded-[24px] border border-[#222222]/80 p-8 flex flex-col justify-between shadow-sm">
+            <div className="space-y-6">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-dex-support">Autônomo</span>
+                <h3 className="text-2xl font-display font-bold text-dex-navy-950 mt-1">Advogado Solo</h3>
+                <p className="text-xs text-dex-support mt-2">Para profissionais independentes em ascensão.</p>
+              </div>
+
+              <div className="flex items-baseline gap-1">
+                <span className="text-3xl sm:text-4xl font-display font-bold text-dex-navy-950">
+                  {billingCycle === 'yearly' ? 'R$ 89' : 'R$ 119'}
+                </span>
+                <span className="text-xs text-dex-support">/mês</span>
+              </div>
+
+              <ul className="space-y-3 pt-4 border-t border-dex-border text-xs text-dex-navy-950">
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-dex-coral" />
+                  <span>1 Usuário com OAB</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-dex-coral" />
+                  <span>Até 100 Processos Ativos</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-dex-coral" />
+                  <span>50 Triagens de Dex AI / mês</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-dex-coral" />
+                  <span>Controle de Prazos Fatais & Agenda</span>
+                </li>
+              </ul>
+            </div>
+
+            <button
+              onClick={() => onNavigateToRegister('Advogado Solo')}
+              className="mt-8 w-full py-3 rounded-xl bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-xs font-semibold shadow transition-all cursor-pointer"
+            >
+              Começar com Advogado Solo
+            </button>
+          </div>
+
+          {/* Plano 2: Escritório Pro (Destaque) */}
+          <div className="bg-dex-peach/90 rounded-[24px] border-2 border-dex-navy-950 p-8 flex flex-col justify-between shadow-xl relative scale-105 z-10">
+            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-dex-coral text-white text-[11px] font-bold shadow-md">
+              Mais Escolhido pelas Bancas
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-dex-navy-950">Banca em Expansão</span>
+                <h3 className="text-2xl font-display font-bold text-dex-navy-950 mt-1">Escritório Pro</h3>
+                <p className="text-xs text-dex-navy-950/80 mt-2">Gestão integrada completa de equipe, honorários e IA.</p>
+              </div>
+
+              <div className="flex items-baseline gap-1">
+                <span className="text-4xl sm:text-5xl font-display font-bold text-dex-navy-950">
+                  {billingCycle === 'yearly' ? 'R$ 239' : 'R$ 299'}
+                </span>
+                <span className="text-xs text-dex-navy-950/80">/mês</span>
+              </div>
+
+              <ul className="space-y-3 pt-4 border-t border-dex-navy-950/20 text-xs text-dex-navy-950 font-medium">
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-dex-coral stroke-[2.5]" />
+                  <span>Até 5 Advogados & Colaboradores</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-dex-coral stroke-[2.5]" />
+                  <span>Processos & Clientes Ilimitados</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-dex-coral stroke-[2.5]" />
+                  <span>Dex AI 2.0 Ilimitado com Transcrição de Áudio</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-dex-coral stroke-[2.5]" />
+                  <span>Mural da Equipe & Gestão de Produtividade</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-dex-coral stroke-[2.5]" />
+                  <span>Exportação de Relatórios em PDF & XLSX</span>
+                </li>
+              </ul>
+            </div>
+
+            <button
+              onClick={() => onNavigateToRegister('Escritório Pro')}
+              className="mt-8 w-full py-3.5 rounded-xl bg-dex-navy-950 hover:bg-dex-navy-900 text-white text-xs font-bold shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            >
+              Experimentar 14 Dias Grátis
+            </button>
+          </div>
+
+          {/* Plano 3: Corporate / Elite */}
+          <div className="bg-dex-cream rounded-[24px] border border-[#222222]/80 p-8 flex flex-col justify-between shadow-sm">
+            <div className="space-y-6">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-dex-support">Grandes Bancas</span>
+                <h3 className="text-2xl font-display font-bold text-dex-navy-950 mt-1">Corporate & Sócios</h3>
+                <p className="text-xs text-dex-support mt-2">Bancas consolidadas com múltiplos núcleos.</p>
+              </div>
+
+              <div className="flex items-baseline gap-1">
+                <span className="text-3xl sm:text-4xl font-display font-bold text-dex-navy-950">
+                  {billingCycle === 'yearly' ? 'R$ 499' : 'R$ 599'}
+                </span>
+                <span className="text-xs text-dex-support">/mês</span>
+              </div>
+
+              <ul className="space-y-3 pt-4 border-t border-dex-border text-xs text-dex-navy-950">
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-dex-coral" />
+                  <span>Advogados & Estagiários Ilimitados</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-dex-coral" />
+                  <span>Multi-Escritórios e Filiais</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-dex-coral" />
+                  <span>Auditoria Completa LGPD & Trilha Imutável</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-dex-coral" />
+                  <span>Suporte VIP via WhatsApp com Gerente Dedicado</span>
+                </li>
+              </ul>
+            </div>
+
+            <button
+              onClick={() => onNavigateToRegister('Corporate')}
+              className="mt-8 w-full py-3 rounded-xl bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-xs font-semibold shadow transition-all cursor-pointer"
+            >
+              Falar com Consultor
+            </button>
+          </div>
         </div>
       </section>
 
-      {/* Modules Feature Grid */}
-      <section id="modulos" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-brand-500/10 text-brand-300 border border-brand-500/30 mb-3 inline-block">
-            Arquitetura Modular
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-            Tudo o que seu Escritório Precisa em uma Só Plataforma
+      {/* SEÇÃO FAQ */}
+      <section id="faq" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-12 max-w-4xl mx-auto border-t border-[#D8C3B5]/70">
+        <div className="text-center mb-12 space-y-3">
+          <h2 className="text-3xl sm:text-4xl font-display font-bold text-dex-navy-950">
+            Perguntas Frequentes
           </h2>
-          <p className="text-sm text-slate-400 mt-2">
-            Módulos integrados projetados sob as melhores práticas de governança jurídica e engenharia de software.
+          <p className="text-sm sm:text-base text-dex-support">
+            Tire suas dúvidas sobre segurança, ética na advocacia e recursos da plataforma.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Card 1 */}
-          <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-cyan-500/40 transition-all hover:-translate-y-1 group">
-            <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-              <Sparkles className="w-6 h-6 text-cyan-400" />
-            </div>
-            <h3 className="text-base font-bold text-white mb-2">Dex AI 2.0 • Triagem Jurídica</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Interpreta relatos de clientes, sugere tipo de ação, fundamentação legal prévia, cálculo de urgência e salva o processo no sistema com 1 clique.
-            </p>
-          </div>
-
-          {/* Card 2 */}
-          <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-brand-500/40 transition-all hover:-translate-y-1 group">
-            <div className="w-12 h-12 rounded-2xl bg-brand-500/20 text-brand-300 border border-brand-500/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-              <Clock className="w-6 h-6 text-brand-400" />
-            </div>
-            <h3 className="text-base font-bold text-white mb-2">Controle Militar de Prazos</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Classificação por fatalidade (Crítica, Alta, Média), filtros temporais (Hoje, Esta Semana, Vencidos) e baixa ágil em 1 clique.
-            </p>
-          </div>
-
-          {/* Card 3 */}
-          <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-emerald-500/40 transition-all hover:-translate-y-1 group">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-              <DollarSign className="w-6 h-6 text-emerald-400" />
-            </div>
-            <h3 className="text-base font-bold text-white mb-2">Financeiro & Honorários</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Gestão de honorários contratuais, retainers mensais, contratos de êxito e controle de pagamentos (PIX, Boleto, TED).
-            </p>
-          </div>
-
-          {/* Card 4 */}
-          <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-amber-500/40 transition-all hover:-translate-y-1 group">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-              <FolderKanban className="w-6 h-6 text-amber-400" />
-            </div>
-            <h3 className="text-base font-bold text-white mb-2">Processos no Padrão CNJ</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Controle estrito de numeração no formato CNJ (0000000-00.0000.0.00.0000), fases processuais, vinculação de advogado e valor da causa.
-            </p>
-          </div>
-
-          {/* Card 5 */}
-          <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-purple-500/40 transition-all hover:-translate-y-1 group">
-            <div className="w-12 h-12 rounded-2xl bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-              <FileText className="w-6 h-6 text-purple-400" />
-            </div>
-            <h3 className="text-base font-bold text-white mb-2">Repositório & Sigilo</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Armazenamento seguro de peças, procurações e laudos técnicos com flag explícita de sigilo profissional e validação de formatos.
-            </p>
-          </div>
-
-          {/* Card 6 */}
-          <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-blue-500/40 transition-all hover:-translate-y-1 group">
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-              <ShieldCheck className="w-6 h-6 text-blue-400" />
-            </div>
-            <h3 className="text-base font-bold text-white mb-2">Governança LGPD & Auditoria</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Inventário dos dados pessoais tratados (finalidades e base legal) e trilha imutável de logs de acessos com IP e usuário.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Plans Section */}
-      <section id="planos" className="py-20 bg-slate-900/40 border-t border-slate-800/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 mb-3 inline-block">
-              Planos Transparentes
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-              Investimento sob Medida para sua Banca
-            </h2>
-            <p className="text-sm text-slate-400 mt-2">
-              Comece agora sem taxa de implantação e com 14 dias de garantia incondicional.
-            </p>
-
-            {/* Billing Cycle Toggle */}
-            <div className="flex items-center justify-center gap-3 mt-6">
-              <span className={`text-xs font-semibold ${billingCycle === 'monthly' ? 'text-white' : 'text-slate-400'}`}>
-                Mensal
-              </span>
-              <button
-                type="button"
-                onClick={() => setBillingCycle(b => b === 'monthly' ? 'yearly' : 'monthly')}
-                className="w-12 h-6 rounded-full bg-slate-800 border border-slate-700 p-0.5 transition-colors relative cursor-pointer"
-              >
-                <div className={`w-4 h-4 rounded-full bg-cyan-400 transition-transform ${billingCycle === 'yearly' ? 'translate-x-6' : 'translate-x-0'}`} />
-              </button>
-              <span className={`text-xs font-semibold flex items-center gap-1.5 ${billingCycle === 'yearly' ? 'text-white' : 'text-slate-400'}`}>
-                Anual
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  Economize 20%
-                </span>
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {/* Plan 1 */}
-            <div className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between space-y-6">
-              <div>
-                <h3 className="text-lg font-bold text-white">Advogado Individual</h3>
-                <p className="text-xs text-slate-400 mt-1">Ideal para profissionais autônomos</p>
-                <div className="mt-6">
-                  <span className="text-4xl font-black text-white">
-                    {billingCycle === 'yearly' ? 'R$ 89' : 'R$ 109'}
-                  </span>
-                  <span className="text-xs text-slate-400">/mês</span>
-                </div>
-
-                <ul className="mt-6 space-y-3 text-xs text-slate-300">
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>1 Usuário (Advogado Titular)</span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>Até 150 Processos CNJ ativos</span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>50 Análises Dex AI por mês</span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>Controle de Prazos Fatais & Agenda</span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>Controle Financeiro de Honorários</span>
-                  </li>
-                </ul>
-              </div>
-
-              <button
-                onClick={() => onNavigateToRegister('Advogado Individual')}
-                className="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs border border-slate-700 transition-all cursor-pointer"
-              >
-                Cadastrar Individual
-              </button>
-            </div>
-
-            {/* Plan 2: FEATURED */}
-            <div className="p-8 rounded-3xl bg-gradient-to-b from-slate-900 to-cyan-950/40 border-2 border-cyan-500 shadow-2xl shadow-cyan-950/50 flex flex-col justify-between space-y-6 relative scale-105 z-10">
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-cyan-500 to-brand-500 text-slate-950 font-extrabold text-[11px] uppercase tracking-wider shadow">
-                Mais Escolhido pelos Escritórios ⭐
-              </div>
-
-              <div>
-                <h3 className="text-lg font-bold text-white">Escritório Pro</h3>
-                <p className="text-xs text-cyan-200 mt-1">Para bancas de pequeno e médio porte</p>
-                <div className="mt-6">
-                  <span className="text-4xl font-black text-white">
-                    {billingCycle === 'yearly' ? 'R$ 199' : 'R$ 249'}
-                  </span>
-                  <span className="text-xs text-slate-300">/mês</span>
-                </div>
-
-                <ul className="mt-6 space-y-3 text-xs text-slate-200">
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-cyan-400 shrink-0" />
-                    <span><strong>Até 5 Advogados</strong> com controle RBAC</span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-cyan-400 shrink-0" />
-                    <span><strong>Processos CNJ Ilimitados</strong></span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-cyan-400 shrink-0" />
-                    <span><strong>Dex AI Ilimitado</strong> com motor Claude/Gemini</span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-cyan-400 shrink-0" />
-                    <span>Área do Advogado personalizada</span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-cyan-400 shrink-0" />
-                    <span>Módulo Financeiro Avançado & Extratos</span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-cyan-400 shrink-0" />
-                    <span>Mural da Equipe & Gestão de Pauta</span>
-                  </li>
-                </ul>
-              </div>
-
-              <button
-                onClick={() => onNavigateToRegister('Escritório Pro')}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 via-brand-600 to-brand-500 hover:from-cyan-400 hover:to-brand-400 text-white font-bold text-xs shadow-lg shadow-cyan-500/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-              >
-                Cadastrar Escritório Pro (14 dias grátis)
-              </button>
-            </div>
-
-            {/* Plan 3 */}
-            <div className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between space-y-6">
-              <div>
-                <h3 className="text-lg font-bold text-white">Banca Corporativa</h3>
-                <p className="text-xs text-slate-400 mt-1">Para sociedades consolidadas e filiais</p>
-                <div className="mt-6">
-                  <span className="text-4xl font-black text-white">
-                    {billingCycle === 'yearly' ? 'R$ 499' : 'R$ 599'}
-                  </span>
-                  <span className="text-xs text-slate-400">/mês</span>
-                </div>
-
-                <ul className="mt-6 space-y-3 text-xs text-slate-300">
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>Advogados & Estagiários Ilimitados</span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>Múltiplas Filiais e Centros de Custo</span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>Trilha LGPD Avançada com DPO dedicado</span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>API Aberta para Integração com Tribunais</span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>Suporte VIP via WhatsApp 24/7</span>
-                  </li>
-                </ul>
-              </div>
-
-              <button
-                onClick={() => onNavigateToRegister('Banca Corporativa')}
-                className="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs border border-slate-700 transition-all cursor-pointer"
-              >
-                Falar com Especialista
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 mb-3 inline-block">
-            Depoimentos Reais
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-            Advogados que Confiam no DEX
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-4">
-            <div className="flex gap-1 text-amber-400">
-              {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-amber-400" />)}
-            </div>
-            <p className="text-xs text-slate-300 leading-relaxed italic">
-              "O Dex AI revolucionou a nossa triagem inicial. Reduzimos o tempo de atendimento em mais de 60% e nunca mais perdemos um prazo fatal."
-            </p>
-            <div className="flex items-center gap-3 pt-2 border-t border-slate-800">
-              <img
-                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=120"
-                alt="Dra. Helena"
-                className="w-10 h-10 rounded-full object-cover border border-cyan-400/30"
-              />
-              <div>
-                <span className="text-xs font-bold text-white block">Dra. Helena Moreira</span>
-                <span className="text-[11px] text-slate-400 block">Sócio • OAB 184.920/SP</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-4">
-            <div className="flex gap-1 text-amber-400">
-              {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-amber-400" />)}
-            </div>
-            <p className="text-xs text-slate-300 leading-relaxed italic">
-              "A clareza dos filtros de prazos e audiências é fantástica. A equipe inteira sabe exatamente o que precisa ser cumprido em cada dia."
-            </p>
-            <div className="flex items-center gap-3 pt-2 border-t border-slate-800">
-              <img
-                src="https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=120"
-                alt="Dr. Lucas"
-                className="w-10 h-10 rounded-full object-cover border border-slate-700"
-              />
-              <div>
-                <span className="text-xs font-bold text-white block">Dr. Lucas Mendes</span>
-                <span className="text-[11px] text-slate-400 block">Trabalhista • OAB 312.450/SP</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-4">
-            <div className="flex gap-1 text-amber-400">
-              {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-amber-400" />)}
-            </div>
-            <p className="text-xs text-slate-300 leading-relaxed italic">
-              "O respeito rigoroso às normas da OAB e à LGPD nos deu a segurança necessária para adotar IA no nosso escritório sem riscos éticos."
-            </p>
-            <div className="flex items-center gap-3 pt-2 border-t border-slate-800">
-              <img
-                src="https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=120"
-                alt="Dra. Beatriz"
-                className="w-10 h-10 rounded-full object-cover border border-slate-700"
-              />
-              <div>
-                <span className="text-xs font-bold text-white block">Dra. Beatriz Albuquerque</span>
-                <span className="text-[11px] text-slate-400 block">Cível • OAB 278.114/SP</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Security & LGPD Banner */}
-      <section id="seguranca" className="py-16 bg-slate-900/80 border-y border-slate-800">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center justify-between gap-8">
-          <div className="space-y-3 max-w-2xl">
-            <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase tracking-wider">
-              <ShieldCheck className="w-5 h-5 text-cyan-400" />
-              <span>Segurança da Informação & Sigilo Profissional</span>
-            </div>
-            <h3 className="text-2xl font-bold text-white">Blindagem Jurídica e Proteção Total de Dados</h3>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Desenvolvido com criptografia de ponta a ponta, backups diários automatizados, trilha imutável de auditoria e conformidade certificada com a Lei Geral de Proteção de Dados (Lei 13.709/2018) e Provimento OAB nº 205/2021.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 shrink-0">
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-center">
-              <Lock className="w-5 h-5 text-emerald-400 mx-auto mb-1" />
-              <span className="text-[11px] font-bold text-white block">Criptografia RSA</span>
-              <span className="text-[10px] text-slate-400">Em repouso e trânsito</span>
-            </div>
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-center">
-              <Award className="w-5 h-5 text-cyan-400 mx-auto mb-1" />
-              <span className="text-[11px] font-bold text-white block">OAB Compliance</span>
-              <span className="text-[10px] text-slate-400">Provimento 205/2021</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ Section */}
-      <section id="faq" className="py-20 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-extrabold text-white tracking-tight">Perguntas Frequentes</h2>
-          <p className="text-xs text-slate-400 mt-2">Tire suas dúvidas técnicas e operacionais sobre o DEX</p>
-        </div>
-
-        <div className="space-y-3">
+        <div className="space-y-4">
           {faqs.map((faq, idx) => {
             const isOpen = openFaqIndex === idx;
             return (
               <div
-                key={idx}
-                className="rounded-2xl bg-slate-900/60 border border-slate-800 overflow-hidden transition-colors"
+                key={faq.q}
+                className="bg-dex-beige/60 rounded-2xl border border-dex-border/80 overflow-hidden transition-colors"
               >
                 <button
-                  type="button"
                   onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
-                  className="w-full p-5 text-left flex items-center justify-between text-xs sm:text-sm font-bold text-white hover:text-cyan-300 transition-colors cursor-pointer"
+                  className="w-full p-5 sm:p-6 text-left flex items-center justify-between gap-4 cursor-pointer"
                 >
-                  <span>{faq.q}</span>
-                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180 text-cyan-400' : ''}`} />
+                  <span className="font-display font-bold text-base sm:text-lg text-dex-navy-950">
+                    {faq.q}
+                  </span>
+                  <ChevronDown
+                    className={`w-5 h-5 text-dex-navy-950 transition-transform duration-200 shrink-0 ${
+                      isOpen ? 'rotate-180 text-dex-coral' : ''
+                    }`}
+                  />
                 </button>
                 {isOpen && (
-                  <div className="px-5 pb-5 pt-1 text-xs text-slate-300 leading-relaxed border-t border-slate-800/60 animate-in fade-in">
+                  <div className="px-5 sm:px-6 pb-6 pt-1 text-sm text-dex-support leading-relaxed border-t border-dex-border/40">
                     {faq.a}
                   </div>
                 )}
@@ -918,56 +652,34 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* Final Call to Action Banner */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto text-center">
-        <div className="p-10 sm:p-14 rounded-3xl bg-gradient-to-r from-brand-950 via-slate-900 to-cyan-950 border border-cyan-500/40 shadow-2xl relative overflow-hidden">
-          <div className="relative z-10 max-w-2xl mx-auto space-y-6">
-            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
-              Pronto para Elevar o Padrão do seu Escritório?
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Junte-se a centenas de advogados que já transformaram a gestão da sua banca com o DEX. Crie sua conta em 1 minuto sem compromisso.
+      {/* FOOTER ELEGANTE */}
+      <footer id="sobre" className="bg-[#EAE0DA] border-t border-[#D8C3B5] py-14 px-4 sm:px-6 lg:px-12">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 items-center justify-between">
+          <div className="md:col-span-5 space-y-3">
+            <DexLogo variant="dark" size="md" subtitle="Sistema de Advocacia" />
+            <p className="text-xs text-dex-support max-w-sm leading-relaxed">
+              Plataforma de governança forense e gestão jurídica orientada a dados com inteligência artificial ética.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-              <button
-                onClick={() => onNavigateToRegister('Escritório Pro')}
-                className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-brand-500 hover:from-cyan-400 hover:to-brand-400 text-white font-bold text-sm shadow-xl shadow-cyan-500/30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <span>Cadastrar Gratuitamente Agora</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-slate-800/80 bg-slate-950 py-12 px-4 sm:px-6 lg:px-8 text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-cyan-400 font-bold font-serif">
-              <Scale className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-white font-bold text-sm">DEX Legal AI</span>
-              <p className="text-[10px]">Sistema de Gestão Jurídica Modularizado</p>
-            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-6">
-            <a href="#recursos" className="hover:text-slate-300 transition-colors">Recursos</a>
-            <a href="#dex-ai" className="hover:text-slate-300 transition-colors">Dex AI</a>
-            <a href="#planos" className="hover:text-slate-300 transition-colors">Planos</a>
-            <button onClick={onNavigateToLogin} className="hover:text-slate-300 transition-colors cursor-pointer">
-              Login
+          <div className="md:col-span-4 flex flex-wrap gap-6 text-xs text-dex-support font-medium">
+            <button onClick={() => scrollToSection('recursos')} className="hover:text-dex-navy-950 cursor-pointer">
+              Recursos
             </button>
-            <button onClick={() => onNavigateToRegister()} className="text-cyan-400 hover:text-cyan-300 font-bold cursor-pointer">
-              Criar Conta
+            <button onClick={() => scrollToSection('planos')} className="hover:text-dex-navy-950 cursor-pointer">
+              Planos & Preços
+            </button>
+            <button onClick={() => scrollToSection('faq')} className="hover:text-dex-navy-950 cursor-pointer">
+              Perguntas Frequentes
+            </button>
+            <button onClick={onNavigateToLogin} className="hover:text-dex-navy-950 cursor-pointer">
+              Acesso ao Sistema
             </button>
           </div>
 
-          <div className="text-center md:text-right text-[11px]">
-            © {new Date().getFullYear()} DEX Jurídico. Todos os direitos reservados.
+          <div className="md:col-span-3 text-left md:text-right text-xs text-dex-support space-y-1">
+            <p>© {new Date().getFullYear()} Dex Jurídico.</p>
+            <p>Todos os direitos reservados.</p>
           </div>
         </div>
       </footer>

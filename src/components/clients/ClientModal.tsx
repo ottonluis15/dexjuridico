@@ -9,13 +9,16 @@ interface ClientModalProps {
   isOpen: boolean;
   onClose: () => void;
   clientToEdit?: Client | null;
+  initialClient?: Client | null;
 }
 
 export const ClientModal: React.FC<ClientModalProps> = ({
   isOpen,
   onClose,
-  clientToEdit
+  clientToEdit,
+  initialClient
 }) => {
+  const activeClient = clientToEdit || initialClient || null;
   const { addClient, updateClient, lawyers } = useData();
   const { currentUser } = useAuth();
 
@@ -36,22 +39,22 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   const [linkedLawyerId, setLinkedLawyerId] = useState('');
 
   useEffect(() => {
-    if (clientToEdit) {
-      setName(clientToEdit.name);
-      setType(clientToEdit.type);
-      setDocument(clientToEdit.document);
-      setEmail(clientToEdit.email);
-      setPhone(clientToEdit.phone);
-      setStreet(clientToEdit.address.street);
-      setNumber(clientToEdit.address.number);
-      setComplement(clientToEdit.address.complement || '');
-      setNeighborhood(clientToEdit.address.neighborhood);
-      setCity(clientToEdit.address.city);
-      setState(clientToEdit.address.state);
-      setZipCode(clientToEdit.address.zipCode);
-      setNotes(clientToEdit.notes || '');
-      setStatus(clientToEdit.status);
-      setLinkedLawyerId(clientToEdit.linkedLawyerId || '');
+    if (activeClient) {
+      setName(activeClient.name);
+      setType(activeClient.type);
+      setDocument(activeClient.document);
+      setEmail(activeClient.email);
+      setPhone(activeClient.phone);
+      setStreet(activeClient.address.street);
+      setNumber(activeClient.address.number);
+      setComplement(activeClient.address.complement || '');
+      setNeighborhood(activeClient.address.neighborhood);
+      setCity(activeClient.address.city);
+      setState(activeClient.address.state);
+      setZipCode(activeClient.address.zipCode);
+      setNotes(activeClient.notes || '');
+      setStatus(activeClient.status);
+      setLinkedLawyerId(activeClient.linkedLawyerId || '');
     } else {
       setName('');
       setType('PF');
@@ -69,13 +72,13 @@ export const ClientModal: React.FC<ClientModalProps> = ({
       setStatus('ACTIVE');
       setLinkedLawyerId(lawyers[0]?.id || '');
     }
-  }, [clientToEdit, isOpen, lawyers]);
+  }, [activeClient, isOpen, lawyers]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!name.trim() || !document.trim() || !email.trim() || !phone.trim()) {
-      alert('Por favor, preencha os dados de identificação obrigatórios (*).');
+      alert('Por favor, preencha todos os dados obrigatórios (*).');
       return;
     }
 
@@ -83,24 +86,24 @@ export const ClientModal: React.FC<ClientModalProps> = ({
       name: name.trim(),
       type,
       document: document.trim(),
-      email: email.trim(),
+      email: email.trim().toLowerCase(),
       phone: phone.trim(),
       address: {
-        street: street.trim() || 'Logradouro não informado',
+        street: street.trim() || 'Rua Principal',
         number: number.trim() || 'S/N',
         complement: complement.trim(),
         neighborhood: neighborhood.trim() || 'Centro',
         city: city.trim() || 'São Paulo',
         state: state.trim() || 'SP',
-        zipCode: zipCode.trim() || '00000-000'
+        zipCode: zipCode.trim() || '01000-000'
       },
       notes: notes.trim(),
       status,
       linkedLawyerId: linkedLawyerId || undefined
     };
 
-    if (clientToEdit) {
-      updateClient(clientToEdit.id, payload);
+    if (activeClient) {
+      updateClient(activeClient.id, payload);
     } else {
       addClient(payload);
     }
@@ -112,62 +115,74 @@ export const ClientModal: React.FC<ClientModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={clientToEdit ? 'Editar Cliente' : 'Novo Cliente'}
-      subtitle="Cadastro de cliente pessoa física ou jurídica no escritório"
+      title={activeClient ? 'Editar Cadastro do Cliente' : 'Cadastrar Novo Cliente'}
+      subtitle={activeClient ? 'Atualize as informações cadastrais e contatos' : 'Preencha os dados civis ou societários'}
       maxWidth="3xl"
-      icon={<UserPlus className="w-5 h-5 text-emerald-400" />}
+      icon={<UserPlus className="w-5 h-5 text-dex-coral" />}
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Tipo & Nome */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Tipo de Pessoa *
-            </label>
-            <select
-              value={type}
-              onChange={e => setType(e.target.value as ClientType)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-            >
-              <option value="PF">Pessoa Física (CPF)</option>
-              <option value="PJ">Pessoa Jurídica (CNPJ)</option>
-            </select>
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Tipo de Cliente (PF vs PJ) */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setType('PF')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              type === 'PF'
+                ? 'bg-dex-coral text-white shadow'
+                : 'bg-white/10 text-[#C2D6DC] hover:text-white'
+            }`}
+          >
+            Pessoa Física (CPF)
+          </button>
+          <button
+            type="button"
+            onClick={() => setType('PJ')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              type === 'PJ'
+                ? 'bg-dex-coral text-white shadow'
+                : 'bg-white/10 text-[#C2D6DC] hover:text-white'
+            }`}
+          >
+            Pessoa Jurídica (CNPJ)
+          </button>
+        </div>
 
-          <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              {type === 'PF' ? 'Nome Completo *' : 'Razão Social / Nome Fantasia *'}
+        {/* Linha 1: Nome / Razão Social e CPF/CNPJ */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              {type === 'PF' ? 'Nome Completo*' : 'Razão Social / Nome Empresarial*'}
             </label>
             <input
               type="text"
               required
-              placeholder={type === 'PF' ? 'Ex: Carlos Eduardo Silveira' : 'Ex: TechVanguard Soluções Digitais Ltda'}
+              placeholder={type === 'PF' ? 'Ex: Carlos Alberto da Silva' : 'Ex: Metalúrgica Progresso S/A'}
               value={name}
               onChange={e => setName(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              {type === 'PF' ? 'CPF*' : 'CNPJ*'}
+            </label>
+            <input
+              type="text"
+              required
+              placeholder={type === 'PF' ? '000.000.000-00' : '00.000.000/0000-00'}
+              value={document}
+              onChange={e => setDocument(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-coral font-mono"
             />
           </div>
         </div>
 
-        {/* Documento, Email, Telefone */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              {type === 'PF' ? 'CPF *' : 'CNPJ *'}
-            </label>
-            <input
-              type="text"
-              required
-              placeholder={type === 'PF' ? '000.000.000-00' : '00.000.000/0001-00'}
-              value={document}
-              onChange={e => setDocument(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs font-mono text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              E-mail de Contato *
+        {/* Linha 2: E-mail e Telefone / WhatsApp */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              E-mail de Contato*
             </label>
             <input
               type="email"
@@ -175,175 +190,116 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               placeholder="cliente@email.com"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Telefone / WhatsApp *
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              Telefone / Celular (WhatsApp)*
+            </label>
+            <input
+              type="tel"
+              required
+              placeholder="(00) 00000-0000"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+            />
+          </div>
+        </div>
+
+        {/* Linha 3: Endereço (Logradouro, Número, Cidade e UF) */}
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+          <div className="sm:col-span-8 space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              Logradouro (Rua, Av, Travessa)
             </label>
             <input
               type="text"
-              required
-              placeholder="(11) 99999-9999"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              placeholder="Ex: Av. Rio Branco"
+              value={street}
+              onChange={e => setStreet(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+            />
+          </div>
+
+          <div className="sm:col-span-4 space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              Número / Sala
+            </label>
+            <input
+              type="text"
+              placeholder="Ex: 120, Sala 4"
+              value={number}
+              onChange={e => setNumber(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             />
           </div>
         </div>
 
-        {/* Endereço */}
-        <div className="p-3.5 rounded-xl bg-slate-800/40 border border-slate-800 space-y-3">
-          <p className="text-xs font-bold text-slate-300">Endereço Residencial / Comercial</p>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <div className="sm:col-span-2">
-              <label className="block text-[11px] text-slate-400 mb-1">Logradouro / Rua</label>
-              <input
-                type="text"
-                placeholder="Ex: Av. Paulista"
-                value={street}
-                onChange={e => setStreet(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800/80 border border-slate-700 rounded-lg text-xs text-white focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] text-slate-400 mb-1">Número</label>
-              <input
-                type="text"
-                placeholder="1000"
-                value={number}
-                onChange={e => setNumber(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800/80 border border-slate-700 rounded-lg text-xs text-white focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] text-slate-400 mb-1">Complemento</label>
-              <input
-                type="text"
-                placeholder="Apto 42 / Bloco B"
-                value={complement}
-                onChange={e => setComplement(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800/80 border border-slate-700 rounded-lg text-xs text-white focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-[11px] text-slate-400 mb-1">Bairro</label>
-              <input
-                type="text"
-                placeholder="Bela Vista"
-                value={neighborhood}
-                onChange={e => setNeighborhood(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800/80 border border-slate-700 rounded-lg text-xs text-white focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] text-slate-400 mb-1">Cidade / UF</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="São Paulo"
-                  value={city}
-                  onChange={e => setCity(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800/80 border border-slate-700 rounded-lg text-xs text-white focus:outline-none"
-                />
-                <input
-                  type="text"
-                  placeholder="SP"
-                  maxLength={2}
-                  value={state}
-                  onChange={e => setState(e.target.value.toUpperCase())}
-                  className="w-14 px-2 py-2 bg-slate-800/80 border border-slate-700 rounded-lg text-xs text-center text-white focus:outline-none uppercase"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-[11px] text-slate-400 mb-1">CEP</label>
-              <input
-                type="text"
-                placeholder="01310-100"
-                value={zipCode}
-                onChange={e => setZipCode(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800/80 border border-slate-700 rounded-lg text-xs text-white focus:outline-none font-mono"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Advogado Responsável & Status */}
+        {/* Linha 4: Advogado Responsável e Status */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Advogado de Relacionamento
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              Advogado da Banca Responsável
             </label>
-            {currentUser?.isIndependent ? (
-              <div className="w-full px-3.5 py-2.5 bg-slate-800/50 border border-slate-700/60 rounded-xl text-xs text-slate-300 flex items-center justify-between">
-                <span>{currentUser.name}</span>
-                <span className="text-[10px] text-amber-400 font-semibold px-2 py-0.5 bg-amber-950/60 rounded border border-amber-800/40">Autônomo</span>
-              </div>
-            ) : (
-              <select
-                value={linkedLawyerId}
-                onChange={e => setLinkedLawyerId(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-              >
-                <option value="">Nenhum específico (Geral da banca)</option>
-                {lawyers.map(l => (
-                  <option key={l.id} value={l.id}>{l.name} ({l.roleTitle})</option>
-                ))}
-              </select>
-            )}
+            <select
+              value={linkedLawyerId}
+              onChange={e => setLinkedLawyerId(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+            >
+              <option value="">Sem advogado específico</option>
+              {lawyers.map(l => (
+                <option key={l.id} value={l.id}>{l.name} ({l.oab})</option>
+              ))}
+            </select>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Status do Cliente
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              Status na Carteira
             </label>
             <select
               value={status}
               onChange={e => setStatus(e.target.value as ClientStatus)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             >
-              <option value="ACTIVE">Ativo (Com demandas)</option>
+              <option value="ACTIVE">Ativo com Processos</option>
               <option value="PROSPECT">Prospect / Em Negociação</option>
-              <option value="INACTIVE">Inativo</option>
+              <option value="INACTIVE">Inativo / Encerrado</option>
             </select>
           </div>
         </div>
 
-        {/* Observações */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-            Notas & Observações do Cliente
+        {/* Anotações */}
+        <div className="space-y-1">
+          <label className="block text-xs italic font-serif text-[#C2D6DC]">
+            Observações Gerais & Histórico do Cliente
           </label>
           <textarea
             rows={2}
-            placeholder="Informações relevantes sobre perfil, histórico de atendimento..."
+            placeholder="Informações adicionais, indicações, observações..."
             value={notes}
             onChange={e => setNotes(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
           />
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+        {/* Botões de Ação */}
+        <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#214154]/70">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 rounded-xl transition-colors"
+            className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition-colors cursor-pointer"
           >
             Cancelar
           </button>
           <button
             type="submit"
-            className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-emerald-600/30 transition-all"
+            className="px-6 py-2.5 rounded-xl bg-dex-coral hover:bg-dex-coral-hover text-white text-xs font-bold shadow transition-all hover:scale-105 active:scale-95 cursor-pointer"
           >
-            {clientToEdit ? 'Salvar Alterações' : 'Cadastrar Cliente'}
+            {activeClient ? 'Salvar Alterações' : 'Cadastrar Cliente'}
           </button>
         </div>
       </form>

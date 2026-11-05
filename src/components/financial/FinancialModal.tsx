@@ -8,11 +8,11 @@ interface FinancialModalProps {
   isOpen: boolean;
   onClose: () => void;
   entryToEdit?: FinancialEntry | null;
+  initialEntry?: FinancialEntry | null;
 }
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
-const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.webp'];
 
 function sanitizeFileName(fileName: string): string {
   const parts = fileName.split('.');
@@ -21,18 +21,13 @@ function sanitizeFileName(fileName: string): string {
   return `${base || 'comprovante'}${ext}`;
 }
 
-function formatFileSize(bytes?: number): string {
-  if (!bytes) return '';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 export const FinancialModal: React.FC<FinancialModalProps> = ({
   isOpen,
   onClose,
-  entryToEdit
+  entryToEdit,
+  initialEntry
 }) => {
+  const activeEntry = entryToEdit || initialEntry || null;
   const { clients, cases, lawyers, addFinancial, updateFinancial } = useData();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -40,8 +35,7 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
   const [type, setType] = useState<FinancialType>('HONORARIOS_INICIAIS');
   const [clientId, setClientId] = useState('');
   const [caseId, setCaseId] = useState('');
-  const [lawyerId, setLawyerId] = useState('');
-  const [amount, setAmount] = useState<string>('1500');
+  const [amount, setAmount] = useState<string>('2500');
   const [dueDate, setDueDate] = useState(new Date().toISOString().substring(0, 10));
   const [paymentDate, setPaymentDate] = useState('');
   const [status, setStatus] = useState<FinancialStatus>('PENDENTE');
@@ -52,35 +46,29 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
   const [hasReceipt, setHasReceipt] = useState(false);
   const [receiptName, setReceiptName] = useState('');
   const [receiptUrl, setReceiptUrl] = useState<string>('');
-  const [receiptType, setReceiptType] = useState<string>('');
-  const [receiptSize, setReceiptSize] = useState<number>(0);
   const [fileError, setFileError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (entryToEdit) {
-      setTitle(entryToEdit.title);
-      setType(entryToEdit.type);
-      setClientId(entryToEdit.clientId);
-      setCaseId(entryToEdit.caseId || '');
-      setLawyerId(entryToEdit.lawyerId || '');
-      setAmount(entryToEdit.amount.toString());
-      setDueDate(entryToEdit.dueDate);
-      setPaymentDate(entryToEdit.paymentDate || '');
-      setStatus(entryToEdit.status);
-      setPaymentMethod(entryToEdit.paymentMethod);
-      setDescription(entryToEdit.description || '');
-      setHasReceipt(!!entryToEdit.hasReceipt);
-      setReceiptName(entryToEdit.receiptName || '');
-      setReceiptUrl(entryToEdit.receiptUrl || '');
-      setReceiptType(entryToEdit.receiptType || '');
-      setReceiptSize(entryToEdit.receiptSize || 0);
+    if (activeEntry) {
+      setTitle(activeEntry.title);
+      setType(activeEntry.type);
+      setClientId(activeEntry.clientId);
+      setCaseId(activeEntry.caseId || '');
+      setAmount(activeEntry.amount.toString());
+      setDueDate(activeEntry.dueDate);
+      setPaymentDate(activeEntry.paymentDate || '');
+      setStatus(activeEntry.status);
+      setPaymentMethod(activeEntry.paymentMethod);
+      setDescription(activeEntry.description || '');
+      setHasReceipt(!!activeEntry.hasReceipt);
+      setReceiptName(activeEntry.receiptName || '');
+      setReceiptUrl(activeEntry.receiptUrl || '');
       setFileError(null);
     } else {
       setTitle('');
       setType('HONORARIOS_INICIAIS');
       setClientId(clients[0]?.id || '');
       setCaseId(cases[0]?.id || '');
-      setLawyerId(lawyers[0]?.id || '');
       setAmount('2500');
       setDueDate(new Date().toISOString().substring(0, 10));
       setPaymentDate('');
@@ -90,70 +78,39 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
       setHasReceipt(false);
       setReceiptName('');
       setReceiptUrl('');
-      setReceiptType('');
-      setReceiptSize(0);
       setFileError(null);
     }
-  }, [entryToEdit, isOpen, clients, cases, lawyers]);
+  }, [activeEntry, isOpen, clients, cases]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFileError(null);
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validação de tamanho
     if (file.size > MAX_FILE_SIZE) {
-      setFileError(`O arquivo excede o limite máximo de 10 MB (${formatFileSize(file.size)}).`);
+      setFileError('Arquivo muito grande. O limite máximo é de 10 MB.');
       return;
     }
 
-    // Validação de tipo MIME e extensão
-    const ext = `.${file.name.split('.').pop()?.toLowerCase()}`;
-    const isValidMime = ALLOWED_MIME_TYPES.includes(file.type);
-    const isValidExt = ALLOWED_EXTENSIONS.includes(ext);
-
-    if (!isValidMime && !isValidExt) {
-      setFileError('Formato inválido. Envie apenas arquivos PDF, JPG, PNG ou WEBP.');
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      setFileError('Tipo de arquivo não permitido. Use PDF, JPG, PNG ou WEBP.');
       return;
     }
 
-    const sanitized = sanitizeFileName(file.name);
     const reader = new FileReader();
-
     reader.onload = () => {
-      const result = reader.result as string;
-      setReceiptUrl(result);
-      setReceiptName(sanitized);
-      setReceiptType(file.type || 'application/octet-stream');
-      setReceiptSize(file.size);
+      setReceiptUrl(reader.result as string);
+      setReceiptName(sanitizeFileName(file.name));
       setHasReceipt(true);
-      setFileError(null);
     };
-
-    reader.onerror = () => {
-      setFileError('Erro ao ler o arquivo selecionado. Tente novamente.');
-    };
-
     reader.readAsDataURL(file);
-  };
-
-  const handleRemoveReceipt = () => {
-    setHasReceipt(false);
-    setReceiptName('');
-    setReceiptUrl('');
-    setReceiptType('');
-    setReceiptSize(0);
-    setFileError(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!title.trim() || !clientId || !amount || !dueDate) {
-      alert('Por favor, preencha os campos obrigatórios (*).');
+      alert('Por favor, preencha todos os campos obrigatórios (*).');
       return;
     }
 
@@ -162,22 +119,19 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
       type,
       clientId,
       caseId: caseId || undefined,
-      lawyerId: lawyerId || undefined,
       amount: parseFloat(amount) || 0,
       dueDate,
-      paymentDate: status === 'PAGO' ? (paymentDate || new Date().toISOString().substring(0, 10)) : undefined,
+      paymentDate: status === 'PAGO' ? (paymentDate || dueDate) : undefined,
       status,
       paymentMethod,
       description: description.trim(),
-      hasReceipt: hasReceipt && !!receiptName,
-      receiptName: hasReceipt && receiptName ? receiptName : undefined,
-      receiptUrl: hasReceipt && receiptUrl ? receiptUrl : undefined,
-      receiptType: hasReceipt && receiptType ? receiptType : undefined,
-      receiptSize: hasReceipt && receiptSize ? receiptSize : undefined,
+      hasReceipt,
+      receiptName: hasReceipt ? receiptName : undefined,
+      receiptUrl: hasReceipt ? receiptUrl : undefined,
     };
 
-    if (entryToEdit) {
-      updateFinancial(entryToEdit.id, payload);
+    if (activeEntry) {
+      updateFinancial(activeEntry.id, payload);
     } else {
       addFinancial(payload);
     }
@@ -185,267 +139,235 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
     onClose();
   };
 
+  const isRevenue = type !== 'DESPESA' && type !== 'CUSTAS';
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={entryToEdit ? 'Editar Lançamento' : 'Novo Lançamento Financeiro'}
-      subtitle="Registro de honorários advocatícios, custas ou despesas processuais"
-      maxWidth="2xl"
-      icon={<DollarSign className="w-5 h-5 text-emerald-400" />}
+      title={activeEntry ? 'Editar Lançamento Financeiro' : 'Novo Lançamento Financeiro'}
+      subtitle={activeEntry ? 'Atualize os dados de honorários ou custas' : 'Registre receitas, honorários contratuais ou despesas do escritório'}
+      maxWidth="3xl"
+      icon={<DollarSign className="w-5 h-5 text-dex-coral" />}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Título & Tipo */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Título do Lançamento *
+        {/* Tipo (Receita vs Despesa) */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setType('HONORARIOS_INICIAIS')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              isRevenue
+                ? 'bg-[#48BB78] text-white shadow'
+                : 'bg-white/10 text-[#C2D6DC] hover:text-white'
+            }`}
+          >
+            Receita / Honorários (+)
+          </button>
+          <button
+            type="button"
+            onClick={() => setType('DESPESA')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              !isRevenue
+                ? 'bg-dex-coral text-white shadow'
+                : 'bg-white/10 text-[#C2D6DC] hover:text-white'
+            }`}
+          >
+            Despesa / Custas (-)
+          </button>
+        </div>
+
+        {/* Linha 1: Título e Categoria */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              Título do Lançamento*
             </label>
             <input
               type="text"
               required
-              placeholder="Ex: Honorários Iniciais - 1ª Parcela"
+              placeholder="Ex: Honorários Contratuais - Parcela 1/3"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Tipo de Entrada *
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              Tipo de Lançamento*
             </label>
             <select
               value={type}
               onChange={e => setType(e.target.value as FinancialType)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             >
               <option value="HONORARIOS_INICIAIS">Honorários Iniciais</option>
               <option value="HONORARIOS_EXITO">Honorários de Êxito</option>
-              <option value="MENSALIDADE">Mensalidade (Retainer)</option>
-              <option value="CUSTAS">Reembolso de Custas</option>
-              <option value="DESPESA">Despesa Operacional</option>
+              <option value="MENSALIDADE">Mensalidade / Partido</option>
+              <option value="CUSTAS">Custas Judiciais / Emolumentos</option>
+              <option value="DESPESA">Despesas Administrativas</option>
             </select>
           </div>
         </div>
 
-        {/* Cliente & Processo */}
+        {/* Linha 2: Cliente e Processo Vinculado */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Cliente Pagador / Beneficiário *
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              Cliente Vinculado*
             </label>
             <select
               required
               value={clientId}
               onChange={e => setClientId(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             >
-              <option value="" disabled>Selecione o cliente...</option>
               {clients.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+                <option key={c.id} value={c.id}>{c.name} ({c.document})</option>
               ))}
             </select>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
               Processo Vinculado (Opcional)
             </label>
             <select
               value={caseId}
               onChange={e => setCaseId(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 font-mono"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             >
-              <option value="">Sem vínculo direto com processo</option>
+              <option value="">Sem vínculo direto</option>
               {cases.map(c => (
-                <option key={c.id} value={c.id}>{c.caseNumber} ({c.actionType})</option>
+                <option key={c.id} value={c.id}>{c.caseNumber} - {c.actionType}</option>
               ))}
             </select>
           </div>
         </div>
 
-        {/* Valor, Vencimento, Status, Forma de Pagamento */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Valor (R$) *
+        {/* Linha 3: Valor, Vencimento e Método */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              Valor Nominal (R$)*
             </label>
             <input
               type="number"
               step="0.01"
               required
-              placeholder="0.00"
               value={amount}
               onChange={e => setAmount(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs font-bold text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Data de Vencimento *
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              Data de Vencimento*
             </label>
             <input
               type="date"
               required
               value={dueDate}
               onChange={e => setDueDate(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Status *
-            </label>
-            <select
-              value={status}
-              onChange={e => setStatus(e.target.value as FinancialStatus)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-            >
-              <option value="PENDENTE">Pendente</option>
-              <option value="PAGO">Pago</option>
-              <option value="ATRASADO">Em Atraso</option>
-              <option value="CANCELADO">Cancelado</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
               Forma de Pagamento
             </label>
             <select
               value={paymentMethod}
               onChange={e => setPaymentMethod(e.target.value as PaymentMethod)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             >
               <option value="PIX">PIX</option>
               <option value="BOLETO">Boleto Bancário</option>
               <option value="TRANSFERENCIA">Transferência / TED</option>
               <option value="CARTAO">Cartão de Crédito</option>
-              <option value="DINHEIRO">Espécie</option>
+              <option value="DINHEIRO">Espécie / Dinheiro</option>
             </select>
           </div>
         </div>
 
-        {/* Comprovante */}
-        <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-800 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-300 flex items-center gap-2">
-              <Paperclip className="w-4 h-4 text-emerald-400" />
-              Comprovante de Pagamento / Recibo
-            </span>
-            <span className="text-[10px] text-slate-400 font-mono">PDF, JPG, PNG, WEBP (Máx. 10 MB)</span>
-          </div>
+        {/* Linha 4: Status do Pagamento */}
+        <div className="space-y-1">
+          <label className="block text-xs italic font-serif text-[#C2D6DC]">
+            Status do Lançamento
+          </label>
+          <select
+            value={status}
+            onChange={e => setStatus(e.target.value as FinancialStatus)}
+            className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+          >
+            <option value="PENDENTE">A Vencer / Em Aberto</option>
+            <option value="PAGO">Liquidado / Pago</option>
+            <option value="ATRASADO">Inadimplente / Em Atraso</option>
+            <option value="CANCELADO">Cancelado</option>
+          </select>
+        </div>
 
+        {/* Comprovante de Pagamento */}
+        <div className="space-y-2 p-4 rounded-2xl bg-white/5 border border-white/10">
+          <label className="block text-xs italic font-serif text-[#C2D6DC]">
+            Comprovante / Recibo Anexo (PDF, JPG, PNG)
+          </label>
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
-            onChange={handleFileChange}
+            accept=".pdf,.jpg,.jpeg,.png,.webp"
+            onChange={handleFileUpload}
             className="hidden"
           />
 
-          {hasReceipt && (receiptUrl || receiptName) ? (
-            <div className="flex items-center justify-between p-3 bg-slate-800/90 border border-emerald-500/30 rounded-xl">
-              <div className="flex items-center gap-3 overflow-hidden">
-                {receiptType.startsWith('image/') || receiptName.match(/\.(png|jpe?g|webp)$/i) ? (
-                  receiptUrl ? (
-                    <img
-                      src={receiptUrl}
-                      alt="Preview"
-                      className="w-10 h-10 object-cover rounded-lg border border-slate-700 bg-slate-900"
-                    />
-                  ) : (
-                    <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      <ImageIcon className="w-5 h-5" />
-                    </div>
-                  )
-                ) : (
-                  <div className="p-2.5 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                )}
-                <div className="overflow-hidden">
-                  <p className="text-xs font-semibold text-white truncate max-w-[280px]" title={receiptName}>
-                    {receiptName}
-                  </p>
-                  <p className="text-[10px] text-slate-400">
-                    {receiptSize ? formatFileSize(receiptSize) : 'Comprovante anexado'}
-                  </p>
-                </div>
+          {hasReceipt ? (
+            <div className="flex items-center justify-between p-3 rounded-xl bg-white/10 text-xs text-white">
+              <div className="flex items-center gap-2 truncate">
+                <Paperclip className="w-4 h-4 text-dex-coral shrink-0" />
+                <span className="truncate">{receiptName}</span>
               </div>
-
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-2.5 py-1.5 text-xs text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
-                >
-                  Substituir
-                </button>
-                <button
-                  type="button"
-                  onClick={handleRemoveReceipt}
-                  title="Remover comprovante"
-                  className="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-lg transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setHasReceipt(false);
+                  setReceiptUrl('');
+                  setReceiptName('');
+                }}
+                className="p-1 hover:text-dex-coral text-[#A6C5CD] cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
           ) : (
-            <div
+            <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-slate-700 hover:border-emerald-500/50 bg-slate-800/30 hover:bg-slate-800/60 transition-all rounded-xl p-4 text-center cursor-pointer group"
+              className="w-full py-3 rounded-xl border border-dashed border-white/20 hover:border-white/40 text-xs text-[#A6C5CD] hover:text-white flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
-              <Upload className="w-6 h-6 text-slate-400 group-hover:text-emerald-400 mx-auto mb-1.5 transition-colors" />
-              <p className="text-xs text-slate-300 font-medium">
-                Clique para selecionar o comprovante do computador
-              </p>
-              <p className="text-[10px] text-slate-400 mt-0.5">
-                Formatos aceitos: PDF, JPG, PNG ou WEBP até 10 MB
-              </p>
-            </div>
+              <Upload className="w-4 h-4" />
+              <span>Anexar Comprovante / Recibo</span>
+            </button>
           )}
-
-          {fileError && (
-            <div className="flex items-center gap-2 p-2.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-              <span>{fileError}</span>
-            </div>
-          )}
+          {fileError && <p className="text-xs text-dex-coral">{fileError}</p>}
         </div>
 
-        {/* Descrição */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-            Observações / Descrição da Fatura
-          </label>
-          <textarea
-            rows={2}
-            placeholder="Detalhes adicionais sobre a contratação de honorários..."
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-          />
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+        {/* Botões de Ação */}
+        <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#214154]/70">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 rounded-xl transition-colors"
+            className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition-colors cursor-pointer"
           >
             Cancelar
           </button>
           <button
             type="submit"
-            className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-emerald-600/30 transition-all"
+            className="px-6 py-2.5 rounded-xl bg-dex-coral hover:bg-dex-coral-hover text-white text-xs font-bold shadow transition-all hover:scale-105 active:scale-95 cursor-pointer"
           >
-            {entryToEdit ? 'Salvar Alterações' : 'Registrar Lançamento'}
+            {activeEntry ? 'Salvar Lançamento' : 'Registrar Lançamento'}
           </button>
         </div>
       </form>

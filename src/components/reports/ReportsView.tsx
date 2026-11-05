@@ -3,11 +3,8 @@ import {
   BarChart3, 
   TrendingUp, 
   DollarSign, 
-  FolderKanban, 
   Users, 
   CheckCircle2, 
-  Download, 
-  Calendar, 
   PieChart, 
   Scale, 
   Award, 
@@ -21,6 +18,7 @@ import {
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import { exportReportToPDF, exportReportToXLSX } from '../../services/reportExportService';
+import { InternalPageLayout } from '../layout/InternalPageLayout';
 
 export const ReportsView: React.FC = () => {
   const { userCases, userFinancial, lawyers, clients, showToast } = useData();
@@ -31,12 +29,10 @@ export const ReportsView: React.FC = () => {
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [isExportingXLSX, setIsExportingXLSX] = useState(false);
 
-  // Filtragem por escritório do usuário atual
   const officeName = currentUser?.officeName || 'Escritório Dex Jurídico';
   const officeLawyers = lawyers.filter(l => !currentUser?.officeId || l.officeId === currentUser.officeId);
   const officeClients = clients.filter(c => !currentUser?.officeId || c.officeId === currentUser.officeId);
 
-  // Filtragem por período
   const filteredCases = userCases.filter(c => {
     if (selectedPeriod === 'ALL') return true;
     if (selectedPeriod === '2026') return c.distributionDate?.startsWith('2026');
@@ -124,12 +120,6 @@ export const ReportsView: React.FC = () => {
     }
   };
 
-  // Group cases by legal area
-  const areaCounts = filteredCases.reduce((acc, c) => {
-    acc[c.legalArea] = (acc[c.legalArea] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
   const totalReceived = filteredFinancial
     .filter(f => f.status === 'PAGO')
     .reduce((acc, f) => acc + f.amount, 0);
@@ -140,67 +130,59 @@ export const ReportsView: React.FC = () => {
 
   const totalCaseValue = filteredCases.reduce((acc, c) => acc + (c.value || 0), 0);
 
+  const areaCounts = filteredCases.reduce((acc, c) => {
+    acc[c.legalArea] = (acc[c.legalArea] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const kpis = [
+    {
+      title: 'Honorários Recebidos',
+      value: `R$ ${(totalReceived / 1000).toFixed(1)}k`,
+      icon: TrendingUp,
+      iconTileColor: 'mint' as const
+    },
+    {
+      title: 'Honorários a Receber',
+      value: `R$ ${(totalPending / 1000).toFixed(1)}k`,
+      icon: DollarSign,
+      iconTileColor: 'peach' as const
+    },
+    {
+      title: 'Taxa de Êxito',
+      value: '87.5%',
+      icon: Award,
+      iconTileColor: 'purple' as const
+    },
+    {
+      title: 'Valor Total da Carteira',
+      value: `R$ ${(totalCaseValue / 1000).toFixed(1)}k`,
+      icon: Scale,
+      iconTileColor: 'cream' as const
+    }
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-brand-400" />
-            Relatórios & Inteligência Jurídica
-          </h2>
-          <p className="text-xs text-slate-400">
-            Métricas de desempenho, taxa de êxito, distribuição processual e saúde financeira de {officeName}
-          </p>
-        </div>
-
-        {/* Botões de Ação de Exportação Real */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleExportPDF}
-            disabled={isExportingPDF}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-colors shadow-sm"
-            title="Exportar documento oficial em PDF"
-          >
-            {isExportingPDF ? (
-              <Loader2 className="w-4 h-4 animate-spin text-brand-400" />
-            ) : (
-              <FileText className="w-4 h-4 text-rose-400" />
-            )}
-            <span>{isExportingPDF ? 'Gerando PDF...' : 'Exportar PDF'}</span>
-          </button>
-
-          <button
-            onClick={handleExportXLSX}
-            disabled={isExportingXLSX}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-lg shadow-emerald-600/30 transition-all"
-            title="Exportar planilha completa em XLSX"
-          >
-            {isExportingXLSX ? (
-              <Loader2 className="w-4 h-4 animate-spin text-white" />
-            ) : (
-              <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
-            )}
-            <span>{isExportingXLSX ? 'Gerando XLS...' : 'Exportar XLS'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Barra de Filtros */}
-      <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
-          <Filter className="w-4 h-4 text-brand-400" />
-          <span>Filtros do Relatório:</span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Tipo de Relatório */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-slate-400">Tipo:</span>
+    <InternalPageLayout
+      title="Relatórios & Indicadores"
+      subtitle={`Métricas de desempenho, distribuição processual e saúde financeira de ${officeName}`}
+      kpis={kpis}
+      filters={[
+        { label: 'Exercício 2026', active: selectedPeriod === '2026', onClick: () => setSelectedPeriod('2026') },
+        { label: 'Exercício 2025', active: selectedPeriod === '2025', onClick: () => setSelectedPeriod('2025') },
+        { label: 'Últimos 30 dias', active: selectedPeriod === 'LAST_30_DAYS', onClick: () => setSelectedPeriod('LAST_30_DAYS') },
+        { label: 'Histórico Completo', active: selectedPeriod === 'ALL', onClick: () => setSelectedPeriod('ALL') }
+      ]}
+    >
+      <div className="space-y-6">
+        {/* Export Toolbar */}
+        <div className="p-5 rounded-[20px] bg-dex-navy-800 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-serif text-[#8F8A87]">Tipo de Relatório:</span>
             <select
               value={selectedReportType}
               onChange={e => setSelectedReportType(e.target.value as any)}
-              className="px-3 py-1.5 bg-slate-800/90 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+              className="px-3.5 py-2 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
             >
               <option value="geral">Geral Executivo (Consolidado)</option>
               <option value="processos">Processos & Casos</option>
@@ -209,160 +191,112 @@ export const ReportsView: React.FC = () => {
             </select>
           </div>
 
-          {/* Período */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-slate-400">Período:</span>
-            <select
-              value={selectedPeriod}
-              onChange={e => setSelectedPeriod(e.target.value as any)}
-              className="px-3 py-1.5 bg-slate-800/90 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleExportPDF}
+              disabled={isExportingPDF}
+              className="flex items-center gap-2 px-4 py-2.5 bg-dex-coral hover:bg-dex-coral/90 disabled:opacity-50 text-white text-xs font-serif font-bold rounded-xl shadow-lg transition-all"
             >
-              <option value="2026">Exercício 2026 (Atual)</option>
-              <option value="2025">Exercício 2025</option>
-              <option value="LAST_30_DAYS">Últimos 30 Dias</option>
-              <option value="ALL">Todo o Histórico</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Top Financial & Case Highlights */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-medium">Honorários Recebidos</span>
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-xl font-extrabold text-white mt-2">
-            R$ {totalReceived.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </p>
-          <div className="flex items-center gap-1 mt-1 text-[10px] text-emerald-400">
-            <ArrowUpRight className="w-3 h-3" />
-            <span>{filteredFinancial.filter(f => f.status === 'PAGO').length} liquidações</span>
-          </div>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-medium">Honorários a Receber</span>
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
-              <DollarSign className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-xl font-extrabold text-white mt-2">
-            R$ {totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </p>
-          <span className="text-[10px] text-slate-400 mt-1 block">
-            {filteredFinancial.filter(f => f.status === 'PENDENTE' || f.status === 'ATRASADO').length} pendências no período
-          </span>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-medium">Taxa de Êxito Estimada</span>
-            <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400">
-              <Award className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-xl font-extrabold text-white mt-2">87.5%</p>
-          <div className="flex items-center gap-1 mt-1 text-[10px] text-cyan-400">
-            <CheckCircle2 className="w-3 h-3" />
-            <span>Acordos e sentenças favoráveis</span>
-          </div>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-medium">Valor Total da Carteira</span>
-            <div className="p-2 rounded-xl bg-brand-500/10 text-brand-400">
-              <Scale className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-xl font-extrabold text-white mt-2">
-            R$ {totalCaseValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </p>
-          <span className="text-[10px] text-slate-400 mt-1 block">{filteredCases.length} processos no período</span>
-        </div>
-      </div>
-
-      {/* Distribution Grids */}
-      {filteredCases.length === 0 && filteredFinancial.length === 0 ? (
-        <div className="p-8 text-center bg-slate-900/60 rounded-2xl border border-slate-800">
-          <AlertCircle className="w-8 h-8 mx-auto text-amber-400 mb-2" />
-          <p className="text-sm font-semibold text-white">Nenhum dado encontrado para o período selecionado</p>
-          <p className="text-xs text-slate-400 mt-1">Altere o filtro de período acima para visualizar outros exercícios.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Distribution by Area */}
-          <div className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800/80 space-y-4">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <PieChart className="w-4 h-4 text-brand-400" />
-              Distribuição por Área do Direito ({filteredCases.length} processos)
-            </h3>
-
-            <div className="space-y-3 pt-2">
-              {Object.keys(areaCounts).length === 0 ? (
-                <p className="text-xs text-slate-400 italic">Nenhum processo nesta seleção.</p>
+              {isExportingPDF ? (
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
               ) : (
-                Object.entries(areaCounts).map(([area, count]) => {
-                  const pct = Math.round((count / (filteredCases.length || 1)) * 100);
-                  return (
-                    <div key={area} className="space-y-1">
-                      <div className="flex justify-between text-xs text-slate-300 font-medium">
-                        <span>{area}</span>
-                        <span className="text-slate-400">{count} processos ({pct}%)</span>
+                <FileText className="w-4 h-4" />
+              )}
+              <span>{isExportingPDF ? 'Gerando...' : 'Exportar PDF'}</span>
+            </button>
+
+            <button
+              onClick={handleExportXLSX}
+              disabled={isExportingXLSX}
+              className="flex items-center gap-2 px-4 py-2.5 bg-dex-slate hover:bg-slate-700 disabled:opacity-50 text-white text-xs font-serif font-bold rounded-xl shadow-lg transition-all"
+            >
+              {isExportingXLSX ? (
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
+              ) : (
+                <FileSpreadsheet className="w-4 h-4" />
+              )}
+              <span>{isExportingXLSX ? 'Gerando...' : 'Exportar XLS'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Detailed Distribution Grids */}
+        {filteredCases.length === 0 && filteredFinancial.length === 0 ? (
+          <div className="p-12 text-center bg-dex-navy-800 rounded-[24px] border border-white/5 space-y-2">
+            <AlertCircle className="w-8 h-8 mx-auto text-dex-coral mb-2" />
+            <h4 className="font-serif text-base font-bold text-white">Nenhum dado encontrado para o período selecionado</h4>
+            <p className="text-xs text-[#8F8A87] font-serif">Altere o filtro de período acima para visualizar outros exercícios.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Distribution by Area */}
+            <div className="p-6 md:p-8 rounded-[24px] bg-dex-navy-800 border border-white/5 shadow-xl space-y-4">
+              <h3 className="font-serif text-base font-bold text-white flex items-center gap-2">
+                <PieChart className="w-4 h-4 text-dex-peach" />
+                Distribuição por Área do Direito ({filteredCases.length} processos)
+              </h3>
+
+              <div className="space-y-4 pt-2">
+                {Object.keys(areaCounts).length === 0 ? (
+                  <p className="text-xs text-[#8F8A87] font-serif italic">Nenhum processo nesta seleção.</p>
+                ) : (
+                  Object.entries(areaCounts).map(([area, count]) => {
+                    const pct = Math.round((count / (filteredCases.length || 1)) * 100);
+                    return (
+                      <div key={area} className="space-y-1.5">
+                        <div className="flex justify-between text-xs font-serif">
+                          <span className="text-slate-200">{area}</span>
+                          <span className="text-[#8F8A87]">{count} processos ({pct}%)</span>
+                        </div>
+                        <div className="h-2.5 w-full bg-dex-navy-950 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-dex-coral rounded-full transition-all duration-500"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-brand-500 to-cyan-400 rounded-full transition-all duration-500"
-                          style={{ width: `${pct}%` }}
-                        />
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Productivity by Lawyer */}
+            <div className="p-6 md:p-8 rounded-[24px] bg-dex-navy-800 border border-white/5 shadow-xl space-y-4">
+              <h3 className="font-serif text-base font-bold text-white flex items-center gap-2">
+                <Users className="w-4 h-4 text-dex-coral" />
+                Produtividade & Alocação por Advogado
+              </h3>
+
+              <div className="space-y-3 pt-2">
+                {officeLawyers.map((lawyer) => {
+                  const lawyerCases = filteredCases.filter(c => c.lawyerId === lawyer.id);
+                  const lawyerValue = lawyerCases.reduce((acc, c) => acc + (c.value || 0), 0);
+
+                  return (
+                    <div key={lawyer.id} className="p-3.5 rounded-xl bg-dex-navy-950/60 border border-white/5 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-dex-coral text-white flex items-center justify-center font-serif font-bold text-xs">
+                          {lawyer.name[0]}
+                        </div>
+                        <div>
+                          <p className="font-serif text-xs font-bold text-white">{lawyer.name}</p>
+                          <p className="text-[10px] text-[#8F8A87] font-serif">{lawyer.roleTitle}</p>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <p className="font-serif text-xs font-semibold text-white">{lawyerCases.length} processos</p>
+                        <p className="text-[10px] text-dex-peach font-serif">R$ {(lawyerValue / 1000).toFixed(0)}k sob gestão</p>
                       </div>
                     </div>
                   );
-                })
-              )}
+                })}
+              </div>
             </div>
           </div>
-
-          {/* Productivity by Lawyer */}
-          <div className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800/80 space-y-4">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Users className="w-4 h-4 text-emerald-400" />
-              Produtividade & Alocação por Advogado
-            </h3>
-
-            <div className="space-y-3 pt-2">
-              {officeLawyers.map((lawyer) => {
-                const lawyerCases = filteredCases.filter(c => c.lawyerId === lawyer.id);
-                const lawyerValue = lawyerCases.reduce((acc, c) => acc + (c.value || 0), 0);
-
-                return (
-                  <div key={lawyer.id} className="p-3 rounded-xl bg-slate-800/50 border border-slate-700/50 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-[#C69255] text-white flex items-center justify-center font-bold text-xs">
-                        {lawyer.name[0]}
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-white">{lawyer.name}</p>
-                        <p className="text-[10px] text-slate-400">{lawyer.roleTitle}</p>
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <p className="text-xs font-semibold text-white">{lawyerCases.length} processos</p>
-                      <p className="text-[10px] text-brand-300">R$ {(lawyerValue / 1000).toFixed(0)}k sob gestão</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </InternalPageLayout>
   );
 };

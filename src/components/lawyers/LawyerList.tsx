@@ -9,8 +9,9 @@ import {
   FolderKanban, 
   Edit, 
   Trash2,
-  UserMinus,
-  Award
+  Users,
+  Award,
+  ShieldCheck
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -18,6 +19,7 @@ import { Lawyer } from '../../types';
 import { LawyerModal } from './LawyerModal';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { EmptyState } from '../common/EmptyState';
+import { InternalPageLayout } from '../layout/InternalPageLayout';
 
 export const LawyerList: React.FC = () => {
   const { lawyers, cases, deleteLawyer } = useData();
@@ -35,177 +37,179 @@ export const LawyerList: React.FC = () => {
     l.specialties.some(s => s.toLowerCase().includes(search.toLowerCase()))
   );
 
+  const totalLawyers = lawyers.length;
+  const partnersCount = lawyers.filter(l => l.roleTitle?.toLowerCase().includes('sócio') || l.roleTitle?.toLowerCase().includes('titular')).length;
+  const associatesCount = totalLawyers - partnersCount;
+  const activeCasesTotal = cases.filter(c => c.status !== 'ARQUIVADO').length;
+
+  const kpis = [
+    {
+      title: 'Total de Advogados',
+      value: totalLawyers,
+      icon: Users,
+      iconTileColor: 'peach' as const
+    },
+    {
+      title: 'Sócios & Titulares',
+      value: partnersCount,
+      icon: Award,
+      iconTileColor: 'mint' as const
+    },
+    {
+      title: 'Advogados Associados',
+      value: associatesCount,
+      icon: UserCheck,
+      iconTileColor: 'purple' as const
+    },
+    {
+      title: 'Processos Ativos',
+      value: activeCasesTotal,
+      icon: FolderKanban,
+      iconTileColor: 'cream' as const
+    }
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Corpo Jurídico & Advogados</h2>
-          <p className="text-xs text-slate-400">
-            Equipe técnica responsável pela condução e patrocínio das ações
-          </p>
-        </div>
-
-        {isAdmin && (
-          <button
-            onClick={() => setIsNewModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-brand-600/30 transition-all self-start sm:self-auto cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            Adicionar Advogado
-          </button>
-        )}
-      </div>
-
-      {/* Search */}
-      <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800/80">
-        <div className="relative max-w-md">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-          <input
-            type="text"
-            placeholder="Buscar por nome, OAB ou especialidade..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3.5 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+    <>
+      <InternalPageLayout
+        title="Equipe de Advogados"
+        subtitle="Corpo jurídico e profissionais vinculados ao escritório"
+        actionLabel={isAdmin ? "Adicionar Advogado" : undefined}
+        onAction={isAdmin ? () => setIsNewModalOpen(true) : undefined}
+        kpis={kpis}
+        searchPlaceholder="Buscar por nome, OAB ou especialidade..."
+        searchValue={search}
+        onSearchChange={setSearch}
+      >
+        {filteredLawyers.length === 0 ? (
+          <EmptyState
+            title="Nenhum advogado encontrado"
+            description="Nenhum membro do corpo jurídico corresponde aos critérios de busca."
+            icon={UserCheck}
+            actionLabel={isAdmin ? 'Adicionar Advogado' : undefined}
+            onAction={isAdmin ? () => setIsNewModalOpen(true) : undefined}
           />
-        </div>
-      </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredLawyers.map(lawyer => {
+              const activeCasesCount = cases.filter(c => c.lawyerId === lawyer.id && c.status !== 'ARQUIVADO').length;
+              const isSelf = currentUser && (currentUser.id === lawyer.userId || currentUser.email.toLowerCase() === lawyer.email.toLowerCase());
 
-      {/* Grid of Lawyers */}
-      {filteredLawyers.length === 0 ? (
-        <EmptyState
-          title="Nenhum advogado encontrado"
-          description="Nenhum membro do corpo jurídico corresponde à busca."
-          icon={UserCheck}
-          actionLabel={isAdmin ? 'Adicionar Advogado' : undefined}
-          onAction={isAdmin ? () => setIsNewModalOpen(true) : undefined}
-        />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredLawyers.map(lawyer => {
-            const activeCases = cases.filter(c => c.lawyerId === lawyer.id && c.status !== 'ARQUIVADO').length;
-            const isSelf = currentUser && (currentUser.id === lawyer.userId || currentUser.email.toLowerCase() === lawyer.email.toLowerCase());
+              return (
+                <div
+                  key={lawyer.id}
+                  className="p-6 rounded-[24px] bg-dex-navy-800 border border-white/5 hover:border-dex-coral/30 transition-all flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="flex items-center gap-3">
+                        {lawyer.avatarUrl ? (
+                          <img
+                            src={lawyer.avatarUrl}
+                            alt={lawyer.name}
+                            className="w-12 h-12 rounded-full object-cover border-2 border-dex-coral"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-dex-kpi-peach text-dex-navy-950 font-serif font-bold text-lg flex items-center justify-center">
+                            {lawyer.name.charAt(0)}
+                          </div>
+                        )}
+                        <div>
+                          <h4 className="font-serif text-sm font-bold text-white line-clamp-1">{lawyer.name}</h4>
+                          <span className="text-[11px] font-mono text-dex-peach font-bold">OAB {lawyer.oab}</span>
+                        </div>
+                      </div>
 
-            return (
-              <div
-                key={lawyer.id}
-                className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-slate-700/80 transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="flex items-center gap-3">
-                      {lawyer.avatarUrl ? (
-                        <img
-                          src={lawyer.avatarUrl}
-                          alt={lawyer.name}
-                          className="w-11 h-11 rounded-xl object-cover border border-brand-400/40 shadow-md"
-                        />
-                      ) : (
-                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-brand-600 to-slate-800 flex items-center justify-center text-white font-bold text-sm shadow-md border border-brand-400/30">
-                          {lawyer.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
+                      {isAdmin && (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setEditingLawyer(lawyer)}
+                            className="p-1.5 text-[#8F8A87] hover:text-white rounded-lg transition-colors"
+                            title="Editar Advogado"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          {!isSelf && (
+                            <button
+                              onClick={() => setLawyerToDelete(lawyer)}
+                              className="p-1.5 text-[#8F8A87] hover:text-dex-coral rounded-lg transition-colors"
+                              title="Remover Advogado"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       )}
-                      <div>
-                        <h3 className="text-sm font-bold text-white leading-tight">{lawyer.name}</h3>
-                        <p className="text-[11px] text-brand-300 font-mono mt-0.5">OAB: {lawyer.oab}</p>
-                      </div>
                     </div>
 
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                      lawyer.status === 'ACTIVE'
-                        ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
-                        : 'bg-slate-800 text-slate-400'
-                    }`}>
-                      {lawyer.status === 'ACTIVE' ? 'Ativo' : 'Licenciado'}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-slate-300 font-medium">{lawyer.roleTitle}</p>
-
-                  <div className="space-y-1.5 mt-3 text-xs text-slate-400">
-                    <p className="flex items-center gap-2 truncate">
-                      <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="truncate">{lawyer.email}</span>
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span>{lawyer.phone}</span>
-                    </p>
-                  </div>
-
-                  {/* Specialties tags */}
-                  <div className="mt-3.5 flex flex-wrap gap-1.5">
-                    {lawyer.specialties.map(spec => (
-                      <span
-                        key={spec}
-                        className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800/90 text-slate-300 border border-slate-700/60"
-                      >
-                        {spec}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-5 pt-3.5 border-t border-slate-800/80 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-brand-300 flex items-center gap-1.5">
-                    <FolderKanban className="w-3.5 h-3.5 text-brand-400" />
-                    {activeCases} {activeCases === 1 ? 'processo ativo' : 'processos ativos'}
-                  </span>
-
-                  {isAdmin && (
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => setEditingLawyer(lawyer)}
-                        title="Editar advogado"
-                        className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      {!isSelf && (
-                        <button
-                          onClick={() => setLawyerToDelete(lawyer)}
-                          title="Remover vínculo da equipe (manter conta como autônomo)"
-                          className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-amber-950/30 rounded-lg transition-colors cursor-pointer"
-                        >
-                          <UserMinus className="w-4 h-4" />
-                        </button>
+                    <div className="space-y-2 text-xs font-serif text-slate-300">
+                      <div className="flex items-center gap-2 text-[11px] text-[#8F8A87]">
+                        <Award className="w-3.5 h-3.5 text-dex-coral shrink-0" />
+                        <span>{lawyer.roleTitle || 'Advogado Associado'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] text-[#8F8A87]">
+                        <Mail className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{lawyer.email}</span>
+                      </div>
+                      {lawyer.phone && (
+                        <div className="flex items-center gap-2 text-[11px] text-[#8F8A87]">
+                          <Phone className="w-3.5 h-3.5 shrink-0" />
+                          <span>{lawyer.phone}</span>
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
 
-      {/* Modal */}
+                    <div className="mt-4 pt-3 border-t border-white/5 flex flex-wrap gap-1.5">
+                      {lawyer.specialties.map((spec, i) => (
+                        <span
+                          key={i}
+                          className="text-[10px] font-serif px-2.5 py-0.5 rounded-full bg-dex-navy-950 text-dex-beige border border-white/5"
+                        >
+                          {spec}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-5 pt-3 border-t border-white/5 flex items-center justify-between text-xs font-serif">
+                    <span className="text-[#8F8A87]">Casos em condução:</span>
+                    <span className="font-bold text-dex-peach">{activeCasesCount} processos</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </InternalPageLayout>
+
+      {/* Modais */}
       <LawyerModal
-        isOpen={isNewModalOpen || !!editingLawyer}
-        onClose={() => {
-          setIsNewModalOpen(false);
-          setEditingLawyer(null);
-        }}
-        lawyerToEdit={editingLawyer}
+        isOpen={isNewModalOpen}
+        onClose={() => setIsNewModalOpen(false)}
       />
 
-      {/* Dialog de Confirmação para Remoção de Vínculo */}
-      {lawyerToDelete && (
-        <ConfirmDialog
-          isOpen={!!lawyerToDelete}
-          onClose={() => setLawyerToDelete(null)}
-          onConfirm={() => {
-            if (lawyerToDelete) {
-              deleteLawyer(lawyerToDelete.id);
-              setLawyerToDelete(null);
-            }
-          }}
-          title="Remover Vínculo da Equipe"
-          message={`Tem certeza de que deseja remover o vínculo de ${lawyerToDelete.name} com este escritório? A conta de acesso do profissional será preservada (como advogado autônomo), mas ele não terá mais acesso aos casos, clientes e dados do escritório.`}
-          confirmLabel="Remover Vínculo"
-          variant="danger"
+      {editingLawyer && (
+        <LawyerModal
+          isOpen={!!editingLawyer}
+          onClose={() => setEditingLawyer(null)}
+          lawyerToEdit={editingLawyer}
         />
       )}
-    </div>
+
+      <ConfirmDialog
+        isOpen={!!lawyerToDelete}
+        onClose={() => setLawyerToDelete(null)}
+        onConfirm={() => {
+          if (lawyerToDelete) {
+            deleteLawyer(lawyerToDelete.id);
+            setLawyerToDelete(null);
+          }
+        }}
+        title="Remover Advogado da Equipe"
+        message={`Tem certeza que deseja desvincular ${lawyerToDelete?.name} do escritório? Os processos vinculados continuarão registrados no sistema.`}
+        confirmText="Sim, desvincular"
+        isDestructive
+      />
+    </>
   );
 };

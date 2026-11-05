@@ -175,17 +175,17 @@ export const App: React.FC = () => {
         // Apenas o administrador da plataforma Dex pode acessar Configurações
         if (!isAppAdmin) {
           return (
-            <div className="p-8 text-center max-w-lg mx-auto bg-slate-900/80 rounded-2xl border border-rose-500/30 mt-12 space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-400 mx-auto flex items-center justify-center border border-rose-500/20">
-                <ShieldAlert className="w-6 h-6" />
+            <div className="p-10 text-center max-w-lg mx-auto bg-dex-navy-900 rounded-[24px] border border-dex-coral/40 mt-12 space-y-4 shadow-2xl relative overflow-hidden">
+              <div className="w-14 h-14 rounded-full bg-dex-coral/20 text-dex-coral mx-auto flex items-center justify-center">
+                <ShieldAlert className="w-7 h-7" />
               </div>
-              <h3 className="text-lg font-bold text-white">403 — Acesso Restrito</h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
+              <h3 className="font-serif text-xl font-bold text-white">403 — Acesso Restrito</h3>
+              <p className="text-xs text-slate-300 font-serif leading-relaxed">
                 A área de Configurações do Sistema é reservada exclusivamente para o Administrador da Plataforma Dex (App Admin).
               </p>
               <button
                 onClick={() => handleTabChange('dashboard')}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-xl border border-slate-700 transition-colors"
+                className="px-6 py-2.5 bg-dex-coral hover:bg-dex-coral/90 text-white text-xs font-serif font-bold rounded-xl shadow-lg transition-all"
               >
                 Voltar ao Dashboard
               </button>

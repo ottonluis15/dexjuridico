@@ -31,22 +31,18 @@ export const AccessibilityPanel: React.FC = () => {
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  // Aplicar classes no elemento HTML
   useEffect(() => {
     const root = document.documentElement;
 
-    // Tamanho da fonte
     root.classList.remove('a11y-font-normal', 'a11y-font-large', 'a11y-font-xlarge');
     root.classList.add(`a11y-font-${prefs.fontSize}`);
 
-    // Alto contraste
     if (prefs.highContrast) {
       root.classList.add('a11y-high-contrast');
     } else {
       root.classList.remove('a11y-high-contrast');
     }
 
-    // Redução de movimento
     if (prefs.reducedMotion) {
       root.classList.add('a11y-reduced-motion');
     } else {
@@ -60,7 +56,6 @@ export const AccessibilityPanel: React.FC = () => {
     }
   }, [prefs]);
 
-  // Teclado: fechar no Escape e devolver foco; fechar ao clicar fora
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -115,8 +110,8 @@ export const AccessibilityPanel: React.FC = () => {
         aria-label="Abrir painel de acessibilidade e preferências de exibição"
         aria-expanded={isOpen}
         aria-controls="accessibility-panel"
-        className="w-11 h-11 rounded-full bg-slate-900/90 hover:bg-slate-800 text-brand-400 hover:text-brand-300 border border-slate-700/80 shadow-xl backdrop-blur-md flex items-center justify-center transition-transform hover:scale-105 active:scale-95 cursor-pointer focus-visible:ring-4 focus-visible:ring-brand-500/50"
-        title="Opções de Acessibilidade (Tamanho da fonte e contraste)"
+        className="w-12 h-12 rounded-full bg-dex-navy-900 hover:bg-dex-navy-800 text-dex-coral border border-dex-coral/40 shadow-2xl backdrop-blur-md flex items-center justify-center transition-transform hover:scale-105 active:scale-95 focus-visible:ring-4 focus-visible:ring-dex-coral/50"
+        title="Opções de Acessibilidade"
       >
         <Sliders className="w-5 h-5" />
       </button>
@@ -128,17 +123,17 @@ export const AccessibilityPanel: React.FC = () => {
           ref={panelRef}
           role="region"
           aria-label="Controles de Acessibilidade"
-          className="absolute bottom-14 right-0 w-80 sm:w-96 max-w-[calc(100vw-2rem)] bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-xl p-5 text-slate-100 z-50 animate-in fade-in slide-in-from-bottom-3 duration-200"
+          className="absolute bottom-16 right-0 w-80 sm:w-96 max-w-[calc(100vw-2rem)] bg-dex-navy-900 border border-white/10 rounded-[24px] shadow-2xl p-6 text-white z-50 animate-fade-in"
         >
           {/* Cabeçalho */}
-          <div className="flex items-center justify-between pb-3.5 border-b border-slate-800">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-400">
+          <div className="flex items-center justify-between pb-4 border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-dex-coral/20 text-dex-coral flex items-center justify-center">
                 <Sliders className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-sm font-bold text-white tracking-tight">Acessibilidade</h2>
-                <p className="text-[11px] text-slate-400">Personalize a legibilidade e contraste</p>
+                <h2 className="font-serif text-sm font-bold text-white tracking-tight">Acessibilidade</h2>
+                <p className="text-[11px] text-[#8F8A87] font-serif">Legibilidade e preferências visuais</p>
               </div>
             </div>
 
@@ -149,7 +144,7 @@ export const AccessibilityPanel: React.FC = () => {
                 buttonRef.current?.focus();
               }}
               aria-label="Fechar painel de acessibilidade"
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+              className="w-7 h-7 rounded-full bg-[#EAE0DA] text-dex-navy-900 hover:bg-white flex items-center justify-center transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -158,8 +153,8 @@ export const AccessibilityPanel: React.FC = () => {
           <div className="py-4 space-y-4">
             {/* 1. Tamanho da Fonte */}
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-200 flex items-center gap-2">
-                <Type className="w-4 h-4 text-cyan-400" />
+              <label className="text-xs font-serif italic text-dex-beige flex items-center gap-2">
+                <Type className="w-4 h-4 text-dex-coral" />
                 <span>Tamanho da Fonte</span>
               </label>
               <div className="grid grid-cols-3 gap-2" role="group" aria-label="Ajuste do tamanho de texto">
@@ -167,10 +162,10 @@ export const AccessibilityPanel: React.FC = () => {
                   type="button"
                   onClick={() => updateFontSize('normal')}
                   aria-pressed={prefs.fontSize === 'normal'}
-                  className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                  className={`py-2 px-3 rounded-xl text-xs font-serif font-bold border transition-all ${
                     prefs.fontSize === 'normal'
-                      ? 'bg-brand-600 border-brand-500 text-white shadow-md'
-                      : 'bg-slate-800/80 border-slate-700/80 text-slate-300 hover:bg-slate-800'
+                      ? 'bg-dex-coral border-dex-coral text-white shadow-md'
+                      : 'bg-dex-navy-800 border-white/5 text-slate-300 hover:bg-dex-navy-700'
                   }`}
                 >
                   Padrão (100%)
@@ -179,10 +174,10 @@ export const AccessibilityPanel: React.FC = () => {
                   type="button"
                   onClick={() => updateFontSize('large')}
                   aria-pressed={prefs.fontSize === 'large'}
-                  className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                  className={`py-2 px-3 rounded-xl text-xs font-serif font-bold border transition-all ${
                     prefs.fontSize === 'large'
-                      ? 'bg-brand-600 border-brand-500 text-white shadow-md'
-                      : 'bg-slate-800/80 border-slate-700/80 text-slate-300 hover:bg-slate-800'
+                      ? 'bg-dex-coral border-dex-coral text-white shadow-md'
+                      : 'bg-dex-navy-800 border-white/5 text-slate-300 hover:bg-dex-navy-700'
                   }`}
                 >
                   Grande (115%)
@@ -191,10 +186,10 @@ export const AccessibilityPanel: React.FC = () => {
                   type="button"
                   onClick={() => updateFontSize('xlarge')}
                   aria-pressed={prefs.fontSize === 'xlarge'}
-                  className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                  className={`py-2 px-3 rounded-xl text-xs font-serif font-bold border transition-all ${
                     prefs.fontSize === 'xlarge'
-                      ? 'bg-brand-600 border-brand-500 text-white shadow-md'
-                      : 'bg-slate-800/80 border-slate-700/80 text-slate-300 hover:bg-slate-800'
+                      ? 'bg-dex-coral border-dex-coral text-white shadow-md'
+                      : 'bg-dex-navy-800 border-white/5 text-slate-300 hover:bg-dex-navy-700'
                   }`}
                 >
                   Extra (125%)
@@ -203,12 +198,12 @@ export const AccessibilityPanel: React.FC = () => {
             </div>
 
             {/* 2. Modo Alto Contraste */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-800/50 border border-slate-800">
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-dex-navy-800 border border-white/5">
               <div className="flex items-center gap-2.5">
-                <Sun className="w-4 h-4 text-amber-400" />
+                <Sun className="w-4 h-4 text-dex-peach" />
                 <div>
-                  <div className="text-xs font-semibold text-slate-200">Alto Contraste</div>
-                  <div className="text-[10px] text-slate-400">Realça bordas e texto para maior legibilidade</div>
+                  <div className="font-serif text-xs font-bold text-white">Alto Contraste</div>
+                  <div className="text-[11px] text-[#8F8A87] font-serif">Realça bordas e contraste de leitura</div>
                 </div>
               </div>
               <button
@@ -217,8 +212,8 @@ export const AccessibilityPanel: React.FC = () => {
                 role="switch"
                 aria-checked={prefs.highContrast}
                 aria-label="Alternar modo de alto contraste"
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                  prefs.highContrast ? 'bg-brand-600' : 'bg-slate-700'
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  prefs.highContrast ? 'bg-dex-coral' : 'bg-dex-navy-950'
                 }`}
               >
                 <span
@@ -230,12 +225,12 @@ export const AccessibilityPanel: React.FC = () => {
             </div>
 
             {/* 3. Reduzir Animações */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-800/50 border border-slate-800">
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-dex-navy-800 border border-white/5">
               <div className="flex items-center gap-2.5">
-                <Sparkles className="w-4 h-4 text-purple-400" />
+                <Sparkles className="w-4 h-4 text-dex-kpi-purple" />
                 <div>
-                  <div className="text-xs font-semibold text-slate-200">Reduzir Animações</div>
-                  <div className="text-[10px] text-slate-400">Minimiza efeitos de transição e movimento</div>
+                  <div className="font-serif text-xs font-bold text-white">Reduzir Animações</div>
+                  <div className="text-[11px] text-[#8F8A87] font-serif">Minimiza efeitos de transição e movimento</div>
                 </div>
               </div>
               <button
@@ -244,8 +239,8 @@ export const AccessibilityPanel: React.FC = () => {
                 role="switch"
                 aria-checked={prefs.reducedMotion}
                 aria-label="Alternar redução de movimento"
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                  prefs.reducedMotion ? 'bg-brand-600' : 'bg-slate-700'
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  prefs.reducedMotion ? 'bg-dex-coral' : 'bg-dex-navy-950'
                 }`}
               >
                 <span
@@ -258,12 +253,12 @@ export const AccessibilityPanel: React.FC = () => {
           </div>
 
           {/* Rodapé: Reset */}
-          <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
-            <span className="text-[10px] text-slate-500">Salvo no navegador</span>
+          <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs font-serif">
+            <span className="text-[11px] text-[#8F8A87]">Salvo no navegador</span>
             <button
               type="button"
               onClick={handleReset}
-              className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 text-slate-300 hover:text-dex-coral transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Restaurar padrões</span>

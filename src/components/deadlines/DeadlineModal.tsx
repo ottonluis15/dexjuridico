@@ -8,6 +8,7 @@ interface DeadlineModalProps {
   isOpen: boolean;
   onClose: () => void;
   deadlineToEdit?: Deadline | null;
+  initialDeadline?: Deadline | null;
   defaultCaseId?: string;
 }
 
@@ -15,8 +16,10 @@ export const DeadlineModal: React.FC<DeadlineModalProps> = ({
   isOpen,
   onClose,
   deadlineToEdit,
+  initialDeadline,
   defaultCaseId
 }) => {
+  const activeDeadline = deadlineToEdit || initialDeadline || null;
   const { cases, lawyers, addDeadline, updateDeadline } = useData();
 
   const [caseId, setCaseId] = useState(defaultCaseId || '');
@@ -30,16 +33,16 @@ export const DeadlineModal: React.FC<DeadlineModalProps> = ({
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
-    if (deadlineToEdit) {
-      setCaseId(deadlineToEdit.caseId);
-      setLawyerId(deadlineToEdit.lawyerId);
-      setType(deadlineToEdit.type);
-      setDescription(deadlineToEdit.description);
-      setDueDate(deadlineToEdit.dueDate);
-      setDueTime(deadlineToEdit.dueTime || '23:59');
-      setPriority(deadlineToEdit.priority);
-      setStatus(deadlineToEdit.status);
-      setNotes(deadlineToEdit.notes || '');
+    if (activeDeadline) {
+      setCaseId(activeDeadline.caseId);
+      setLawyerId(activeDeadline.lawyerId);
+      setType(activeDeadline.type);
+      setDescription(activeDeadline.description);
+      setDueDate(activeDeadline.dueDate);
+      setDueTime(activeDeadline.dueTime || '23:59');
+      setPriority(activeDeadline.priority);
+      setStatus(activeDeadline.status);
+      setNotes(activeDeadline.notes || '');
     } else {
       setCaseId(defaultCaseId || cases[0]?.id || '');
       setLawyerId(lawyers[0]?.id || '');
@@ -51,7 +54,7 @@ export const DeadlineModal: React.FC<DeadlineModalProps> = ({
       setStatus('PENDING');
       setNotes('');
     }
-  }, [deadlineToEdit, defaultCaseId, isOpen, cases, lawyers]);
+  }, [activeDeadline, defaultCaseId, isOpen, cases, lawyers]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,8 +76,8 @@ export const DeadlineModal: React.FC<DeadlineModalProps> = ({
       notes: notes.trim()
     };
 
-    if (deadlineToEdit) {
-      updateDeadline(deadlineToEdit.id, payload);
+    if (activeDeadline) {
+      updateDeadline(activeDeadline.id, payload);
     } else {
       addDeadline(payload);
     }
@@ -99,42 +102,57 @@ export const DeadlineModal: React.FC<DeadlineModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={deadlineToEdit ? 'Editar Prazo / Audiência' : 'Novo Prazo ou Audiência'}
-      subtitle="Definição de prazo fatal ou ato processual vinculante"
+      title={activeDeadline ? 'Editar Prazo Processual' : 'Agendar Novo Prazo / Audiência'}
+      subtitle={activeDeadline ? 'Atualize o vencimento ou prioridade' : 'Cadastre um novo compromisso com alerta no dashboard'}
       maxWidth="2xl"
-      icon={<Clock className="w-5 h-5 text-amber-400" />}
+      icon={<Clock className="w-5 h-5 text-dex-coral" />}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Processo Vinculado */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-            Processo Vinculado *
-          </label>
-          <select
-            required
-            value={caseId}
-            onChange={e => setCaseId(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50 font-mono"
-          >
-            <option value="" disabled>Selecione o processo...</option>
-            {cases.map(c => (
-              <option key={c.id} value={c.id}>
-                {c.caseNumber} - {c.actionType}
-              </option>
-            ))}
-          </select>
+        {/* Linha 1: Processo Vinculado e Advogado Responsável */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              Processo Vinculado (CNJ)*
+            </label>
+            <select
+              required
+              value={caseId}
+              onChange={e => setCaseId(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+            >
+              {cases.map(c => (
+                <option key={c.id} value={c.id}>{c.caseNumber} - {c.actionType}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              Advogado Responsável*
+            </label>
+            <select
+              required
+              value={lawyerId}
+              onChange={e => setLawyerId(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+            >
+              {lawyers.map(l => (
+                <option key={l.id} value={l.id}>{l.name} ({l.oab})</option>
+              ))}
+            </select>
+          </div>
         </div>
 
+        {/* Linha 2: Tipo de Ato e Prioridade */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Tipo de Ato */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Tipo de Ato / Prazo *
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              Tipo de Ato Processual*
             </label>
             <select
               value={type}
               onChange={e => setType(e.target.value as DeadlineType)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             >
               {deadlineTypes.map(t => (
                 <option key={t} value={t}>{t}</option>
@@ -142,128 +160,94 @@ export const DeadlineModal: React.FC<DeadlineModalProps> = ({
             </select>
           </div>
 
-          {/* Advogado Responsável */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Responsável pelo Cumprimento *
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              Nível de Gravidade / Prioridade*
             </label>
             <select
-              required
-              value={lawyerId}
-              onChange={e => setLawyerId(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+              value={priority}
+              onChange={e => setPriority(e.target.value as DeadlinePriority)}
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             >
-              <option value="" disabled>Selecione o advogado...</option>
-              {lawyers.map(l => (
-                <option key={l.id} value={l.id}>{l.name} ({l.oab})</option>
-              ))}
+              <option value="CRITICAL">Crítica (Prazo Fatal / Revelia / Perempção)</option>
+              <option value="HIGH">Alta (Urgência Iminente)</option>
+              <option value="MEDIUM">Média (Rotina Forense)</option>
+              <option value="NORMAL">Normal (Diligência Ordinária)</option>
             </select>
           </div>
+        </div>
 
-          {/* Data Fatal */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Data de Vencimento Fatal *
+        {/* Linha 3: Data Fatal e Horário Limite */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              Data Fatal de Vencimento*
             </label>
             <input
               type="date"
               required
               value={dueDate}
               onChange={e => setDueDate(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             />
           </div>
 
-          {/* Horário Limite */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Horário Limite (Tribunal)
+          <div className="space-y-1">
+            <label className="block text-xs italic font-serif text-[#C2D6DC]">
+              Horário Limite do Protocolo
             </label>
             <input
               type="time"
               value={dueTime}
               onChange={e => setDueTime(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             />
           </div>
-
-          {/* Nível de Prioridade */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Nível de Urgência / Prioridade
-            </label>
-            <select
-              value={priority}
-              onChange={e => setPriority(e.target.value as DeadlinePriority)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
-            >
-              <option value="CRITICAL">🚨 Crítico (Risco de Preclusão Fatal)</option>
-              <option value="HIGH">⚠️ Alta (Urgente)</option>
-              <option value="MEDIUM">⏳ Média</option>
-              <option value="NORMAL">✅ Normal</option>
-            </select>
-          </div>
-
-          {/* Situação */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Situação do Prazo
-            </label>
-            <select
-              value={status}
-              onChange={e => setStatus(e.target.value as DeadlineStatus)}
-              className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
-            >
-              <option value="PENDING">Pendente</option>
-              <option value="COMPLETED">Concluído / Protocolado</option>
-              <option value="OVERDUE">Vencido</option>
-            </select>
-          </div>
         </div>
 
-        {/* Descrição */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-            Descrição do Ato / Instruções *
-          </label>
-          <textarea
-            required
-            rows={3}
-            placeholder="Descreva o ato a ser praticado (ex: protocolar manifestação aos quesitos periciais)..."
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
-          />
-        </div>
-
-        {/* Notas */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-            Observações / Links (ex: link de sala de audiência Zoom/Teams)
+        {/* Linha 4: Descrição do Prazo */}
+        <div className="space-y-1">
+          <label className="block text-xs italic font-serif text-[#C2D6DC]">
+            Descrição do Compromisso*
           </label>
           <input
             type="text"
-            placeholder="Observações complementares..."
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+            required
+            placeholder="Ex: Protocolar razões de Apelação c/ pedido de efeito suspensivo"
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
           />
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+        {/* Observações */}
+        <div className="space-y-1">
+          <label className="block text-xs italic font-serif text-[#C2D6DC]">
+            Observações e Instruções da Peça
+          </label>
+          <textarea
+            rows={2}
+            placeholder="Instruções para o advogado, pontos a destacar..."
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+          />
+        </div>
+
+        {/* Botões de Ação */}
+        <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#214154]/70">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 rounded-xl transition-colors"
+            className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition-colors cursor-pointer"
           >
             Cancelar
           </button>
           <button
             type="submit"
-            className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-amber-600/30 transition-all"
+            className="px-6 py-2.5 rounded-xl bg-dex-coral hover:bg-dex-coral-hover text-white text-xs font-bold shadow transition-all hover:scale-105 active:scale-95 cursor-pointer"
           >
-            {deadlineToEdit ? 'Salvar Alterações' : 'Agendar Prazo'}
+            {activeDeadline ? 'Salvar Prazo' : 'Agendar Prazo'}
           </button>
         </div>
       </form>

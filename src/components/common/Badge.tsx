@@ -5,9 +5,8 @@ import {
   CheckCircle2, 
   AlertCircle, 
   ShieldAlert, 
-  FileText, 
   FolderKanban, 
-  Sparkles,
+  DollarSign, 
   Ban
 } from 'lucide-react';
 import { CaseStatus, DeadlinePriority, DeadlineStatus, FinancialStatus } from '../../types';
@@ -28,24 +27,24 @@ export const Badge: React.FC<BadgeProps> = ({
   className = '' 
 }) => {
   const sizeClasses = {
-    sm: 'text-[11px] px-2 py-0.5 gap-1',
+    sm: 'text-[10px] px-2 py-0.5 gap-1',
     md: 'text-xs px-2.5 py-1 gap-1.5',
     lg: 'text-sm px-3 py-1.5 gap-2'
   };
 
   const variantClasses = {
-    primary: 'bg-blue-950/80 text-blue-300 border border-blue-800/60',
-    success: 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60',
-    warning: 'bg-amber-950/80 text-amber-300 border border-amber-800/60',
-    danger: 'bg-rose-950/80 text-rose-300 border border-rose-800/60',
-    info: 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/60',
-    purple: 'bg-purple-950/80 text-purple-300 border border-purple-800/60',
-    neutral: 'bg-slate-800/80 text-slate-300 border border-slate-700/60',
+    primary: 'bg-[#4A808E]/25 text-[#72ACBA] border border-[#4A808E]/50',
+    success: 'bg-[#48BB78]/20 text-[#48BB78] border border-[#48BB78]/40',
+    warning: 'bg-[#C48A5C]/20 text-[#C48A5C] border border-[#C48A5C]/40',
+    danger: 'bg-dex-coral/20 text-dex-coral border border-dex-coral/50',
+    info: 'bg-[#CBEBD8]/25 text-[#2B8255] border border-[#CBEBD8]/50',
+    purple: 'bg-[#E0D7F5]/25 text-[#A78BFA] border border-[#E0D7F5]/40',
+    neutral: 'bg-white/10 text-[#C2D6DC] border border-white/15',
   };
 
   return (
     <span 
-      className={`inline-flex items-center font-medium rounded-full ${sizeClasses[size]} ${variantClasses[variant]} ${className}`}
+      className={`inline-flex items-center font-serif font-medium rounded-full ${sizeClasses[size]} ${variantClasses[variant]} ${className}`}
     >
       {icon && <span className="shrink-0">{icon}</span>}
       <span>{children}</span>
@@ -58,26 +57,26 @@ export const PriorityBadge: React.FC<{ priority: DeadlinePriority }> = ({ priori
   switch (priority) {
     case 'CRITICAL':
       return (
-        <Badge variant="danger" icon={<ShieldAlert className="w-3.5 h-3.5 text-rose-400" />}>
+        <Badge variant="danger" icon={<ShieldAlert className="w-3.5 h-3.5 text-dex-coral" />}>
           [CRÍTICO] Fatal
         </Badge>
       );
     case 'HIGH':
       return (
-        <Badge variant="warning" icon={<AlertTriangle className="w-3.5 h-3.5 text-amber-400" />}>
+        <Badge variant="warning" icon={<AlertTriangle className="w-3.5 h-3.5 text-[#C48A5C]" />}>
           [ALTA] Urgente
         </Badge>
       );
     case 'MEDIUM':
       return (
-        <Badge variant="primary" icon={<Clock className="w-3.5 h-3.5 text-blue-400" />}>
+        <Badge variant="primary" icon={<Clock className="w-3.5 h-3.5 text-[#72ACBA]" />}>
           Média
         </Badge>
       );
     case 'NORMAL':
     default:
       return (
-        <Badge variant="neutral" icon={<CheckCircle2 className="w-3.5 h-3.5 text-slate-400" />}>
+        <Badge variant="neutral" icon={<CheckCircle2 className="w-3.5 h-3.5 text-[#C2D6DC]" />}>
           Normal
         </Badge>
       );
@@ -91,79 +90,107 @@ export const DeadlineStatusBadge: React.FC<{ status: DeadlineStatus; dueDate: st
 
   if (status === 'COMPLETED') {
     return (
-      <Badge variant="success" icon={<CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}>
-        Concluído
+      <Badge variant="success" icon={<CheckCircle2 className="w-3.5 h-3.5 text-[#48BB78]" />}>
+        Cumprido
       </Badge>
     );
   }
 
   if (isOverdue) {
     return (
-      <Badge variant="danger" icon={<AlertCircle className="w-3.5 h-3.5 text-rose-400" />}>
-        ⚠️ VENCIDO
+      <Badge variant="danger" icon={<AlertCircle className="w-3.5 h-3.5 text-dex-coral" />}>
+        Atrasado
       </Badge>
     );
   }
 
   if (isToday) {
     return (
-      <Badge variant="warning" icon={<Clock className="w-3.5 h-3.5 text-amber-400" />}>
-        ⏳ Vence Hoje
+      <Badge variant="warning" icon={<Clock className="w-3.5 h-3.5 text-[#C48A5C]" />}>
+        Vence Hoje
       </Badge>
     );
   }
 
   return (
-    <Badge variant="info" icon={<Clock className="w-3.5 h-3.5 text-cyan-400" />}>
+    <Badge variant="primary" icon={<Clock className="w-3.5 h-3.5 text-[#72ACBA]" />}>
       Pendente
     </Badge>
   );
 };
 
 export const CaseStatusBadge: React.FC<{ status: CaseStatus }> = ({ status }) => {
-  const config: Record<CaseStatus, { label: string; variant: 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'purple' | 'neutral' }> = {
-    INICIAL: { label: 'Fase Inicial', variant: 'info' },
-    INSTRUCAO: { label: 'Instrução Probatória', variant: 'primary' },
-    SENTENCA: { label: 'Fase de Sentença', variant: 'purple' },
-    RECURSAL: { label: 'Grau Recursal', variant: 'warning' },
-    EXECUCAO: { label: 'Execução de Sentença', variant: 'danger' },
-    ACORDO: { label: 'Acordo Homologado', variant: 'success' },
-    ARQUIVADO: { label: 'Arquivado', variant: 'neutral' },
-  };
-
-  const item = config[status] || { label: status, variant: 'neutral' };
-
-  return (
-    <Badge variant={item.variant} icon={<FolderKanban className="w-3.5 h-3.5" />}>
-      {item.label}
-    </Badge>
-  );
+  switch (status) {
+    case 'INICIAL':
+      return (
+        <Badge variant="primary" icon={<FolderKanban className="w-3.5 h-3.5 text-[#72ACBA]" />}>
+          Fase Inicial
+        </Badge>
+      );
+    case 'INSTRUCAO':
+      return (
+        <Badge variant="warning" icon={<Clock className="w-3.5 h-3.5 text-[#C48A5C]" />}>
+          Em Instrução
+        </Badge>
+      );
+    case 'SENTENCA':
+      return (
+        <Badge variant="success" icon={<CheckCircle2 className="w-3.5 h-3.5 text-[#48BB78]" />}>
+          Sentenciado
+        </Badge>
+      );
+    case 'RECURSAL':
+      return (
+        <Badge variant="purple" icon={<AlertTriangle className="w-3.5 h-3.5 text-[#A78BFA]" />}>
+          Fase Recursal
+        </Badge>
+      );
+    case 'EXECUCAO':
+      return (
+        <Badge variant="danger" icon={<Clock className="w-3.5 h-3.5 text-dex-coral" />}>
+          Execução
+        </Badge>
+      );
+    case 'ACORDO':
+      return (
+        <Badge variant="success" icon={<CheckCircle2 className="w-3.5 h-3.5 text-[#48BB78]" />}>
+          Acordo
+        </Badge>
+      );
+    case 'ARQUIVADO':
+    default:
+      return (
+        <Badge variant="neutral" icon={<Ban className="w-3.5 h-3.5 text-[#C2D6DC]" />}>
+          Arquivado
+        </Badge>
+      );
+  }
 };
 
 export const FinancialStatusBadge: React.FC<{ status: FinancialStatus }> = ({ status }) => {
   switch (status) {
     case 'PAGO':
       return (
-        <Badge variant="success" icon={<CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}>
-          Pago
+        <Badge variant="success" icon={<CheckCircle2 className="w-3.5 h-3.5 text-[#48BB78]" />}>
+          Liquidado
         </Badge>
       );
     case 'PENDENTE':
       return (
-        <Badge variant="warning" icon={<Clock className="w-3.5 h-3.5 text-amber-400" />}>
-          A Receber
+        <Badge variant="warning" icon={<Clock className="w-3.5 h-3.5 text-[#C48A5C]" />}>
+          A Vencer
         </Badge>
       );
     case 'ATRASADO':
       return (
-        <Badge variant="danger" icon={<AlertCircle className="w-3.5 h-3.5 text-rose-400" />}>
-          Em Atraso
+        <Badge variant="danger" icon={<AlertCircle className="w-3.5 h-3.5 text-dex-coral" />}>
+          Inadimplente
         </Badge>
       );
     case 'CANCELADO':
     default:
       return (
-        <Badge variant="neutral" icon={<Ban className="w-3.5 h-3.5 text-slate-400" />}>
+        <Badge variant="neutral" icon={<Ban className="w-3.5 h-3.5 text-[#C2D6DC]" />}>
           Cancelado
         </Badge>
       );

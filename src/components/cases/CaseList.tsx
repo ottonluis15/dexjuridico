@@ -2,25 +2,24 @@ import React, { useState } from 'react';
 import { 
   FolderKanban, 
   Search, 
-  Filter, 
   Plus, 
   Eye, 
   Edit, 
   Trash2, 
   Scale, 
-  User, 
   Calendar,
-  DollarSign,
-  Sparkles
+  Sparkles,
+  DollarSign
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
-import { LegalCase, LegalArea, CaseStatus } from '../../types';
+import { LegalCase, LegalArea } from '../../types';
 import { CaseStatusBadge } from '../common/Badge';
 import { CaseModal } from './CaseModal';
 import { CaseDetailModal } from './CaseDetailModal';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { EmptyState } from '../common/EmptyState';
+import { InternalPageLayout, SummaryCardItem } from '../layout/InternalPageLayout';
 
 export const CaseList: React.FC = () => {
   const { userCases, clients, lawyers, deleteCase, pendingAiDraft, clearPendingAiDraft } = useData();
@@ -36,7 +35,7 @@ export const CaseList: React.FC = () => {
   const [viewingCase, setViewingCase] = useState<LegalCase | null>(null);
   const [caseToDelete, setCaseToDelete] = useState<LegalCase | null>(null);
 
-  // Abrir automaticamente o modal caso haja rascunho pendente da IA
+  // Abrir automaticamente caso haja rascunho pendente da IA
   React.useEffect(() => {
     if (pendingAiDraft) {
       setIsNewModalOpen(true);
@@ -60,8 +59,10 @@ export const CaseList: React.FC = () => {
   });
 
   const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(val);
   };
+
+  const totalValue = userCases.reduce((acc, c) => acc + (c.value || 0), 0);
 
   const legalAreas: LegalArea[] = [
     'Trabalhista',
@@ -75,56 +76,136 @@ export const CaseList: React.FC = () => {
     'Imobiliário'
   ];
 
-  return (
-    <div className="space-y-6">
-      {/* Header with Title and New Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Processos em Acompanhamento</h2>
-          <p className="text-xs text-slate-400">
-            {filteredCases.length} {filteredCases.length === 1 ? 'processo encontrado' : 'processos encontrados'}
-          </p>
-        </div>
+  // 4 Cards de Resumo para a Linha 1 (Anexo 5)
+  const summaryCards: SummaryCardItem[] = [
+    {
+      label: 'Processos Ativos',
+      value: userCases.filter(c => c.status !== 'ARQUIVADO').length,
+      icon: <Scale className="w-5 h-5 stroke-[2]" />,
+      iconBgColor: 'bg-[#F9D9C3]',
+      iconTextColor: 'text-[#C48A5C]',
+    },
+    {
+      label: 'Fase Recursal',
+      value: userCases.filter(c => c.status === 'RECURSAL').length,
+      icon: <Sparkles className="w-5 h-5 stroke-[2]" />,
+      iconBgColor: 'bg-[#E0D7F5]',
+      iconTextColor: 'text-[#6B46C1]',
+    },
+    {
+      label: 'Em Instrução',
+      value: userCases.filter(c => c.status === 'INSTRUCAO').length,
+      icon: <Calendar className="w-5 h-5 stroke-[2]" />,
+      iconBgColor: 'bg-[#CBEBD8]',
+      iconTextColor: 'text-[#2B8255]',
+    },
+    {
+      label: 'Valor da Carteira',
+      value: formatCurrency(totalValue),
+      icon: <DollarSign className="w-5 h-5 stroke-[2]" />,
+      iconBgColor: 'bg-[#FDF0CD]',
+      iconTextColor: 'text-[#B7791F]',
+    },
+  ];
 
+  return (
+    <InternalPageLayout
+      summaryCards={summaryCards}
+      headerTitle="Gestão de Processos"
+      headerSubtitle={`${filteredCases.length} ${filteredCases.length === 1 ? 'processo encontrado' : 'processos encontrados'}`}
+      headerFilters={
+        <>
+          {/* Busca */}
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="w-4 h-4 text-white/50 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Buscar por CNJ, Ação ou Cliente..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 bg-white/10 border border-white/15 rounded-xl text-xs text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+            />
+          </div>
+
+          {/* Filtro de Área */}
+          <select
+            value={selectedArea}
+            onChange={e => setSelectedArea(e.target.value)}
+            className="px-3 py-2 bg-white/10 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+          >
+            <option value="ALL" className="bg-[#162B37] text-white">Todas as Áreas</option>
+            {legalAreas.map(area => (
+              <option key={area} value={area} className="bg-[#162B37] text-white">{area}</option>
+            ))}
+          </select>
+
+          {/* Filtro de Status */}
+          <select
+            value={selectedStatus}
+            onChange={e => setSelectedStatus(e.target.value)}
+            className="px-3 py-2 bg-white/10 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+          >
+            <option value="ALL" className="bg-[#162B37] text-white">Todos os Status</option>
+            <option value="EM_ANDAMENTO" className="bg-[#162B37] text-white">Em Andamento</option>
+            <option value="AGUARDANDO_AUDIENCIA" className="bg-[#162B37] text-white">Aguardando Audiência</option>
+            <option value="RECURSO" className="bg-[#162B37] text-white">Em Recurso</option>
+            <option value="JULGADO" className="bg-[#162B37] text-white">Sentenciado</option>
+            <option value="CONCLUSO" className="bg-[#162B37] text-white">Concluso</option>
+            <option value="ARQUIVADO" className="bg-[#162B37] text-white">Arquivado</option>
+          </select>
+
+          {/* Filtro de Advogado */}
+          {lawyers.length > 0 && (
+            <select
+              value={selectedLawyer}
+              onChange={e => setSelectedLawyer(e.target.value)}
+              className="px-3 py-2 bg-white/10 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+            >
+              <option value="ALL" className="bg-[#162B37] text-white">Todos os Advogados</option>
+              {lawyers.map(l => (
+                <option key={l.id} value={l.id} className="bg-[#162B37] text-white">{l.name}</option>
+              ))}
+            </select>
+          )}
+        </>
+      }
+      headerActions={
         <button
           onClick={() => setIsNewModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-brand-600/30 transition-all self-start sm:self-auto"
+          className="flex items-center gap-2 px-5 py-2.5 bg-dex-coral hover:bg-dex-coral-hover text-white text-xs font-semibold rounded-xl shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer shrink-0 font-serif"
         >
-          <Plus className="w-4 h-4" />
-          Novo Processo
+          <Plus className="w-4 h-4 stroke-[2.5]" />
+          <span>Novo Processo</span>
         </button>
-      </div>
-
-      {/* Banner de Rascunho do Dex AI Pronto */}
+      }
+    >
+      {/* Banner de Rascunho da IA se houver */}
       {pendingAiDraft && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-cyan-950/80 via-slate-900 to-brand-950/80 border border-cyan-500/50 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-3">
+        <div className="mb-6 p-4 rounded-2xl bg-[#1B3442] border border-dex-coral/50 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center justify-center shrink-0">
-              <Sparkles className="w-5 h-5 text-cyan-400" />
+            <div className="w-10 h-10 rounded-xl bg-dex-coral/20 text-dex-coral flex items-center justify-center shrink-0">
+              <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                  Triagem Dex AI
-                </span>
-                <h4 className="text-xs font-bold text-white">Análise pronta para virar Processo!</h4>
-              </div>
-              <p className="text-xs text-slate-300 mt-0.5">
-                Ação sugerida: <strong className="text-cyan-300">{pendingAiDraft.analysis.suggestedActionType}</strong> • Área: {pendingAiDraft.analysis.suggestedLegalArea}
+              <h4 className="text-sm font-bold text-white font-display">
+                Rascunho do Dex AI pronto para virar Processo!
+              </h4>
+              <p className="text-xs text-[#C2D6DC] mt-0.5">
+                Ação: <strong className="text-white">{pendingAiDraft.analysis.suggestedActionType}</strong> • Área: {pendingAiDraft.analysis.suggestedLegalArea}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => setIsNewModalOpen(true)}
-              className="px-3.5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-cyan-950/50 transition-all"
+              className="px-4 py-2 bg-dex-coral hover:bg-dex-coral-hover text-white text-xs font-bold rounded-xl shadow transition-all cursor-pointer"
             >
-              Completar e Salvar
+              Revisar e Salvar
             </button>
             <button
               onClick={clearPendingAiDraft}
-              className="px-3 py-2 text-slate-400 hover:text-white text-xs transition-colors"
+              className="px-3 py-2 text-[#A6C5CD] hover:text-white text-xs transition-colors cursor-pointer"
             >
               Descartar
             </button>
@@ -132,204 +213,121 @@ export const CaseList: React.FC = () => {
         </div>
       )}
 
-      {/* Filter and Search Bar */}
-      <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800/80 space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Search Box */}
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-            <input
-              type="text"
-              placeholder="Buscar por CNJ, Ação ou Cliente..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3.5 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
-            />
-          </div>
-
-          {/* Area Filter */}
-          <div>
-            <select
-              value={selectedArea}
-              onChange={e => setSelectedArea(e.target.value)}
-              className="w-full px-3.5 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
-            >
-              <option value="ALL">Todas as Áreas</option>
-              {legalAreas.map(area => (
-                <option key={area} value={area}>{area}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Status Filter */}
-          <div>
-            <select
-              value={selectedStatus}
-              onChange={e => setSelectedStatus(e.target.value)}
-              className="w-full px-3.5 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
-            >
-              <option value="ALL">Todas as Fases</option>
-              <option value="INICIAL">Fase Inicial</option>
-              <option value="INSTRUCAO">Instrução</option>
-              <option value="SENTENCA">Sentença</option>
-              <option value="RECURSAL">Recursal</option>
-              <option value="EXECUCAO">Execução</option>
-              <option value="ACORDO">Acordo</option>
-              <option value="ARQUIVADO">Arquivado</option>
-            </select>
-          </div>
-
-          {/* Lawyer Filter (Admin) */}
-          <div>
-            <select
-              value={selectedLawyer}
-              onChange={e => setSelectedLawyer(e.target.value)}
-              className="w-full px-3.5 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
-            >
-              <option value="ALL">Todos os Advogados</option>
-              {lawyers.map(l => (
-                <option key={l.id} value={l.id}>{l.name}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Cases Table / Cards */}
+      {/* Tabela de Processos */}
       {filteredCases.length === 0 ? (
         <EmptyState
           title="Nenhum processo encontrado"
-          description="Tente ajustar os filtros de busca ou cadastre uma nova ação."
+          description="Tente ajustar os filtros ou cadastre um novo processo para a banca."
           icon={FolderKanban}
           actionLabel="Cadastrar Processo"
           onAction={() => setIsNewModalOpen(true)}
         />
       ) : (
-        <div className="rounded-2xl border border-slate-800/80 overflow-hidden bg-slate-900/80 shadow-xl">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-800/80 text-slate-400 font-semibold border-b border-slate-800">
-                <tr>
-                  <th className="py-3.5 px-4">Processo (CNJ) / Ação</th>
-                  <th className="py-3.5 px-4">Cliente</th>
-                  <th className="py-3.5 px-4">Área / Fase</th>
-                  <th className="py-3.5 px-4">Responsável</th>
-                  <th className="py-3.5 px-4">Valor da Causa</th>
-                  <th className="py-3.5 px-4 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {filteredCases.map(caseItem => {
-                  const client = clients.find(c => c.id === caseItem.clientId);
-                  const lawyer = lawyers.find(l => l.id === caseItem.lawyerId);
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs text-white">
+            <thead className="bg-[#1A3342] text-[#A6C5CD] font-semibold border-b border-[#214154]">
+              <tr>
+                <th className="py-3.5 px-4 font-serif">Processo (CNJ) / Ação</th>
+                <th className="py-3.5 px-4 font-serif">Cliente</th>
+                <th className="py-3.5 px-4 font-serif">Área / Fase</th>
+                <th className="py-3.5 px-4 font-serif">Responsável</th>
+                <th className="py-3.5 px-4 font-serif">Valor da Causa</th>
+                <th className="py-3.5 px-4 font-serif text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#214154]/50">
+              {filteredCases.map(caseItem => {
+                const client = clients.find(cl => cl.id === caseItem.clientId);
+                const lawyer = lawyers.find(l => l.id === caseItem.lawyerId);
 
-                  return (
-                    <tr 
-                      key={caseItem.id}
-                      className="hover:bg-slate-800/40 transition-colors group cursor-pointer"
-                      onClick={() => setViewingCase(caseItem)}
-                    >
-                      {/* CNJ & Action */}
-                      <td className="py-4 px-4 min-w-[240px]">
-                        <span className="font-mono font-bold text-brand-300 text-[11px] block">
-                          {caseItem.caseNumber}
-                        </span>
-                        <span className="font-semibold text-white group-hover:text-brand-300 transition-colors text-xs line-clamp-1">
-                          {caseItem.actionType}
-                        </span>
-                        <span className="text-[10px] text-slate-400 block truncate">
-                          {caseItem.court}
-                        </span>
-                      </td>
+                return (
+                  <tr
+                    key={caseItem.id}
+                    className="hover:bg-white/5 transition-colors group"
+                  >
+                    <td className="py-3.5 px-4">
+                      <div className="font-mono font-bold text-white text-xs">
+                        {caseItem.caseNumber}
+                      </div>
+                      <div className="text-[11px] text-[#A6C5CD] truncate max-w-xs mt-0.5">
+                        {caseItem.actionType}
+                      </div>
+                    </td>
 
-                      {/* Client */}
-                      <td className="py-4 px-4 min-w-[160px]">
-                        <span className="font-semibold text-slate-200 block truncate">
-                          {client?.name || 'Não vinculado'}
-                        </span>
-                        <span className="text-[10px] text-slate-400">
-                          {client?.document}
-                        </span>
-                      </td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-medium text-white">
+                        {client ? client.name : 'Cliente não vinculado'}
+                      </div>
+                      <div className="text-[11px] text-[#A6C5CD]">
+                        {client?.document || '-'}
+                      </div>
+                    </td>
 
-                      {/* Area & Status */}
-                      <td className="py-4 px-4 min-w-[160px]">
-                        <div className="space-y-1">
-                          <CaseStatusBadge status={caseItem.status} />
-                          <span className="text-[10px] text-slate-400 block font-medium">
-                            {caseItem.legalArea}
-                          </span>
-                        </div>
-                      </td>
+                    <td className="py-3.5 px-4">
+                      <div className="mb-1">
+                        <CaseStatusBadge status={caseItem.status} />
+                      </div>
+                      <span className="text-[10px] text-[#A6C5CD]">
+                        {caseItem.legalArea}
+                      </span>
+                    </td>
 
-                      {/* Lawyer */}
-                      <td className="py-4 px-4 min-w-[140px]">
-                        <span className="text-slate-300 font-medium block truncate">
-                          {lawyer?.name.split(' ')[0]} {lawyer?.name.split(' ').slice(-1)[0]}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          {lawyer?.oab}
-                        </span>
-                      </td>
+                    <td className="py-3.5 px-4">
+                      <div className="text-white font-medium">
+                        {lawyer ? lawyer.name : 'Não atribuído'}
+                      </div>
+                      <div className="text-[10px] text-[#A6C5CD]">
+                        {lawyer?.oab || '-'}
+                      </div>
+                    </td>
 
-                      {/* Value */}
-                      <td className="py-4 px-4 min-w-[120px]">
-                        <span className="font-bold text-emerald-400">
-                          {formatCurrency(caseItem.value)}
-                        </span>
-                        <span className="text-[10px] text-slate-400 block">
-                          Dist: {caseItem.distributionDate}
-                        </span>
-                      </td>
+                    <td className="py-3.5 px-4 font-medium text-white">
+                      {caseItem.value ? formatCurrency(caseItem.value) : 'R$ 0,00'}
+                    </td>
 
-                      {/* Action buttons */}
-                      <td className="py-4 px-4 text-right" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => setViewingCase(caseItem)}
-                            title="Ver detalhes"
-                            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setEditingCase(caseItem)}
-                            title="Editar processo"
-                            className="p-1.5 text-slate-400 hover:text-brand-400 hover:bg-slate-800 rounded-lg transition-colors"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          {isAdmin && (
-                            <button
-                              onClick={() => setCaseToDelete(caseItem)}
-                              title="Excluir processo"
-                              className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 rounded-lg transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                    <td className="py-3.5 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => setViewingCase(caseItem)}
+                          title="Visualizar detalhes"
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-[#A6C5CD] hover:text-white transition-colors cursor-pointer"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setEditingCase(caseItem)}
+                          title="Editar processo"
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-[#A6C5CD] hover:text-white transition-colors cursor-pointer"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setCaseToDelete(caseItem)}
+                          title="Excluir processo"
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-dex-coral/20 text-[#A6C5CD] hover:text-dex-coral transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {/* New / Edit Case Modal */}
+      {/* Modais de Processo */}
       <CaseModal
         isOpen={isNewModalOpen || !!editingCase}
         onClose={() => {
           setIsNewModalOpen(false);
           setEditingCase(null);
         }}
-        caseToEdit={editingCase}
+        initialCase={editingCase || undefined}
       />
 
-      {/* View Detail Modal */}
       {viewingCase && (
         <CaseDetailModal
           caseItem={viewingCase}
@@ -343,22 +341,19 @@ export const CaseList: React.FC = () => {
         />
       )}
 
-      {/* Delete Confirmation */}
-      {caseToDelete && (
-        <ConfirmDialog
-          isOpen={!!caseToDelete}
-          onClose={() => setCaseToDelete(null)}
-          onConfirm={() => {
-            if (caseToDelete) {
-              deleteCase(caseToDelete.id);
-              setCaseToDelete(null);
-            }
-          }}
-          title="Excluir Processo"
-          message={`Tem certeza que deseja excluir o processo nº ${caseToDelete?.caseNumber} (${caseToDelete?.actionType})? Esta ação não pode ser desfeita.`}
-          confirmLabel="Excluir Definitivamente"
-        />
-      )}
-    </div>
+      <ConfirmDialog
+        isOpen={!!caseToDelete}
+        onClose={() => setCaseToDelete(null)}
+        onConfirm={() => {
+          if (caseToDelete) {
+            deleteCase(caseToDelete.id);
+            setCaseToDelete(null);
+          }
+        }}
+        title="Excluir Processo"
+        message={`Deseja realmente remover o processo "${caseToDelete?.caseNumber}"? Esta ação removerá os vínculos e prazos associados.`}
+        confirmLabel="Sim, excluir processo"
+      />
+    </InternalPageLayout>
   );
 };

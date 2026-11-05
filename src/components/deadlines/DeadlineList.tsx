@@ -9,7 +9,8 @@ import {
   Edit, 
   ShieldAlert, 
   Filter,
-  CheckCircle
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -18,6 +19,7 @@ import { PriorityBadge, DeadlineStatusBadge } from '../common/Badge';
 import { DeadlineModal } from './DeadlineModal';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { EmptyState } from '../common/EmptyState';
+import { InternalPageLayout, SummaryCardItem } from '../layout/InternalPageLayout';
 
 type FilterTab = 'ALL' | 'OVERDUE' | 'TODAY' | 'WEEK' | 'COMPLETED';
 
@@ -36,8 +38,6 @@ export const DeadlineList: React.FC = () => {
 
   const today = new Date().toISOString().substring(0, 10);
   const tomorrow = new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().substring(0, 10);
-  
-  // Next 7 days
   const nextWeek = new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().substring(0, 10);
 
   // Filtragem
@@ -51,7 +51,6 @@ export const DeadlineList: React.FC = () => {
     const matchesPriority = selectedPriority === 'ALL' || d.priority === selectedPriority;
     const matchesLawyer = selectedLawyer === 'ALL' || d.lawyerId === selectedLawyer;
 
-    // Tabs filter
     let matchesTab = true;
     if (activeFilterTab === 'OVERDUE') {
       matchesTab = (d.status === 'OVERDUE' || d.dueDate < today) && d.status !== 'COMPLETED';
@@ -67,36 +66,100 @@ export const DeadlineList: React.FC = () => {
   });
 
   const overdueCount = userDeadlines.filter(d => (d.status === 'OVERDUE' || d.dueDate < today) && d.status !== 'COMPLETED').length;
-  const todayCount = userDeadlines.filter(d => (d.dueDate === today || d.dueDate === tomorrow) && d.status !== 'COMPLETED').length;
+  const criticalCount = userDeadlines.filter(d => d.priority === 'CRITICAL' && d.status !== 'COMPLETED').length;
+  const weekCount = userDeadlines.filter(d => d.dueDate >= today && d.dueDate <= nextWeek && d.status !== 'COMPLETED').length;
+  const completedCount = userDeadlines.filter(d => d.status === 'COMPLETED').length;
+
+  const formatDateBR = (dateStr: string) => {
+    if (!dateStr) return '-';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  };
+
+  // 4 Cards de Resumo (Anexo 5)
+  const summaryCards: SummaryCardItem[] = [
+    {
+      label: 'Prazos Fatais / Críticos',
+      value: criticalCount,
+      icon: <ShieldAlert className="w-5 h-5 stroke-[2]" />,
+      iconBgColor: 'bg-[#F9D9C3]',
+      iconTextColor: 'text-dex-coral',
+    },
+    {
+      label: 'Prazos nos Próximos 7 Dias',
+      value: weekCount,
+      icon: <Clock className="w-5 h-5 stroke-[2]" />,
+      iconBgColor: 'bg-[#CBEBD8]',
+      iconTextColor: 'text-[#2B8255]',
+    },
+    {
+      label: 'Compromissos Vencidos',
+      value: overdueCount,
+      icon: <AlertTriangle className="w-5 h-5 stroke-[2]" />,
+      iconBgColor: 'bg-[#E0D7F5]',
+      iconTextColor: 'text-[#6B46C1]',
+    },
+    {
+      label: 'Prazos Cumpridos',
+      value: completedCount,
+      icon: <CheckCircle2 className="w-5 h-5 stroke-[2]" />,
+      iconBgColor: 'bg-[#FDF0CD]',
+      iconTextColor: 'text-[#B7791F]',
+    },
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Pauta de Prazos & Audiências</h2>
-          <p className="text-xs text-slate-400">
-            Controle rigoroso de prazos processuais e compromissos judiciais
-          </p>
-        </div>
+    <InternalPageLayout
+      summaryCards={summaryCards}
+      headerTitle="Pauta de Prazos & Agenda"
+      headerSubtitle={`${filteredDeadlines.length} ${filteredDeadlines.length === 1 ? 'compromisso listado' : 'compromissos listados'}`}
+      headerFilters={
+        <>
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="w-4 h-4 text-white/50 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Buscar por descrição, tipo ou processo..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 bg-white/10 border border-white/15 rounded-xl text-xs text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+            />
+          </div>
 
+          <select
+            value={selectedPriority}
+            onChange={e => setSelectedPriority(e.target.value)}
+            className="px-3 py-2 bg-white/10 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+          >
+            <option value="ALL" className="bg-[#162B37] text-white">Todas as Prioridades</option>
+            <option value="CRITICAL" className="bg-[#162B37] text-white">Crítica (Fatal)</option>
+            <option value="HIGH" className="bg-[#162B37] text-white">Alta (Urgente)</option>
+            <option value="MEDIUM" className="bg-[#162B37] text-white">Média</option>
+            <option value="NORMAL" className="bg-[#162B37] text-white">Normal</option>
+          </select>
+        </>
+      }
+      headerActions={
         <button
           onClick={() => setIsNewModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-amber-600/30 transition-all self-start sm:self-auto"
+          className="flex items-center gap-2 px-5 py-2.5 bg-dex-coral hover:bg-dex-coral-hover text-white text-xs font-semibold rounded-xl shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer font-serif"
         >
-          <Plus className="w-4 h-4" />
-          Novo Prazo / Audiência
+          <Plus className="w-4 h-4 stroke-[2.5]" />
+          <span>Novo Prazo / Audiência</span>
         </button>
-      </div>
-
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 custom-scrollbar">
+      }
+    >
+      {/* Pills de Filtragem Rápida */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-2 custom-scrollbar">
         <button
           onClick={() => setActiveFilterTab('ALL')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             activeFilterTab === 'ALL'
-              ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/25'
-              : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+              ? 'bg-dex-navy-950 text-white shadow-md'
+              : 'bg-white/5 text-[#A6C5CD] hover:text-white hover:bg-white/10'
           }`}
         >
           Todos ({userDeadlines.length})
@@ -104,38 +167,36 @@ export const DeadlineList: React.FC = () => {
 
         <button
           onClick={() => setActiveFilterTab('OVERDUE')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all ${
+          className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
             activeFilterTab === 'OVERDUE'
-              ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/30'
+              ? 'bg-dex-coral text-white shadow-md'
               : overdueCount > 0
-              ? 'bg-rose-950/40 border border-rose-800 text-rose-300 hover:bg-rose-900/60'
-              : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+              ? 'bg-dex-coral/20 text-dex-coral border border-dex-coral/40'
+              : 'bg-white/5 text-[#A6C5CD] hover:text-white'
           }`}
         >
           <ShieldAlert className="w-3.5 h-3.5" />
-          Vencidos ({overdueCount})
+          <span>Vencidos ({overdueCount})</span>
         </button>
 
         <button
           onClick={() => setActiveFilterTab('TODAY')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all ${
+          className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
             activeFilterTab === 'TODAY'
-              ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30'
-              : todayCount > 0
-              ? 'bg-amber-950/40 border border-amber-800 text-amber-300 hover:bg-amber-900/60'
-              : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+              ? 'bg-dex-navy-950 text-white shadow-md'
+              : 'bg-white/5 text-[#A6C5CD] hover:text-white'
           }`}
         >
           <Clock className="w-3.5 h-3.5" />
-          Hoje & Amanhã ({todayCount})
+          <span>Hoje & Amanhã</span>
         </button>
 
         <button
           onClick={() => setActiveFilterTab('WEEK')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             activeFilterTab === 'WEEK'
-              ? 'bg-brand-600 text-white'
-              : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+              ? 'bg-dex-navy-950 text-white shadow-md'
+              : 'bg-white/5 text-[#A6C5CD] hover:text-white'
           }`}
         >
           Próximos 7 Dias
@@ -143,188 +204,123 @@ export const DeadlineList: React.FC = () => {
 
         <button
           onClick={() => setActiveFilterTab('COMPLETED')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all ${
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             activeFilterTab === 'COMPLETED'
-              ? 'bg-emerald-600 text-white'
-              : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+              ? 'bg-dex-navy-950 text-white shadow-md'
+              : 'bg-white/5 text-[#A6C5CD] hover:text-white'
           }`}
         >
-          <CheckCircle className="w-3.5 h-3.5" />
-          Concluídos
+          Cumpridos ({completedCount})
         </button>
       </div>
 
-      {/* Search & Select Filters */}
-      <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800/80 grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-          <input
-            type="text"
-            placeholder="Buscar por ato, descrição ou processo..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3.5 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-          />
-        </div>
-
-        <div>
-          <select
-            value={selectedPriority}
-            onChange={e => setSelectedPriority(e.target.value)}
-            className="w-full px-3.5 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-          >
-            <option value="ALL">Todas as Prioridades</option>
-            <option value="CRITICAL">Crítico</option>
-            <option value="HIGH">Alta</option>
-            <option value="MEDIUM">Média</option>
-            <option value="NORMAL">Normal</option>
-          </select>
-        </div>
-
-        <div>
-          <select
-            value={selectedLawyer}
-            onChange={e => setSelectedLawyer(e.target.value)}
-            className="w-full px-3.5 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-          >
-            <option value="ALL">Todos os Advogados</option>
-            {lawyers.map(l => (
-              <option key={l.id} value={l.id}>{l.name}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Deadlines List */}
+      {/* Lista de Prazos */}
       {filteredDeadlines.length === 0 ? (
         <EmptyState
           title="Nenhum prazo encontrado"
-          description="Nenhum compromisso corresponde aos critérios e filtros selecionados."
+          description="A pauta está limpa ou nenhum registro corresponde aos filtros selecionados."
           icon={Clock}
           actionLabel="Agendar Novo Prazo"
           onAction={() => setIsNewModalOpen(true)}
         />
       ) : (
         <div className="space-y-3">
-          {filteredDeadlines
-            .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
-            .map(deadline => {
-              const linkedCase = cases.find(c => c.id === deadline.caseId);
-              const lawyer = lawyers.find(l => l.id === deadline.lawyerId);
-              const isOverdue = (deadline.status === 'OVERDUE' || deadline.dueDate < today) && deadline.status !== 'COMPLETED';
-              const isCompleted = deadline.status === 'COMPLETED';
+          {filteredDeadlines.map(deadline => {
+            const linkedCase = cases.find(c => c.id === deadline.caseId);
+            const lawyer = lawyers.find(l => l.id === deadline.lawyerId);
+            const isCompleted = deadline.status === 'COMPLETED';
 
-              return (
-                <div
-                  key={deadline.id}
-                  className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-                    isCompleted
-                      ? 'bg-slate-900/40 border-slate-800/60 opacity-70'
-                      : isOverdue
-                      ? 'bg-rose-950/30 border-rose-900/60 shadow-lg'
-                      : 'bg-slate-900/80 border-slate-800/80 hover:border-slate-700/80'
-                  }`}
-                >
-                  <div className="flex items-start gap-3 min-w-0 flex-1">
-                    <button
-                      onClick={() => toggleDeadlineStatus(deadline.id)}
-                      title={isCompleted ? 'Reabrir prazo' : 'Concluir prazo'}
-                      className={`mt-0.5 p-2 rounded-xl border transition-all shrink-0 ${
-                        isCompleted
-                          ? 'bg-emerald-600 border-emerald-500 text-white'
-                          : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/50'
-                      }`}
-                    >
-                      <CheckCircle2 className="w-5 h-5" />
-                    </button>
+            return (
+              <div
+                key={deadline.id}
+                className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                  isCompleted
+                    ? 'bg-white/5 border-white/10 opacity-70'
+                    : 'bg-[#1A3342] border-[#214154] hover:border-[#3D6C78]'
+                }`}
+              >
+                <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                  <button
+                    onClick={() => toggleDeadlineStatus(deadline.id)}
+                    title={isCompleted ? 'Reabrir prazo' : 'Marcar como cumprido'}
+                    className={`w-7 h-7 rounded-full border flex items-center justify-center transition-all cursor-pointer shrink-0 mt-0.5 ${
+                      isCompleted
+                        ? 'bg-[#48BB78] border-[#48BB78] text-white'
+                        : 'border-white/30 hover:border-white text-transparent hover:text-white/40'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                  </button>
 
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <DeadlineStatusBadge status={deadline.status} dueDate={deadline.dueDate} />
-                        <PriorityBadge priority={deadline.priority} />
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
-                          {deadline.type}
-                        </span>
-                      </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <DeadlineStatusBadge status={deadline.status} dueDate={deadline.dueDate} />
+                      <PriorityBadge priority={deadline.priority} />
+                      <span className="text-xs font-serif font-bold text-white">
+                        Vencimento: {formatDateBR(deadline.dueDate)}
+                      </span>
+                    </div>
 
-                      <h4 className={`text-sm font-bold ${isCompleted ? 'text-slate-400 line-through' : 'text-white'}`}>
-                        {deadline.description}
-                      </h4>
+                    <h4 className={`text-sm font-display font-bold ${isCompleted ? 'line-through text-[#A6C5CD]' : 'text-white'}`}>
+                      {deadline.type} — {deadline.description}
+                    </h4>
 
+                    <div className="flex items-center gap-3 mt-1 text-xs text-[#A6C5CD] flex-wrap">
                       {linkedCase && (
-                        <p className="text-xs text-brand-300 font-mono">
-                          Proc. {linkedCase.caseNumber} • {linkedCase.actionType}
-                        </p>
+                        <span>Processo CNJ: <strong className="text-white font-mono">{linkedCase.caseNumber}</strong></span>
                       )}
-
-                      {deadline.notes && (
-                        <p className="text-[11px] text-slate-400 italic">
-                          Obs: {deadline.notes}
-                        </p>
+                      {lawyer && (
+                        <span>Responsável: <strong className="text-white">{lawyer.name}</strong></span>
                       )}
-
-                      <div className="flex items-center gap-4 pt-1 text-[11px] text-slate-400">
-                        <span className="font-mono">
-                          📅 Vencimento: <strong className="text-white">{deadline.dueDate} {deadline.dueTime && `às ${deadline.dueTime}`}</strong>
-                        </span>
-                        {lawyer && (
-                          <span>👤 Responsável: <strong>{lawyer.name}</strong></span>
-                        )}
-                        {deadline.completedAt && (
-                          <span className="text-emerald-400">Baixa em: {deadline.completedAt}</span>
-                        )}
-                      </div>
                     </div>
                   </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center justify-end gap-1.5 self-end sm:self-center shrink-0">
-                    <button
-                      onClick={() => setEditingDeadline(deadline)}
-                      title="Editar prazo"
-                      className="p-2 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-800 rounded-xl transition-colors"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setDeadlineToDelete(deadline)}
-                      title="Excluir prazo"
-                      className="p-2 text-slate-400 hover:text-rose-400 bg-slate-800/80 hover:bg-rose-950/30 rounded-xl transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
                 </div>
-              );
-            })}
+
+                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                  <button
+                    onClick={() => setEditingDeadline(deadline)}
+                    title="Editar prazo"
+                    className="p-2 rounded-xl bg-white/5 hover:bg-white/15 text-[#A6C5CD] hover:text-white transition-colors cursor-pointer"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setDeadlineToDelete(deadline)}
+                    title="Excluir prazo"
+                    className="p-2 rounded-xl bg-white/5 hover:bg-dex-coral/20 text-[#A6C5CD] hover:text-dex-coral transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* New / Edit Deadline Modal */}
+      {/* Modais */}
       <DeadlineModal
         isOpen={isNewModalOpen || !!editingDeadline}
         onClose={() => {
           setIsNewModalOpen(false);
           setEditingDeadline(null);
         }}
-        deadlineToEdit={editingDeadline}
+        initialDeadline={editingDeadline || undefined}
       />
 
-      {/* Delete Confirmation */}
-      {deadlineToDelete && (
-        <ConfirmDialog
-          isOpen={!!deadlineToDelete}
-          onClose={() => setDeadlineToDelete(null)}
-          onConfirm={() => {
-            if (deadlineToDelete) {
-              deleteDeadline(deadlineToDelete.id);
-              setDeadlineToDelete(null);
-            }
-          }}
-          title="Remover Prazo"
-          message={`Deseja realmente remover o prazo "${deadlineToDelete.type}: ${deadlineToDelete.description}" da pauta?`}
-        />
-      )}
-    </div>
+      <ConfirmDialog
+        isOpen={!!deadlineToDelete}
+        onClose={() => setDeadlineToDelete(null)}
+        onConfirm={() => {
+          if (deadlineToDelete) {
+            deleteDeadline(deadlineToDelete.id);
+            setDeadlineToDelete(null);
+          }
+        }}
+        title="Excluir Prazo"
+        message={`Deseja realmente remover o prazo "${deadlineToDelete?.description}"? Esta ação removerá o alerta do dashboard.`}
+        confirmLabel="Sim, excluir prazo"
+      />
+    </InternalPageLayout>
   );
 };

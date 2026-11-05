@@ -15,10 +15,13 @@ import {
   LogOut,
   Globe,
   Briefcase,
-  Building2
+  Building2,
+  ShieldCheck,
+  X
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
+import { DexLogo } from '../common/DexLogo';
 
 export type TabType = 
   | 'dashboard'
@@ -45,14 +48,15 @@ interface SidebarProps {
   setIsOpen: (open: boolean) => void;
 }
 
+interface NavItem {
+  id: TabType;
+  label: string;
+  badge?: string | number | null;
+}
+
 interface NavSection {
   title: string;
-  items: {
-    id: TabType;
-    label: string;
-    icon: React.ComponentType<{ className?: string }>;
-    badge?: string | number | null;
-  }[];
+  items: NavItem[];
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -62,114 +66,103 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setIsOpen
 }) => {
   const { currentUser, isAdmin, isAppAdmin, logout } = useAuth();
-  const { userCases, personalCases } = useData();
+  const { userCases, personalCases, userDeadlines } = useData();
 
+  const urgentDeadlinesCount = userDeadlines.filter(
+    d => (d.priority === 'CRITICAL' || d.priority === 'HIGH') && d.status !== 'COMPLETED'
+  ).length;
+
+  // Seções fieis ao Anexo 4: Principal, Gestão, Sistema
   const sections: NavSection[] = [
     {
-      title: 'PRINCIPAL',
+      title: 'Principal',
       items: [
+        {
+          id: 'dashboard',
+          label: 'Dashboard',
+        },
         ...(isAdmin ? [
           {
-            id: 'dashboard' as TabType,
-            label: 'Gestão do Escritório',
-            icon: Building2,
-          },
-          {
             id: 'lawyer-workbench' as TabType,
-            label: 'Minha Área Individual',
-            icon: Briefcase,
+            label: 'Minha Bancada',
             badge: personalCases.length > 0 ? personalCases.length : null,
           }
         ] : [
           {
             id: 'lawyer-workbench' as TabType,
             label: 'Minha Área de Trabalho',
-            icon: Briefcase,
-          },
-          {
-            id: 'dashboard' as TabType,
-            label: 'Dashboard Geral',
-            icon: LayoutDashboard,
+            badge: personalCases.length > 0 ? personalCases.length : null,
           }
         ]),
         {
-          id: 'ai-assistant' as TabType,
-          label: 'Assistente de IA',
-          icon: Bot,
+          id: 'ai-assistant',
+          label: 'Assistente de IA', // Especificação: usar "Assistente de IA"
         },
         {
-          id: 'cases' as TabType,
+          id: 'cases',
           label: 'Processos',
-          icon: Scale,
-          badge: userCases.length,
+          badge: userCases.length > 0 ? userCases.length : null,
         },
         {
-          id: 'clients' as TabType,
+          id: 'clients',
           label: 'Clientes',
-          icon: Users,
         },
         {
-          id: 'documents' as TabType,
+          id: 'documents',
           label: 'Modelos',
-          icon: FileText,
         },
       ]
     },
     {
-      title: 'GESTÃO',
+      title: 'Gestão',
       items: [
         {
           id: 'financial',
           label: 'Financeiro',
-          icon: DollarSign,
         },
         {
           id: 'deadlines',
           label: 'Agenda',
-          icon: Calendar,
+          badge: urgentDeadlinesCount > 0 ? urgentDeadlinesCount : null,
         },
         ...(isAdmin ? [{
           id: 'lawyers' as TabType,
           label: 'Equipe',
-          icon: UserCircle,
         }] : []),
         {
           id: 'team-wall',
-          label: 'Mural da Equipe',
-          icon: MessageSquare,
+          label: 'Mural da equipe',
         },
         {
           id: 'reports',
           label: 'Relatórios',
-          icon: BarChart3,
         },
       ]
     },
     {
-      title: 'SISTEMA',
+      title: 'Sistema',
       items: [
         {
           id: 'notifications',
           label: 'Notificações',
-          icon: Bell,
         },
         ...(isAppAdmin ? [{
           id: 'settings' as TabType,
           label: 'Configurações',
-          icon: Settings,
         }] : []),
         {
+          id: 'lgpd',
+          label: 'Conformidade LGPD',
+        },
+        {
           id: 'landing',
-          label: 'Página Inicial (Web)',
-          icon: Globe,
+          label: 'Página Web',
         },
       ]
     }
   ];
 
-  // Initial letter for the avatar
-  const userName = currentUser?.name || 'ewewewew';
-  const userInitial = (userName[0] || 'E').toUpperCase();
+  const userName = currentUser?.name || 'Advogado Dex';
   const userRole = currentUser?.role === 'ADMIN' ? 'Administrador' : 'Advogado';
 
   return (
@@ -177,121 +170,110 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Backdrop para mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-neutral-900/60 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-dex-navy-950/60 backdrop-blur-sm lg:hidden transition-opacity"
           onClick={() => setIsOpen(false)}
         />
       )}
 
-      {/* Sidebar Container */}
+      {/* Sidebar Container (Teal mais claro: #5A97A5, fiel ao Anexo 4) */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 w-72 bg-white border-r border-neutral-200/90 flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-[#5A97A5] flex flex-col justify-between transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+          isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+        } border-r border-[#4A808E]/60 select-none`}
       >
-        {/* Header / Logo */}
-        <div className="pt-7 pb-5 px-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="text-[#C4975A]">
-              <Scale className="w-8 h-8 stroke-[1.8]" />
-            </div>
-            <span className="font-serif text-3xl font-bold tracking-tight text-neutral-900">
-              Dex
-            </span>
+        {/* Topo: Logo & Fechar no Mobile */}
+        <div>
+          <div className="pt-6 pb-4 px-6 flex items-center justify-between">
+            <DexLogo variant="white" size="md" />
+            <button
+              onClick={() => setIsOpen(false)}
+              className="p-1.5 text-white/80 hover:text-white lg:hidden rounded-lg hover:bg-white/10 cursor-pointer"
+              aria-label="Fechar menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
+
+          {/* Grupos de Navegação com Título Sublinhado (Anexo 4) */}
+          <nav aria-label="Menu Principal" className="px-4 py-2 space-y-5 overflow-y-auto max-h-[calc(100vh-170px)] custom-scrollbar">
+            {sections.map((section) => (
+              <div key={section.title} className="space-y-1.5">
+                {/* Título do grupo com linha sublinhada delicada */}
+                <div className="px-3 pb-1">
+                  <span className="text-xs font-serif font-bold text-white tracking-wide border-b border-white/60 pb-0.5 inline-block">
+                    {section.title}
+                  </span>
+                </div>
+
+                {/* Itens do grupo */}
+                <div className="space-y-1 pt-1">
+                  {section.items.map((item) => {
+                    const isActive = activeTab === item.id;
+
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setActiveTab(item.id);
+                          setIsOpen(false);
+                        }}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={`w-full flex items-center justify-between px-3.5 py-2 rounded-full text-xs font-serif transition-all cursor-pointer ${
+                          isActive
+                            ? 'bg-[#162B37] text-white font-bold shadow-md' // Pill escura com texto branco (Anexo 4)
+                            : 'text-white/90 hover:text-white hover:bg-white/15 font-medium'
+                        }`}
+                      >
+                        <span className="truncate">{item.label}</span>
+
+                        {item.badge !== undefined && item.badge !== null && (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isActive
+                              ? 'bg-dex-coral text-white'
+                              : 'bg-white/20 text-white'
+                          }`}>
+                            {item.badge}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </nav>
         </div>
 
-        {/* Navigation items grouped by sections */}
-        <nav aria-label="Menu Principal" className="flex-1 px-4 py-2 overflow-y-auto custom-scrollbar space-y-6">
-          {sections.map((section) => (
-            <div key={section.title} className="space-y-1">
-              <div className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-neutral-400">
-                {section.title}
-              </div>
-
-              {section.items.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
-
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      setActiveTab(item.id);
-                      setIsOpen(false);
-                    }}
-                    aria-current={isActive ? 'page' : undefined}
-                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-[13px] font-medium transition-all group cursor-pointer ${
-                      isActive
-                        ? 'bg-[#222222] text-white shadow-sm font-semibold'
-                        : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/90'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <Icon className={`w-5 h-5 transition-transform group-hover:scale-105 ${
-                        isActive ? 'text-white' : 'text-neutral-500 group-hover:text-neutral-800'
-                      }`} />
-                      <span>{item.label}</span>
-                    </div>
-
-                    {item.badge !== undefined && item.badge !== null && (
-                      <span className="bg-[#C69255] text-white text-xs font-semibold px-2 py-0.5 rounded-full min-w-[20px] text-center">
-                        {item.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
-
-        {/* User Profile Footer */}
-        <div className="p-3.5 border-t border-neutral-200/70 bg-[#FAFAFA]/90 flex items-center justify-between gap-1">
+        {/* Rodapé da Sidebar: Bloco do Usuário (Anexo 4) */}
+        <div className="p-4 border-t border-white/20 bg-[#4F8B98]/60">
           <button
-            type="button"
             onClick={() => {
               setActiveTab('profile');
               setIsOpen(false);
             }}
-            className={`flex items-center gap-3 min-w-0 flex-1 p-2 rounded-2xl transition-all cursor-pointer text-left group ${
-              activeTab === 'profile'
-                ? 'bg-[#222222] text-white shadow-sm ring-1 ring-neutral-800'
-                : 'hover:bg-neutral-200/70'
-            }`}
-            title="Acessar Meu Perfil e Foto"
+            className="w-full flex items-center gap-3 p-2 rounded-2xl hover:bg-white/15 transition-all text-left cursor-pointer group"
           >
+            {/* Avatar circular */}
             {currentUser?.avatarUrl ? (
               <img
                 src={currentUser.avatarUrl}
-                alt={`Foto de perfil de ${userName}`}
-                className="w-10 h-10 rounded-full object-cover shrink-0 border border-neutral-300 shadow-sm"
+                alt={userName}
+                className="w-10 h-10 rounded-full object-cover border border-white/50 shadow-sm shrink-0"
               />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-[#C69255] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm" aria-hidden="true">
-                {userInitial}
+              <div className="w-10 h-10 rounded-full bg-[#EAE0DA] text-dex-navy-950 font-bold flex items-center justify-center text-sm shadow-sm shrink-0">
+                {(userName[0] || 'A').toUpperCase()}
               </div>
             )}
-            <div className="min-w-0 flex-1">
-              <p className={`text-xs font-bold truncate leading-tight ${
-                activeTab === 'profile' ? 'text-white' : 'text-neutral-800 group-hover:text-black'
-              }`}>
-                {userName}
-              </p>
-              <p className={`text-[11px] truncate leading-tight mt-0.5 ${
-                activeTab === 'profile' ? 'text-neutral-300' : 'text-neutral-500'
-              }`}>
-                {userRole} • Meu Perfil
-              </p>
-            </div>
-          </button>
 
-          <button
-            onClick={logout}
-            title="Sair da conta"
-            className="p-2 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors shrink-0 cursor-pointer"
-            aria-label="Sair da conta"
-          >
-            <LogOut className="w-4 h-4" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-bold text-white truncate font-serif">
+                {userName}
+              </div>
+              <div className="text-[11px] text-white/80 truncate">
+                {userRole}
+              </div>
+            </div>
           </button>
         </div>
       </aside>

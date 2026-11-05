@@ -8,7 +8,8 @@ import {
   Calendar,
   User,
   Filter,
-  CheckCircle2
+  CheckCircle2,
+  FolderOpen
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -16,6 +17,7 @@ import { TemplateDocument, TemplateCategory } from '../../types';
 import { DocumentUploadModal } from './DocumentUploadModal';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { EmptyState } from '../common/EmptyState';
+import { InternalPageLayout, SummaryCardItem } from '../layout/InternalPageLayout';
 
 export const DocumentList: React.FC = () => {
   const { userTemplates, deleteTemplate, showToast } = useData();
@@ -36,7 +38,6 @@ export const DocumentList: React.FC = () => {
     return matchesSearch && matchesCategory;
   });
 
-  // Download real do arquivo original
   const handleDownload = (tpl: TemplateDocument) => {
     try {
       const link = document.createElement('a');
@@ -81,54 +82,78 @@ export const DocumentList: React.FC = () => {
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   };
 
+  // 4 Cards de Resumo (Anexo 5)
+  const summaryCards: SummaryCardItem[] = [
+    {
+      label: 'Total de Modelos',
+      value: userTemplates.length,
+      icon: <FileText className="w-5 h-5 stroke-[2]" />,
+      iconBgColor: 'bg-[#CBEBD8]',
+      iconTextColor: 'text-[#2B8255]',
+    },
+    {
+      label: 'Petições Iniciais',
+      value: userTemplates.filter(t => t.category === 'PETICAO_INICIAL').length,
+      icon: <FolderOpen className="w-5 h-5 stroke-[2]" />,
+      iconBgColor: 'bg-[#F9D9C3]',
+      iconTextColor: 'text-[#C48A5C]',
+    },
+    {
+      label: 'Contratos & Procurações',
+      value: userTemplates.filter(t => t.category === 'CONTRATO' || t.category === 'PROCURACAO').length,
+      icon: <FileText className="w-5 h-5 stroke-[2]" />,
+      iconBgColor: 'bg-[#E0D7F5]',
+      iconTextColor: 'text-[#6B46C1]',
+    },
+    {
+      label: 'Recursos Forenses',
+      value: userTemplates.filter(t => t.category === 'RECURSO').length,
+      icon: <FileText className="w-5 h-5 stroke-[2]" />,
+      iconBgColor: 'bg-[#FDF0CD]',
+      iconTextColor: 'text-[#B7791F]',
+    },
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Modelos de Documentos Jurídicos</h2>
-          <p className="text-xs text-slate-400">
-            Repositório de minutas padronizadas, petições, contratos e procurações da sua banca
-          </p>
-        </div>
+    <InternalPageLayout
+      summaryCards={summaryCards}
+      headerTitle="Modelos de Documentos"
+      headerSubtitle={`${filteredTemplates.length} ${filteredTemplates.length === 1 ? 'modelo disponível' : 'modelos disponíveis'}`}
+      headerFilters={
+        <>
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="w-4 h-4 text-white/50 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Buscar por título, descrição ou arquivo..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 bg-white/10 border border-white/15 rounded-xl text-xs text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+            />
+          </div>
 
-        <button
-          onClick={() => setIsUploadModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-brand-600/30 transition-all self-start sm:self-auto cursor-pointer"
-        >
-          <FileUp className="w-4 h-4" />
-          <span>Enviar Novo Modelo</span>
-        </button>
-      </div>
-
-      {/* Filtros e Busca */}
-      <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-          <input
-            type="text"
-            placeholder="Buscar modelo por título, descrição ou arquivo..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3.5 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
-          />
-        </div>
-
-        <div className="relative">
           <select
             value={selectedCategory}
             onChange={e => setSelectedCategory(e.target.value)}
-            className="w-full px-3.5 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50 cursor-pointer"
+            className="px-3 py-2 bg-white/10 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
           >
-            <option value="ALL">Todas as Categorias de Modelos</option>
+            <option value="ALL" className="bg-[#162B37] text-white">Todas as Categorias</option>
             {categories.map(cat => (
-              <option key={cat.value} value={cat.value}>{cat.label}</option>
+              <option key={cat.value} value={cat.value} className="bg-[#162B37] text-white">{cat.label}</option>
             ))}
           </select>
-        </div>
-      </div>
-
-      {/* Grid de Modelos */}
+        </>
+      }
+      headerActions={
+        <button
+          onClick={() => setIsUploadModalOpen(true)}
+          className="flex items-center gap-2 px-5 py-2.5 bg-dex-coral hover:bg-dex-coral-hover text-white text-xs font-semibold rounded-xl shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer font-serif"
+        >
+          <FileUp className="w-4 h-4 stroke-[2.5]" />
+          <span>Enviar Novo Modelo</span>
+        </button>
+      }
+    >
       {filteredTemplates.length === 0 ? (
         <EmptyState
           title="Nenhum modelo encontrado"
@@ -139,104 +164,92 @@ export const DocumentList: React.FC = () => {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTemplates.map(tpl => {
-            const canDelete = isAdmin || (currentUser && tpl.uploadedByUserId === currentUser.id);
-
-            return (
-              <div
-                key={tpl.id}
-                className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-slate-700/80 transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-800 text-brand-300 border border-slate-700 truncate">
-                      {getCategoryBadgeLabel(tpl.category)}
-                    </span>
-                    <span className="text-[10px] font-mono text-slate-400">
-                      {formatFileSize(tpl.fileSize)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-start gap-3 mb-2">
-                    <div className="p-2.5 rounded-xl bg-brand-500/10 text-brand-400 border border-brand-500/20 shrink-0">
-                      <FileText className="w-5 h-5" />
+          {filteredTemplates.map(tpl => (
+            <div
+              key={tpl.id}
+              className="p-5 rounded-2xl bg-[#1A3342] border border-[#214154] hover:border-[#3D6C78] transition-all flex flex-col justify-between group shadow"
+            >
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-dex-coral shrink-0">
+                      <FileText className="w-5 h-5 stroke-[2]" />
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <h4 className="text-xs font-bold text-white leading-snug line-clamp-2" title={tpl.title}>
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-display font-bold text-white truncate">
                         {tpl.title}
                       </h4>
-                      <p className="text-[11px] font-mono text-slate-400 mt-0.5 truncate" title={tpl.fileName}>
+                      <span className="text-[11px] text-[#A6C5CD] font-mono">
                         {tpl.fileName}
-                      </p>
+                      </span>
                     </div>
                   </div>
 
-                  {tpl.description && (
-                    <p className="text-[11px] text-slate-400 mt-2 line-clamp-3 leading-relaxed">
-                      {tpl.description}
-                    </p>
-                  )}
-
-                  <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
-                    <span className="flex items-center gap-1">
-                      <User className="w-3 h-3 text-slate-500" />
-                      <span className="truncate max-w-[120px]">{tpl.uploadedByName}</span>
-                    </span>
-                    <span className="flex items-center gap-1 font-mono">
-                      <Calendar className="w-3 h-3 text-slate-500" />
-                      <span>{tpl.createdAt}</span>
-                    </span>
-                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#4A808E]/25 text-[#72ACBA] border border-[#4A808E]/40 shrink-0">
+                    {getCategoryBadgeLabel(tpl.category)}
+                  </span>
                 </div>
 
-                {/* Ações: Download & Exclusão */}
-                <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
-                  <button
-                    onClick={() => handleDownload(tpl)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 hover:text-white border border-brand-500/30 rounded-xl text-xs font-semibold transition-all cursor-pointer"
-                    title={`Baixar ${tpl.fileName}`}
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Baixar Arquivo</span>
-                  </button>
+                <p className="text-xs text-[#C2D6DC] leading-relaxed line-clamp-2">
+                  {tpl.description || 'Modelo padrão da banca de advogados.'}
+                </p>
 
-                  {canDelete && (
-                    <button
-                      onClick={() => setTemplateToDelete(tpl)}
-                      className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-rose-900/40"
-                      title="Excluir modelo"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
+                <div className="pt-2 flex items-center justify-between text-[11px] text-[#A6C5CD] border-t border-[#214154]/60">
+                  <span className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" />
+                    {tpl.createdAt}
+                  </span>
+                  <span>{formatFileSize(tpl.fileSize)}</span>
                 </div>
               </div>
-            );
-          })}
+
+              <div className="mt-4 pt-3 border-t border-[#214154]/60 flex items-center justify-between">
+                <span className="text-xs text-[#A6C5CD]">
+                  Por: {tpl.uploadedByName}
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleDownload(tpl)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Baixar</span>
+                  </button>
+
+                  <button
+                    onClick={() => setTemplateToDelete(tpl)}
+                    className="p-1.5 rounded-xl bg-white/5 hover:bg-dex-coral/20 text-[#A6C5CD] hover:text-dex-coral transition-colors cursor-pointer"
+                    title="Excluir modelo"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Modal de Upload */}
+      {/* Modais */}
       <DocumentUploadModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
       />
 
-      {/* Modal de Confirmação de Exclusão */}
-      {templateToDelete && (
-        <ConfirmDialog
-          isOpen={!!templateToDelete}
-          onClose={() => setTemplateToDelete(null)}
-          onConfirm={() => {
-            if (templateToDelete) {
-              deleteTemplate(templateToDelete.id);
-              setTemplateToDelete(null);
-            }
-          }}
-          title="Excluir Modelo Jurídico"
-          message={`Tem certeza que deseja remover o modelo "${templateToDelete.title}"? Esta ação não pode ser desfeita.`}
-        />
-      )}
-    </div>
+      <ConfirmDialog
+        isOpen={!!templateToDelete}
+        onClose={() => setTemplateToDelete(null)}
+        onConfirm={() => {
+          if (templateToDelete) {
+            deleteTemplate(templateToDelete.id);
+            setTemplateToDelete(null);
+          }
+        }}
+        title="Excluir Modelo de Documento"
+        message={`Deseja realmente remover o modelo "${templateToDelete?.title}"?`}
+        confirmLabel="Sim, excluir modelo"
+      />
+    </InternalPageLayout>
   );
 };
