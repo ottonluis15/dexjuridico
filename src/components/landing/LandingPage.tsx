@@ -270,36 +270,36 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
         {/* Grade Bento do Anexo 2 */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-          {/* Card Grande à Esquerda: Painel de Controle */}
-          <div className="lg:col-span-7 bg-dex-cream rounded-[24px] border border-[#222222]/80 p-8 sm:p-10 flex flex-col justify-between shadow-sm relative overflow-hidden">
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 items-center">
-              {/* Texto explicativo */}
-              <div className="sm:col-span-7 space-y-4">
-                <h3 className="text-2xl sm:text-3xl font-display font-bold text-dex-navy-950">
-                  Painel de Controle
-                </h3>
-                <p className="text-sm sm:text-base text-dex-support leading-relaxed">
-                  O pulso do seu escritório em uma única tela. Receitas, andamentos e alertas críticos disponíveis no momento em que você acessa o sistema.
-                </p>
-              </div>
+          {/* Card Grande à Esquerda: Painel de Controle (Fiel ao Anexo 2: toma o espaço inteiro com painel bege de ponta a ponta) */}
+          <div className="lg:col-span-7 bg-dex-cream rounded-[24px] border border-[#222222]/80 overflow-hidden shadow-sm flex flex-col sm:flex-row h-full">
+            {/* Metade Esquerda: Texto Explicativo com tipografia serifada */}
+            <div className="flex-1 p-8 sm:p-10 lg:p-12 flex flex-col justify-center space-y-4">
+              <h3 className="text-3xl sm:text-4xl font-display font-bold text-dex-navy-950 tracking-tight leading-[1.15]">
+                Painel de<br />Controle
+              </h3>
+              <p className="text-sm sm:text-base text-dex-support leading-relaxed max-w-sm">
+                O pulso do seu escritório em uma única tela. Receitas, andamentos e alertas críticos disponíveis no momento em que você acessa o sistema.
+              </p>
+            </div>
 
-              {/* Painel bege com barras decorativas (Anexo 2) */}
-              <div className="sm:col-span-5 bg-dex-beige rounded-2xl p-6 flex items-end justify-center gap-4 h-48 border border-[#D8C3B5]/60">
-                <div className="w-10 h-28 rounded-full border border-dex-navy-950/60 bg-transparent" />
-                <div className="w-10 h-40 rounded-full border border-dex-navy-950/60 bg-transparent" />
-              </div>
+            {/* Metade Direita: Painel bege tomando toda a altura do card de ponta a ponta com as duas cápsulas verticais (Anexo 2) */}
+            <div className="w-full sm:w-[46%] lg:w-[48%] bg-[#EAE0DA] border-t sm:border-t-0 sm:border-l border-[#222222]/20 flex items-end justify-center gap-4 sm:gap-6 px-6 pt-12 pb-8 sm:pb-10 self-stretch min-h-[300px] sm:min-h-full">
+              {/* Cápsula 1 (menor) */}
+              <div className="w-12 sm:w-14 lg:w-16 h-44 sm:h-52 lg:h-56 rounded-full border-[1.5px] border-[#222222]/80 bg-[#EAE0DA] shadow-xs flex-shrink-0" />
+              {/* Cápsula 2 (maior) */}
+              <div className="w-12 sm:w-14 lg:w-16 h-68 sm:h-80 lg:h-88 rounded-full border-[1.5px] border-[#222222]/80 bg-[#EAE0DA] shadow-xs flex-shrink-0" />
             </div>
           </div>
 
           {/* Coluna Direita com 2 Cards Empilhados */}
-          <div className="lg:col-span-5 flex flex-col gap-6">
+          <div className="lg:col-span-5 flex flex-col gap-6 h-full justify-between">
             {/* Card Superior: Acompanhamento */}
-            <div className="flex-1 bg-dex-cream rounded-[24px] border border-[#222222]/80 p-7 sm:p-8 flex flex-col justify-between shadow-sm">
+            <div className="flex-1 bg-dex-cream rounded-[24px] border border-[#222222]/80 p-8 sm:p-9 flex flex-col justify-center shadow-sm">
               <div className="space-y-3">
                 <div className="w-10 h-10 text-dex-navy-950">
                   <Scale className="w-7 h-7 stroke-[1.8]" />
                 </div>
-                <h3 className="text-xl sm:text-2xl font-display font-bold text-dex-navy-950">
+                <h3 className="text-2xl font-display font-bold text-dex-navy-950">
                   Acompanhamento
                 </h3>
                 <p className="text-sm text-dex-support leading-relaxed">
@@ -309,12 +309,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
 
             {/* Card Inferior: Carteira de Clientes */}
-            <div className="flex-1 bg-dex-cream rounded-[24px] border border-[#222222]/80 p-7 sm:p-8 flex flex-col justify-between shadow-sm">
+            <div className="flex-1 bg-dex-cream rounded-[24px] border border-[#222222]/80 p-8 sm:p-9 flex flex-col justify-center shadow-sm">
               <div className="space-y-3">
                 <div className="w-10 h-10 text-dex-navy-950">
                   <Users className="w-7 h-7 stroke-[1.8]" />
                 </div>
-                <h3 className="text-xl sm:text-2xl font-display font-bold text-dex-navy-950">
+                <h3 className="text-2xl font-display font-bold text-dex-navy-950">
                   Carteira de Clientes
                 </h3>
                 <p className="text-sm text-dex-support leading-relaxed">

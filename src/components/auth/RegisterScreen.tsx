@@ -145,66 +145,9 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-dex-cream flex flex-col justify-center items-center py-8 px-4 sm:px-6 relative font-serif text-dex-navy-950 overflow-x-hidden selection:bg-dex-coral selection:text-white">
-      {/* PENAS DECORATIVAS AO REDOR DO CARD (Anexo 3) */}
-      {/* Pena 2 no canto superior esquerdo */}
-      <div className="absolute top-10 left-6 sm:top-14 sm:left-16 pointer-events-none z-0">
-        <img
-          src="/img/pena2.png"
-          alt=""
-          aria-hidden="true"
-          loading="lazy"
-          decoding="async"
-          width="130"
-          height="160"
-          className="w-20 sm:w-28 h-auto drop-shadow-sm opacity-90 animate-feather-drift"
-        />
-      </div>
-
-      {/* Pena 4 no canto inferior esquerdo */}
-      <div className="absolute bottom-12 left-8 sm:bottom-16 sm:left-24 pointer-events-none z-0">
-        <img
-          src="/img/pena4.png"
-          alt=""
-          aria-hidden="true"
-          loading="lazy"
-          decoding="async"
-          width="140"
-          height="140"
-          className="w-20 sm:w-28 h-auto drop-shadow-sm opacity-90"
-        />
-      </div>
-
-      {/* Pena 5 no canto superior direito */}
-      <div className="absolute top-10 right-8 sm:top-12 sm:right-20 pointer-events-none z-0">
-        <img
-          src="/img/pena5.png"
-          alt=""
-          aria-hidden="true"
-          loading="lazy"
-          decoding="async"
-          width="130"
-          height="190"
-          className="w-20 sm:w-28 h-auto drop-shadow-sm opacity-90 animate-feather-drift"
-        />
-      </div>
-
-      {/* Pena 3 grande no canto inferior direito */}
-      <div className="absolute bottom-8 right-6 sm:bottom-12 sm:right-16 pointer-events-none z-0">
-        <img
-          src="/img/pena3.png"
-          alt=""
-          aria-hidden="true"
-          loading="lazy"
-          decoding="async"
-          width="150"
-          height="190"
-          className="w-24 sm:w-36 h-auto drop-shadow-sm opacity-95"
-        />
-      </div>
-
+    <div className="min-h-screen bg-dex-cream flex flex-col justify-center items-center py-8 px-4 sm:px-6 lg:px-8 relative font-serif text-dex-navy-950 overflow-x-hidden selection:bg-dex-coral selection:text-white">
       {/* Barra de Navegação Superior e Seletor de Tipo */}
-      <div className="max-w-[1020px] w-full mx-auto mb-4 flex items-center justify-between px-2 relative z-10">
+      <div className="max-w-[980px] w-full mx-auto mb-4 flex items-center justify-between px-2 relative z-10">
         <button
           onClick={onNavigateToLanding}
           className="flex items-center gap-1.5 text-xs text-dex-support hover:text-dex-navy-950 transition-colors cursor-pointer"
@@ -244,8 +187,50 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
         </div>
       </div>
 
-      {/* CARD PRINCIPAL PÊSSEGO (Anexo 3) */}
-      <div className="max-w-[1020px] w-full bg-dex-peach rounded-[28px] sm:rounded-[36px] shadow-2xl p-6 sm:p-10 lg:p-12 relative z-10 border border-[#D5B093]/70">
+      {/* CONTAINER FLEX: COLUNA DE PENAS ESQUERDA + CARD CENTRAL + COLUNA DE PENAS DIREITA */}
+      <div className="w-full max-w-[1360px] mx-auto flex flex-col sm:flex-row items-center sm:items-stretch justify-center gap-4 md:gap-6 lg:gap-8">
+        {/* Penas do Topo no Mobile (< sm) */}
+        <div className="flex sm:hidden w-full justify-between items-center px-2 pointer-events-none select-none">
+          <img
+            src="/img/pena2.png"
+            alt=""
+            aria-hidden="true"
+            width="120"
+            height="150"
+            className="w-16 h-auto drop-shadow-md animate-feather-drift"
+          />
+          <img
+            src="/img/pena5.png"
+            alt=""
+            aria-hidden="true"
+            width="120"
+            height="170"
+            className="w-16 h-auto drop-shadow-md animate-feather-drift"
+          />
+        </div>
+
+        {/* COLUNA LATERAL ESQUERDA DE PENAS (Fica exatamente ao lado esquerdo do conteúdo) */}
+        <div className="hidden sm:flex flex-col justify-between items-center py-10 shrink-0 pointer-events-none select-none">
+          <img
+            src="/img/pena2.png"
+            alt=""
+            aria-hidden="true"
+            width="180"
+            height="220"
+            className="w-20 md:w-28 lg:w-36 h-auto drop-shadow-md animate-feather-drift mt-10"
+          />
+          <img
+            src="/img/pena4.png"
+            alt=""
+            aria-hidden="true"
+            width="190"
+            height="190"
+            className="w-20 md:w-28 lg:w-36 h-auto drop-shadow-md mb-2"
+          />
+        </div>
+
+        {/* CARD PRINCIPAL PÊSSEGO (Anexo 3) */}
+        <div className="flex-1 max-w-[980px] w-full bg-dex-peach rounded-[28px] sm:rounded-[36px] shadow-2xl p-6 sm:p-10 lg:p-12 relative z-10 border border-[#D5B093]/70">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
           
           {/* COLUNA ESQUERDA: Logo, Textos e Corvo 2 (Anexo 3) */}
@@ -271,17 +256,32 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               <div className="w-3/4 lg:w-full h-[1px] bg-[#35474B]/40 my-3" />
             </div>
 
-            {/* Ilustração corvo2.png na coluna esquerda (Anexo 3) */}
-            <div className="w-full flex justify-center lg:justify-start pt-4 pointer-events-none">
+            {/* Ilustração Mobile: corvo3.png (usado no mobile como solicitado) */}
+            <div className="block lg:hidden w-full flex justify-center pt-2 pb-1 pointer-events-none">
+              <img
+                src="/img/corvo3.png"
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+                decoding="async"
+                width="180"
+                height="180"
+                className="w-28 sm:w-36 h-auto drop-shadow-md select-none"
+              />
+            </div>
+
+            {/* Ilustração Desktop: corvo2.png grande encostando na divisória (Fiel ao Anexo 3) */}
+            <div className="hidden lg:flex w-full flex-1 items-end justify-end pointer-events-none -mr-8 mt-4 relative overflow-visible">
               <img
                 src="/img/corvo2.png"
                 alt=""
                 aria-hidden="true"
                 loading="lazy"
                 decoding="async"
-                width="220"
-                height="220"
-                className="w-44 sm:w-52 h-auto drop-shadow-md select-none transform hover:scale-105 transition-transform"
+                width="380"
+                height="380"
+                style={{ transform: 'translateX(25%)' }}
+                className="w-[300px] xl:w-[340px] max-w-none h-auto drop-shadow-md select-none"
               />
             </div>
           </div>
@@ -558,6 +558,47 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               </div>
             </form>
           </div>
+        </div>
+        </div>
+
+        {/* COLUNA LATERAL DIREITA DE PENAS (Fica exatamente ao lado direito do conteúdo) */}
+        <div className="hidden sm:flex flex-col justify-between items-center py-6 shrink-0 pointer-events-none select-none">
+          <img
+            src="/img/pena5.png"
+            alt=""
+            aria-hidden="true"
+            width="180"
+            height="260"
+            className="w-20 md:w-28 lg:w-36 h-auto drop-shadow-md animate-feather-drift -mt-4"
+          />
+          <img
+            src="/img/pena3.png"
+            alt=""
+            aria-hidden="true"
+            width="240"
+            height="300"
+            className="w-24 md:w-32 lg:w-44 h-auto drop-shadow-lg mb-8"
+          />
+        </div>
+
+        {/* Penas de Baixo no Mobile (< sm) */}
+        <div className="flex sm:hidden w-full justify-between items-center px-2 pointer-events-none select-none">
+          <img
+            src="/img/pena4.png"
+            alt=""
+            aria-hidden="true"
+            width="120"
+            height="120"
+            className="w-16 h-auto drop-shadow-md"
+          />
+          <img
+            src="/img/pena3.png"
+            alt=""
+            aria-hidden="true"
+            width="140"
+            height="180"
+            className="w-20 h-auto drop-shadow-lg"
+          />
         </div>
       </div>
     </div>
