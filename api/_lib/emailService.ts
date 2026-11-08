@@ -213,23 +213,39 @@ export async function sendEmail(payload: SendEmailPayload): Promise<EmailSendRes
 
   // 1. PRIORIDADE: ENVIO VIA SMTP (Gmail, Outlook etc. - ideal para domínio público sem taxas)
   const smtpHost = process.env.SMTP_HOST;
-  const smtpUser = process.env.SMTP_USER || process.env.EMAIL_USER;
-  const smtpPass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+  const rawUser = process.env.SMTP_USER || process.env.EMAIL_USER || '';
+  const rawPass = process.env.SMTP_PASS || process.env.EMAIL_PASS || '';
 
-  if (smtpUser && smtpPass) {
+  // Limpeza de segurança: remove espaços do código do Google (ex: 'abcd efgh ijkl mnop' -> 'abcdefghijklmnop') e aspas
+  const cleanUser = rawUser.trim().replace(/^["']|["']$/g, '');
+  const cleanPass = rawPass.trim().replace(/\s+/g, '').replace(/^["']|["']$/g, '');
+
+  if (cleanUser && cleanPass) {
     try {
-      const transporter = nodemailer.createTransport({
-        host: smtpHost || 'smtp.gmail.com',
-        port: Number(process.env.SMTP_PORT) || 465,
-        secure: (Number(process.env.SMTP_PORT) || 465) === 465, // true para 465, false para 587
-        auth: {
-          user: smtpUser,
-          pass: smtpPass
-        }
-      });
+      const isGmail = !smtpHost || smtpHost.includes('gmail') || cleanUser.endsWith('@gmail.com');
+
+      const transporter = isGmail
+        ? nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+              user: cleanUser,
+              pass: cleanPass
+            }
+          })
+        : nodemailer.createTransport({
+            host: smtpHost,
+            port: Number(process.env.SMTP_PORT) || 587,
+            secure: (Number(process.env.SMTP_PORT) || 587) === 465,
+            auth: {
+              user: cleanUser,
+              pass: cleanPass
+            }
+          });
+
+      const effectiveFrom = process.env.EMAIL_FROM || `Dex Jurídico <${cleanUser}>`;
 
       const info = await transporter.sendMail({
-        from: fromEmail,
+        from: effectiveFrom,
         to: recipients.join(', '),
         subject: payload.subject,
         html: htmlContent,
@@ -243,10 +259,10 @@ export async function sendEmail(payload: SendEmailPayload): Promise<EmailSendRes
         simulated: false
       };
     } catch (smtpError: any) {
-      console.error('[DEX EMAIL - SMTP] Erro ao enviar via SMTP:', smtpError?.message || smtpError);
+      console.error('[DEX EMAIL - SMTP] Erro detalhado ao enviar via SMTP:', smtpError?.code, smtpError?.response || smtpError?.message || smtpError);
       return {
         success: false,
-        error: 'Falha no envio do e-mail via servidor SMTP.'
+        error: `Falha no envio via SMTP (${smtpError?.code || 'AUTH_ERROR'}): ${smtpError?.message || 'Erro ao conectar ao provedor'}`
       };
     }
   }
