@@ -6,7 +6,10 @@ import { useData } from '../../context/DataContext';
 import { CaseModal } from '../cases/CaseModal';
 import { DeadlineModal } from '../deadlines/DeadlineModal';
 import { ClientModal } from '../clients/ClientModal';
+import { CaseDetailModal } from '../cases/CaseDetailModal';
+import { ClientDetailModal } from '../clients/ClientDetailModal';
 import { AccessibilityPanel } from '../common/AccessibilityPanel';
+import { LegalCase, Client } from '../../types';
 
 interface LayoutProps {
   activeTab: TabType;
@@ -23,11 +26,13 @@ export const Layout: React.FC<LayoutProps> = ({
   const [isCaseModalOpen, setIsCaseModalOpen] = useState(false);
   const [isDeadlineModalOpen, setIsDeadlineModalOpen] = useState(false);
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
+  const [detailCase, setDetailCase] = useState<LegalCase | null>(null);
+  const [detailClient, setDetailClient] = useState<Client | null>(null);
 
   const { toasts, removeToast } = useData();
 
   return (
-    <div className="min-h-screen bg-[#4A808E] text-white flex flex-col font-serif selection:bg-dex-coral selection:text-white antialiased">
+    <div className="min-h-screen bg-[#4A808E] dark:bg-[#0A1922] text-white flex flex-col font-serif selection:bg-dex-coral selection:text-white antialiased transition-colors duration-200">
       {/* Skip Link para Acessibilidade por Teclado */}
       <a href="#main-content" className="skip-link">
         Pular para o conteúdo principal
@@ -43,7 +48,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
       {/* Área Principal Logada */}
       <div className="lg:pl-64 flex flex-col min-h-screen flex-1">
-        {/* Topbar (#162B37, Anexo 4) */}
+        {/* Topbar (#162B37, Anexo 4) com Busca Global Funcional */}
         <Header
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -51,6 +56,8 @@ export const Layout: React.FC<LayoutProps> = ({
           onOpenNewCaseModal={() => setIsCaseModalOpen(true)}
           onOpenNewDeadlineModal={() => setIsDeadlineModalOpen(true)}
           onOpenNewClientModal={() => setIsClientModalOpen(true)}
+          onOpenCaseDetail={(c) => setDetailCase(c)}
+          onOpenClientDetail={(cl) => setDetailClient(cl)}
         />
 
         {/* Conteúdo da Página */}
@@ -82,6 +89,22 @@ export const Layout: React.FC<LayoutProps> = ({
         isOpen={isClientModalOpen}
         onClose={() => setIsClientModalOpen(false)}
       />
+
+      {/* Modais de Detalhe acionados pela Busca Global */}
+      {detailCase && (
+        <CaseDetailModal
+          caseItem={detailCase}
+          isOpen={!!detailCase}
+          onClose={() => setDetailCase(null)}
+        />
+      )}
+      {detailClient && (
+        <ClientDetailModal
+          client={detailClient}
+          isOpen={!!detailClient}
+          onClose={() => setDetailClient(null)}
+        />
+      )}
     </div>
   );
 };

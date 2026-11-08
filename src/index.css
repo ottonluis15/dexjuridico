@@ -38,6 +38,27 @@
   background: rgba(74, 128, 142, 0.8);
 }
 
+.dark ::-webkit-scrollbar-track {
+  background: rgba(10, 25, 34, 0.85);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(74, 128, 142, 0.65);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 167, 181, 0.9);
+}
+
+/* Brilho e Contorno Sutil para Ilustrações (Corvo e Penas) no Tema Escuro (Item 6) */
+.dex-illustration-glow {
+  transition: filter 0.35s ease, transform 0.35s ease;
+}
+
+.dark .dex-illustration-glow {
+  filter: drop-shadow(0 4px 18px rgba(240, 203, 174, 0.4)) drop-shadow(0 0 2px rgba(249, 236, 226, 0.35)) brightness(1.08);
+}
+
 /* Animações sutis e elegantes */
 @keyframes floatGentle {
   0%, 100% {
@@ -154,5 +175,28 @@ html.a11y-reduced-motion ::after {
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;
+}
+
+/* ==========================================================================
+   EXPORTAÇÃO E IMPRESSÃO (PDF / Planilhas sempre com fundo claro)
+   ========================================================================== */
+@media print {
+  *,
+  ::before,
+  ::after {
+    background-color: transparent !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  
+  body, html, #root {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+  }
+  
+  aside, header, nav, .no-print, button {
+    display: none !important;
+  }
 }
 

@@ -29,11 +29,20 @@ export const DocumentList: React.FC = () => {
   const [templateToDelete, setTemplateToDelete] = useState<TemplateDocument | null>(null);
 
   // Filtragem
+  const cleanS = search.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
   const filteredTemplates = userTemplates.filter(tpl => {
-    const matchesSearch = 
-      tpl.title.toLowerCase().includes(search.toLowerCase()) ||
-      (tpl.description && tpl.description.toLowerCase().includes(search.toLowerCase())) ||
-      tpl.fileName.toLowerCase().includes(search.toLowerCase());
+    const titleNorm = (tpl.title || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const descNorm = (tpl.description || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const fileNorm = (tpl.fileName || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const catNorm = (tpl.category || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    const matchesSearch = !cleanS || (
+      titleNorm.includes(cleanS) ||
+      descNorm.includes(cleanS) ||
+      fileNorm.includes(cleanS) ||
+      catNorm.includes(cleanS)
+    );
     const matchesCategory = selectedCategory === 'ALL' || tpl.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });

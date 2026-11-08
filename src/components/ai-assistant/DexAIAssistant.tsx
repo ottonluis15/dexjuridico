@@ -30,7 +30,7 @@ interface DexAIAssistantProps {
 
 export const DexAIAssistant: React.FC<DexAIAssistantProps> = ({ onNavigateToCases }) => {
   const { currentUser } = useAuth();
-  const { clients, lawyers, addCase, clearPendingAiDraft, showToast } = useData();
+  const { clients, lawyers, addCase, clearPendingAiDraft, showToast, checkResourceLimit, limitsUsage } = useData();
 
   const [promptText, setPromptText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -76,9 +76,19 @@ export const DexAIAssistant: React.FC<DexAIAssistantProps> = ({ onNavigateToCase
       }
     }
 
+    // Validação de Limite Mensal do Plano (Item 4)
+    const limitCheck = checkResourceLimit('aiRequests');
+    if (!limitCheck.allowed) {
+      showToast(limitCheck.message!, 'error');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const result = await aiService.analyzeCase(promptText);
+      if (currentUser?.id) {
+        storageService.incrementAiUsage(currentUser.id);
+      }
       setAnalysisResult(result);
       showToast('Análise jurídica estruturada com sucesso!', 'success');
     } catch {

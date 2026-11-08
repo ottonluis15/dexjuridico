@@ -7,73 +7,42 @@ import {
   X,
   Lock,
   Mail,
-  CheckCircle2
+  CheckCircle2,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { storageService } from '../../services/storageService';
 import { DexLogo } from '../common/DexLogo';
 
 interface LoginScreenProps {
   onNavigateToRegister?: () => void;
   onNavigateToLanding?: () => void;
+  onNavigateToForgotPassword?: () => void;
+  onNavigateToConfirmEmail?: (email?: string) => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({
   onNavigateToRegister,
-  onNavigateToLanding
+  onNavigateToLanding,
+  onNavigateToForgotPassword,
+  onNavigateToConfirmEmail
 }) => {
   const { login } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Modal de Redefinição de Senha
-  const [showResetModal, setShowResetModal] = useState(false);
-  const [resetEmail, setResetEmail] = useState('');
-  const [resetPassword, setResetPassword] = useState('');
-  const [resetStatus, setResetStatus] = useState<{ success?: boolean; message?: string } | null>(null);
-  const [isResetting, setIsResetting] = useState(false);
-
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setResetStatus(null);
-    const clean = resetEmail.trim().toLowerCase();
-    if (!clean || !resetPassword.trim()) {
-      setResetStatus({ success: false, message: 'Preencha o e-mail e a nova senha.' });
-      return;
-    }
-    if (resetPassword.length < 6) {
-      setResetStatus({ success: false, message: 'A senha deve conter no mínimo 6 caracteres.' });
-      return;
-    }
-
-    setIsResetting(true);
-    try {
-      const ok = await storageService.resetUserPassword(clean, resetPassword);
-      if (ok) {
-        setResetStatus({ success: true, message: 'Senha atualizada com sucesso! Você já pode entrar com a nova senha.' });
-        setEmail(clean);
-        setPassword(resetPassword);
-        setTimeout(() => {
-          setShowResetModal(false);
-          setResetStatus(null);
-        }, 1800);
-      } else {
-        setResetStatus({ success: false, message: 'Nenhuma conta encontrada com este e-mail para redefinir.' });
-      }
-    } catch {
-      setResetStatus({ success: false, message: 'Erro ao redefinir a senha. Tente novamente.' });
-    } finally {
-      setIsResetting(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setUnconfirmedEmail(null);
 
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
@@ -103,6 +72,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     try {
       const res = await login(cleanEmail, cleanPassword);
       if (!res.success) {
+        if (res.pendingConfirmation) {
+          setUnconfirmedEmail(res.email || cleanEmail);
+        }
         setError(res.error || 'E-mail ou senha incorretos. Verifique suas credenciais e tente novamente.');
       }
     } catch {
@@ -113,18 +85,29 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-dex-cream flex flex-col justify-center items-center py-8 px-4 sm:px-6 lg:px-8 relative font-serif text-dex-navy-950 overflow-x-hidden selection:bg-dex-coral selection:text-white">
+    <div className="min-h-screen bg-dex-cream dark:bg-[#0A1922] flex flex-col justify-center items-center py-8 px-4 sm:px-6 lg:px-8 relative font-serif text-dex-navy-950 dark:text-[#F9ECE2] overflow-x-hidden selection:bg-dex-coral selection:text-white transition-colors duration-200">
       {/* Navegação Superior */}
       <div className="max-w-[960px] w-full mx-auto mb-4 flex items-center justify-between px-2 relative z-10">
-        {onNavigateToLanding && (
+        {onNavigateToLanding ? (
           <button
             onClick={onNavigateToLanding}
-            className="flex items-center gap-1.5 text-xs text-dex-support hover:text-dex-navy-950 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 text-xs text-dex-support dark:text-[#A6C5CD] hover:text-dex-navy-950 dark:hover:text-white transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Voltar ao início</span>
           </button>
-        )}
+        ) : <div />}
+
+        {/* Botão Alternador de Tema */}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          title={`Tema: ${isDark ? 'Escuro (clique para Claro)' : 'Claro (clique para Escuro)'}`}
+          aria-label="Alternar tema claro e escuro"
+          className="p-2 rounded-full bg-white/60 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 text-dex-navy-950 dark:text-[#F9ECE2] transition-all cursor-pointer shadow-xs"
+        >
+          {isDark ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-dex-navy-900" />}
+        </button>
       </div>
 
       {/* CONTAINER FLEX: COLUNA DE PENAS ESQUERDA + CARD CENTRAL + COLUNA DE PENAS DIREITA */}
@@ -137,7 +120,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             aria-hidden="true"
             width="120"
             height="150"
-            className="w-16 h-auto drop-shadow-md animate-feather-drift"
+            className="w-16 h-auto drop-shadow-md animate-feather-drift dex-illustration-glow"
           />
           <img
             src="/img/pena5.png"
@@ -145,7 +128,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             aria-hidden="true"
             width="120"
             height="170"
-            className="w-16 h-auto drop-shadow-md animate-feather-drift"
+            className="w-16 h-auto drop-shadow-md animate-feather-drift dex-illustration-glow"
           />
         </div>
 
@@ -157,7 +140,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             aria-hidden="true"
             width="180"
             height="220"
-            className="w-20 md:w-28 lg:w-36 h-auto drop-shadow-md animate-feather-drift mt-8"
+            className="w-20 md:w-28 lg:w-36 h-auto drop-shadow-md animate-feather-drift mt-8 dex-illustration-glow"
           />
           <img
             src="/img/pena4.png"
@@ -165,32 +148,32 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             aria-hidden="true"
             width="190"
             height="190"
-            className="w-20 md:w-28 lg:w-36 h-auto drop-shadow-md mb-2"
+            className="w-20 md:w-28 lg:w-36 h-auto drop-shadow-md mb-2 dex-illustration-glow"
           />
         </div>
 
-        {/* CARD PRINCIPAL PÊSSEGO (Estilo Anexo 3) */}
-        <div className="flex-1 max-w-[960px] w-full bg-dex-peach rounded-[28px] sm:rounded-[36px] shadow-2xl p-6 sm:p-10 lg:p-12 relative z-10 border border-[#D5B093]/70">
+        {/* CARD PRINCIPAL PÊSSEGO / NAVY (Estilo Anexo 3) */}
+        <div className="flex-1 max-w-[960px] w-full bg-dex-peach dark:bg-[#162B37] rounded-[28px] sm:rounded-[36px] shadow-2xl p-6 sm:p-10 lg:p-12 relative z-10 border border-[#D5B093]/70 dark:border-[#214154] transition-colors duration-200">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
           
           {/* COLUNA ESQUERDA: Logo, Textos e Ilustração */}
-          <div className="lg:col-span-5 flex flex-col justify-between items-center lg:items-start text-center lg:text-left border-b lg:border-b-0 lg:border-r border-[#35474B]/40 pb-8 lg:pb-0 lg:pr-8">
+          <div className="lg:col-span-5 flex flex-col justify-between items-center lg:items-start text-center lg:text-left border-b lg:border-b-0 lg:border-r border-[#35474B]/40 dark:border-[#214154]/70 pb-8 lg:pb-0 lg:pr-8">
             <div className="space-y-4 w-full flex flex-col items-center lg:items-start">
-              <DexLogo variant="dark" size="lg" />
-              <p className="text-xs sm:text-sm text-dex-navy-950/80 italic font-serif">
+              <DexLogo variant={isDark ? "white" : "dark"} size="lg" />
+              <p className="text-xs sm:text-sm text-dex-navy-950/80 dark:text-[#A6C5CD] italic font-serif">
                 Sistema de Advocacia
               </p>
 
               <div className="pt-2">
-                <h1 className="text-2xl sm:text-3xl font-display font-bold text-dex-navy-950 leading-tight">
+                <h1 className="text-2xl sm:text-3xl font-display font-bold text-dex-navy-950 dark:text-[#F9ECE2] leading-tight">
                   Acesse sua conta
                 </h1>
-                <p className="text-xs sm:text-sm text-dex-support italic mt-1">
+                <p className="text-xs sm:text-sm text-dex-support dark:text-[#A6C5CD] italic mt-1">
                   Entre com suas credenciais forenses
                 </p>
               </div>
 
-              <div className="w-3/4 lg:w-full h-[1px] bg-[#35474B]/40 my-3" />
+              <div className="w-3/4 lg:w-full h-[1px] bg-[#35474B]/40 dark:bg-[#214154]/70 my-3" />
             </div>
 
             {/* Ilustração Mobile: corvo3.png (usado no mobile como solicitado) */}
@@ -203,7 +186,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 decoding="async"
                 width="180"
                 height="180"
-                className="w-28 sm:w-36 h-auto drop-shadow-md select-none"
+                className="w-28 sm:w-36 h-auto drop-shadow-md select-none dex-illustration-glow"
               />
             </div>
 
@@ -218,7 +201,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 width="380"
                 height="380"
                 style={{ transform: 'translateX(25%)' }}
-                className="w-[300px] xl:w-[340px] max-w-none h-auto drop-shadow-md select-none"
+                className="w-[300px] xl:w-[340px] max-w-none h-auto drop-shadow-md select-none dex-illustration-glow"
               />
             </div>
           </div>
@@ -226,21 +209,33 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           {/* COLUNA DIREITA: Formulário e Acessos Rápidos */}
           <div className="lg:col-span-7 flex flex-col justify-center space-y-6">
             <div className="text-center">
-              <span className="text-xs sm:text-sm italic font-serif text-dex-navy-950/90 font-medium">
+              <span className="text-xs sm:text-sm italic font-serif text-dex-navy-950/90 dark:text-[#F9ECE2] font-medium">
                 Credenciais de acesso
               </span>
             </div>
 
             {error && (
-              <div className="p-3.5 rounded-xl bg-dex-coral/20 border border-dex-coral/60 text-dex-navy-950 text-xs font-semibold">
+              <div className="p-3.5 rounded-xl bg-dex-coral/20 border border-dex-coral/60 text-dex-navy-950 dark:text-[#F9ECE2] text-xs font-semibold">
                 {error}
+                {unconfirmedEmail && onNavigateToConfirmEmail && (
+                  <div className="mt-2 pt-2 border-t border-dex-coral/40">
+                    <button
+                      type="button"
+                      onClick={() => onNavigateToConfirmEmail(unconfirmedEmail)}
+                      className="text-dex-terracotta dark:text-dex-coral-light hover:underline font-bold cursor-pointer text-xs flex items-center gap-1.5"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>Ativar conta ou reenviar e-mail de confirmação</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* E-mail */}
               <div className="space-y-1">
-                <label className="block text-xs italic font-serif text-dex-navy-950">
+                <label className="block text-xs italic font-serif text-dex-navy-950 dark:text-[#F9ECE2]">
                   E-mail institucional
                 </label>
                 <input
@@ -249,20 +244,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="usuario@escritorio.adv.br"
-                  className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-slate-dark transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl bg-dex-input dark:bg-[#0F2733] text-dex-navy-950 dark:text-[#F9ECE2] text-xs sm:text-sm placeholder:text-dex-support/70 dark:placeholder:text-white/40 border border-transparent dark:border-[#214154] focus:outline-none focus:ring-2 focus:ring-dex-coral transition-all"
                 />
               </div>
 
               {/* Senha */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs italic font-serif text-dex-navy-950">
+                  <label className="block text-xs italic font-serif text-dex-navy-950 dark:text-[#F9ECE2]">
                     Senha
                   </label>
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="text-[11px] text-dex-support hover:text-dex-navy-950 cursor-pointer"
+                    className="text-[11px] text-dex-support dark:text-[#A6C5CD] hover:text-dex-navy-950 dark:hover:text-white cursor-pointer"
                     tabIndex={-1}
                   >
                     {showPassword ? 'Ocultar' : 'Mostrar'}
@@ -274,7 +269,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Sua senha de acesso"
-                  className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-slate-dark transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl bg-dex-input dark:bg-[#0F2733] text-dex-navy-950 dark:text-[#F9ECE2] text-xs sm:text-sm placeholder:text-dex-support/70 dark:placeholder:text-white/40 border border-transparent dark:border-[#214154] focus:outline-none focus:ring-2 focus:ring-dex-coral transition-all"
                 />
               </div>
 
@@ -283,12 +278,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    setResetEmail(email.trim() || 'otton.luis.alcaraz@gmail.com');
-                    setResetPassword('');
-                    setResetStatus(null);
-                    setShowResetModal(true);
+                    if (onNavigateToForgotPassword) {
+                      onNavigateToForgotPassword();
+                    }
                   }}
-                  className="text-xs text-dex-terracotta hover:underline italic cursor-pointer"
+                  className="text-xs text-dex-terracotta dark:text-dex-coral-light hover:underline italic cursor-pointer"
                 >
                   Esqueceu ou deseja redefinir a senha?
                 </button>
@@ -298,7 +292,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-sm font-semibold rounded-xl shadow-md transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                className="w-full py-3 bg-[#35474B] dark:bg-[#4A808E] hover:bg-[#2A393C] dark:hover:bg-[#3d6a76] text-white text-sm font-semibold rounded-xl shadow-md transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
               >
                 {isLoading ? (
                   <span>Validando credenciais...</span>
@@ -312,12 +306,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
               {/* Link Criar Escritório */}
               {onNavigateToRegister && (
-                <div className="text-center text-xs text-dex-navy-950 pt-1">
+                <div className="text-center text-xs text-dex-navy-950 dark:text-[#F9ECE2] pt-1">
                   <span>Não tem conta? </span>
                   <button
                     type="button"
                     onClick={onNavigateToRegister}
-                    className="text-dex-terracotta hover:underline font-semibold cursor-pointer italic"
+                    className="text-dex-terracotta dark:text-dex-coral-light hover:underline font-semibold cursor-pointer italic"
                   >
                     Criar escritório
                   </button>
@@ -326,10 +320,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </form>
 
             {/* ACESSOS RÁPIDOS DEMO / TESTES */}
-            <div className="pt-4 border-t border-[#35474B]/30 space-y-2">
+            <div className="pt-4 border-t border-[#35474B]/30 dark:border-[#214154]/70 space-y-2">
               <div className="text-center">
-                <span className="text-[11px] font-semibold text-dex-navy-950/80">
-                  Acessos Rápidos da Banca (Senha: <span className="font-mono text-dex-terracotta font-bold">Admin123!</span>):
+                <span className="text-[11px] font-semibold text-dex-navy-950/80 dark:text-[#A6C5CD]">
+                  Acessos Rápidos da Banca (Senha: <span className="font-mono text-dex-terracotta dark:text-dex-coral-light font-bold">Admin123!</span>):
                 </span>
               </div>
 
@@ -341,12 +335,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     setPassword('Admin123!');
                     setError(null);
                   }}
-                  className="p-2 rounded-xl bg-dex-input/80 hover:bg-dex-input text-left transition-colors cursor-pointer"
+                  className="p-2 rounded-xl bg-dex-input/80 dark:bg-[#0F2733]/80 hover:bg-dex-input dark:hover:bg-[#0F2733] border border-transparent dark:border-[#214154] text-left transition-colors cursor-pointer"
                 >
-                  <div className="text-[11px] font-bold text-dex-navy-950 truncate">
+                  <div className="text-[11px] font-bold text-dex-navy-950 dark:text-[#F9ECE2] truncate">
                     ⚖️ Dra. Helena (Sócia Admin)
                   </div>
-                  <div className="text-[9px] text-dex-support truncate">
+                  <div className="text-[9px] text-dex-support dark:text-[#A6C5CD] truncate">
                     admin@dexjuridico.adv.br
                   </div>
                 </button>
@@ -358,12 +352,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     setPassword('Admin123!');
                     setError(null);
                   }}
-                  className="p-2 rounded-xl bg-dex-input/80 hover:bg-dex-input text-left transition-colors cursor-pointer"
+                  className="p-2 rounded-xl bg-dex-input/80 dark:bg-[#0F2733]/80 hover:bg-dex-input dark:hover:bg-[#0F2733] border border-transparent dark:border-[#214154] text-left transition-colors cursor-pointer"
                 >
-                  <div className="text-[11px] font-bold text-dex-navy-950 truncate">
+                  <div className="text-[11px] font-bold text-dex-navy-950 dark:text-[#F9ECE2] truncate">
                     🛡️ Dr. Otton (App Admin)
                   </div>
-                  <div className="text-[9px] text-dex-support truncate">
+                  <div className="text-[9px] text-dex-support dark:text-[#A6C5CD] truncate">
                     otton.luis.alcaraz@gmail.com
                   </div>
                 </button>
@@ -377,10 +371,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     setPassword('Admin123!');
                     setError(null);
                   }}
-                  className="p-1.5 rounded-lg bg-dex-input/60 hover:bg-dex-input text-left transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg bg-dex-input/60 dark:bg-[#0F2733]/60 hover:bg-dex-input dark:hover:bg-[#0F2733] border border-transparent dark:border-[#214154] text-left transition-colors cursor-pointer"
                 >
-                  <div className="text-[10px] font-bold text-dex-navy-950 truncate">Dr. Lucas</div>
-                  <div className="text-[9px] text-dex-support truncate">Trabalhista</div>
+                  <div className="text-[10px] font-bold text-dex-navy-950 dark:text-[#F9ECE2] truncate">Dr. Lucas</div>
+                  <div className="text-[9px] text-dex-support dark:text-[#A6C5CD] truncate">Trabalhista</div>
                 </button>
 
                 <button
@@ -390,10 +384,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     setPassword('Admin123!');
                     setError(null);
                   }}
-                  className="p-1.5 rounded-lg bg-dex-input/60 hover:bg-dex-input text-left transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg bg-dex-input/60 dark:bg-[#0F2733]/60 hover:bg-dex-input dark:hover:bg-[#0F2733] border border-transparent dark:border-[#214154] text-left transition-colors cursor-pointer"
                 >
-                  <div className="text-[10px] font-bold text-dex-navy-950 truncate">Dra. Camila</div>
-                  <div className="text-[9px] text-dex-support truncate">Tributário</div>
+                  <div className="text-[10px] font-bold text-dex-navy-950 dark:text-[#F9ECE2] truncate">Dra. Camila</div>
+                  <div className="text-[9px] text-dex-support dark:text-[#A6C5CD] truncate">Tributário</div>
                 </button>
 
                 <button
@@ -403,10 +397,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     setPassword('Admin123!');
                     setError(null);
                   }}
-                  className="p-1.5 rounded-lg bg-dex-input/60 hover:bg-dex-input text-left transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg bg-dex-input/60 dark:bg-[#0F2733]/60 hover:bg-dex-input dark:hover:bg-[#0F2733] border border-transparent dark:border-[#214154] text-left transition-colors cursor-pointer"
                 >
-                  <div className="text-[10px] font-bold text-dex-navy-950 truncate">Dra. Juliana</div>
-                  <div className="text-[9px] text-dex-support truncate">Digital / LGPD</div>
+                  <div className="text-[10px] font-bold text-dex-navy-950 dark:text-[#F9ECE2] truncate">Dra. Juliana</div>
+                  <div className="text-[9px] text-dex-support dark:text-[#A6C5CD] truncate">Digital / LGPD</div>
                 </button>
               </div>
             </div>
@@ -422,7 +416,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             aria-hidden="true"
             width="180"
             height="260"
-            className="w-20 md:w-28 lg:w-36 h-auto drop-shadow-md animate-feather-drift -mt-4"
+            className="w-20 md:w-28 lg:w-36 h-auto drop-shadow-md animate-feather-drift -mt-4 dex-illustration-glow"
           />
           <img
             src="/img/pena3.png"
@@ -430,7 +424,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             aria-hidden="true"
             width="240"
             height="300"
-            className="w-24 md:w-32 lg:w-44 h-auto drop-shadow-lg mb-8"
+            className="w-24 md:w-32 lg:w-44 h-auto drop-shadow-lg mb-8 dex-illustration-glow"
           />
         </div>
 
@@ -442,7 +436,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             aria-hidden="true"
             width="120"
             height="120"
-            className="w-16 h-auto drop-shadow-md"
+            className="w-16 h-auto drop-shadow-md dex-illustration-glow"
           />
           <img
             src="/img/pena3.png"
@@ -450,77 +444,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             aria-hidden="true"
             width="140"
             height="180"
-            className="w-20 h-auto drop-shadow-lg"
+            className="w-20 h-auto drop-shadow-lg dex-illustration-glow"
           />
         </div>
       </div>
-
-      {/* MODAL REDEFINIR SENHA */}
-      {showResetModal && (
-        <div className="fixed inset-0 z-50 bg-dex-navy-950/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-dex-peach rounded-[28px] max-w-md w-full p-6 sm:p-8 border border-dex-border shadow-2xl relative">
-            <button
-              onClick={() => setShowResetModal(false)}
-              className="absolute top-5 right-5 p-1.5 text-dex-support hover:text-dex-navy-950 cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="text-xl font-display font-bold text-dex-navy-950 mb-1">
-              Redefinir Senha
-            </h3>
-            <p className="text-xs text-dex-support mb-4 italic">
-              Informe seu e-mail cadastrado e a nova senha desejada.
-            </p>
-
-            {resetStatus && (
-              <div className={`p-3 rounded-xl text-xs mb-4 ${
-                resetStatus.success
-                  ? 'bg-emerald-500/20 text-emerald-900 border border-emerald-500/40'
-                  : 'bg-dex-coral/20 text-dex-navy-950 border border-dex-coral/40'
-              }`}>
-                {resetStatus.message}
-              </div>
-            )}
-
-            <form onSubmit={handleResetPassword} className="space-y-4">
-              <div className="space-y-1">
-                <label className="block text-xs italic font-serif text-dex-navy-950">
-                  E-mail cadastrado
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-slate-dark"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="block text-xs italic font-serif text-dex-navy-950">
-                  Nova senha (mínimo 6 dígitos)
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={resetPassword}
-                  onChange={(e) => setResetPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-slate-dark"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isResetting}
-                className="w-full py-2.5 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-xs font-semibold rounded-xl shadow transition-all cursor-pointer"
-              >
-                {isResetting ? 'Atualizando senha...' : 'Salvar nova senha'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

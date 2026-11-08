@@ -17,12 +17,15 @@ import { useData } from '../../context/DataContext';
 import { DecorativeBars } from '../common/DecorativeBars';
 
 export const UserProfileView: React.FC = () => {
-  const { currentUser, updateProfilePhoto, updateProfileData } = useAuth();
+  const { currentUser, updateProfilePhoto, updateProfileData, requestEmailChange } = useAuth();
   const { showToast } = useData();
 
   // Form states - Perfil do Usuário
   const [userName, setUserName] = useState(currentUser?.name || '');
-  const [userEmail] = useState(currentUser?.email || '');
+  const [userEmail, setUserEmail] = useState(currentUser?.email || '');
+  const [newEmailInput, setNewEmailInput] = useState('');
+  const [showEmailChangeModal, setShowEmailChangeModal] = useState(false);
+  const [isChangingEmail, setIsChangingEmail] = useState(false);
   const [userOab, setUserOab] = useState(currentUser?.oab || '');
   const [userPhone, setUserPhone] = useState(currentUser?.phone || '');
 
@@ -246,17 +249,37 @@ export const UserProfileView: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5 flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-slate-400" />
-                  E-mail Institucional (Identificador)
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-serif italic text-[#C2D6DC] flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-slate-400" />
+                    E-mail Institucional
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewEmailInput('');
+                      setShowEmailChangeModal(true);
+                    }}
+                    className="text-[11px] text-dex-coral hover:underline font-serif cursor-pointer"
+                  >
+                    Alterar e-mail
+                  </button>
+                </div>
                 <input
                   type="email"
                   disabled
                   value={userEmail}
-                  className="w-full px-3.5 py-2.5 bg-dex-navy-950 text-slate-400 font-serif rounded-xl text-xs border border-white/5 cursor-not-allowed"
+                  className="w-full px-3.5 py-2.5 bg-dex-navy-950 text-slate-300 font-serif rounded-xl text-xs border border-white/5 cursor-not-allowed"
                 />
-                <span className="text-[10px] text-[#8F8A87] mt-1 block font-serif">O e-mail de acesso não pode ser alterado diretamente.</span>
+                {currentUser?.pendingEmail ? (
+                  <div className="mt-1.5 p-2 rounded-lg bg-dex-coral/15 border border-dex-coral/30 text-[11px] text-dex-coral font-serif">
+                    <strong>Confirmação pendente:</strong> enviamos um link para <u>{currentUser.pendingEmail}</u>. A troca só será efetivada após a confirmação.
+                  </div>
+                ) : (
+                  <span className="text-[10px] text-[#8F8A87] mt-1 block font-serif">
+                    A alteração de e-mail exige confirmação por link enviado ao novo endereço.
+                  </span>
+                )}
               </div>
 
               <div>
@@ -286,6 +309,72 @@ export const UserProfileView: React.FC = () => {
           </form>
         </div>
       </div>
+
+      {/* Modal de Alteração de E-mail com Confirmação Obrigatória */}
+      {showEmailChangeModal && (
+        <div className="fixed inset-0 z-50 bg-dex-navy-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-dex-peach rounded-[28px] max-w-md w-full p-6 sm:p-8 border border-[#D5B093] shadow-2xl relative font-serif text-dex-navy-950">
+            <h3 className="text-xl font-display font-bold text-dex-navy-950 mb-1">
+              Alterar E-mail Institucional
+            </h3>
+            <p className="text-xs text-dex-support mb-4 italic">
+              Por segurança, um link de confirmação será enviado ao novo endereço antes da efetivação da troca.
+            </p>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const clean = newEmailInput.trim().toLowerCase();
+                if (!clean || clean === userEmail.toLowerCase()) {
+                  showToast('O novo e-mail deve ser diferente do e-mail atual.', 'error');
+                  return;
+                }
+                setIsChangingEmail(true);
+                const res = await requestEmailChange(clean);
+                setIsChangingEmail(false);
+                if (res.success) {
+                  showToast(res.message || 'Confirmação enviada para o novo e-mail!', 'success');
+                  setShowEmailChangeModal(false);
+                } else {
+                  showToast(res.error || 'Erro ao solicitar alteração de e-mail.', 'error');
+                }
+              }}
+              className="space-y-4"
+            >
+              <div className="space-y-1">
+                <label className="block text-xs italic font-serif text-dex-navy-950">
+                  Novo endereço de e-mail
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={newEmailInput}
+                  onChange={(e) => setNewEmailInput(e.target.value)}
+                  placeholder="novo.email@escritorio.adv.br"
+                  className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-slate-dark"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowEmailChangeModal(false)}
+                  className="px-4 py-2 text-xs text-dex-support hover:text-dex-navy-950 cursor-pointer italic"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isChangingEmail}
+                  className="px-5 py-2.5 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-xs font-semibold rounded-xl shadow cursor-pointer disabled:opacity-60"
+                >
+                  {isChangingEmail ? 'Enviando...' : 'Enviar confirmação'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

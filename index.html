@@ -10,8 +10,25 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet">
+    <!-- Inicialização instantânea do tema Dex (Previne Flash of White) -->
+    <script>
+      (function() {
+        try {
+          var mode = localStorage.getItem('dex_theme_mode') || 'dark';
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (mode === 'dark' || (mode === 'system' && prefersDark)) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.style.colorScheme = 'dark';
+          } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.add('theme-light');
+            document.documentElement.style.colorScheme = 'light';
+          }
+        } catch(e) {}
+      })();
+    </script>
   </head>
-  <body class="bg-dex-cream text-dex-navy-950 antialiased font-serif selection:bg-dex-coral selection:text-white">
+  <body class="bg-dex-cream dark:bg-[#0A1922] text-dex-navy-950 dark:text-[#F9ECE2] antialiased font-serif selection:bg-dex-coral selection:text-white transition-colors duration-200">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

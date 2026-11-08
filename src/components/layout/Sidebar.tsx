@@ -39,6 +39,7 @@ export type TabType =
   | 'profile'
   | 'lawyer-workbench'
   | 'lgpd'
+  | 'plans'
   | 'landing';
 
 interface SidebarProps {
@@ -153,6 +154,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {
           id: 'lgpd',
           label: 'Conformidade LGPD',
+        },
+        {
+          id: 'plans' as TabType,
+          label: 'Planos & Assinatura',
         },
         {
           id: 'landing',

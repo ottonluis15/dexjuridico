@@ -5,10 +5,14 @@ import {
   ArrowLeft,
   Building2,
   UserCheck,
-  Check
+  Check,
+  CheckCircle2,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
+import { useTheme } from '../../context/ThemeContext';
 import { DexLogo } from '../common/DexLogo';
 
 interface RegisterScreenProps {
@@ -24,6 +28,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 }) => {
   const { registerUser } = useAuth();
   const { showToast } = useData();
+  const { isDark, toggleTheme } = useTheme();
 
   // Tipo de cadastro: Escritório vs Advogado Individual
   const [accountType, setAccountType] = useState<'OFFICE' | 'LAWYER'>('OFFICE');
@@ -51,6 +56,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [registrationCompletedEmail, setRegistrationCompletedEmail] = useState<string | null>(null);
 
   // Máscara amigável de CNPJ: 00.000.000/0000-00
   const handleCnpjChange = (val: string) => {
@@ -137,7 +143,9 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
         return;
       }
 
-      showToast(`Bem-vindo ao Dex! Conta criada com sucesso.`, 'success');
+      setRegistrationCompletedEmail(email.trim().toLowerCase());
+      setIsSubmitting(false);
+      showToast(`Cadastro recebido! Enviamos um link de confirmação para o seu e-mail.`, 'success');
     } catch {
       setError('Ocorreu um erro inesperado ao realizar o cadastro. Tente novamente.');
       setIsSubmitting(false);
@@ -145,44 +153,57 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-dex-cream flex flex-col justify-center items-center py-8 px-4 sm:px-6 lg:px-8 relative font-serif text-dex-navy-950 overflow-x-hidden selection:bg-dex-coral selection:text-white">
+    <div className="min-h-screen bg-dex-cream dark:bg-[#0A1922] flex flex-col justify-center items-center py-8 px-4 sm:px-6 lg:px-8 relative font-serif text-dex-navy-950 dark:text-[#F9ECE2] overflow-x-hidden selection:bg-dex-coral selection:text-white transition-colors duration-200">
       {/* Barra de Navegação Superior e Seletor de Tipo */}
-      <div className="max-w-[980px] w-full mx-auto mb-4 flex items-center justify-between px-2 relative z-10">
+      <div className="max-w-[980px] w-full mx-auto mb-4 flex items-center justify-between px-2 relative z-10 gap-3">
         <button
           onClick={onNavigateToLanding}
-          className="flex items-center gap-1.5 text-xs text-dex-support hover:text-dex-navy-950 transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 text-xs text-dex-support dark:text-[#A6C5CD] hover:text-dex-navy-950 dark:hover:text-white transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Voltar ao início</span>
         </button>
 
-        {/* Seletor Sutil: Escritório vs Advogado Individual */}
-        <div role="group" aria-label="Tipo de conta" className="inline-flex items-center bg-[#E5D7CC] p-1 rounded-full border border-dex-border/80">
+        <div className="flex items-center gap-3">
+          {/* Seletor Sutil: Escritório vs Advogado Individual */}
+          <div role="group" aria-label="Tipo de conta" className="inline-flex items-center bg-[#E5D7CC] dark:bg-[#0F2733] p-1 rounded-full border border-dex-border/80 dark:border-[#214154]">
+            <button
+              type="button"
+              onClick={() => setAccountType('OFFICE')}
+              aria-pressed={accountType === 'OFFICE'}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                accountType === 'OFFICE'
+                  ? 'bg-dex-navy-950 dark:bg-[#4A808E] text-white shadow-sm font-semibold'
+                  : 'text-dex-navy-950/70 dark:text-white/70 hover:text-dex-navy-950 dark:hover:text-white'
+              }`}
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              <span>Escritório</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setAccountType('LAWYER')}
+              aria-pressed={accountType === 'LAWYER'}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                accountType === 'LAWYER'
+                  ? 'bg-dex-navy-950 dark:bg-[#4A808E] text-white shadow-sm font-semibold'
+                  : 'text-dex-navy-950/70 dark:text-white/70 hover:text-dex-navy-950 dark:hover:text-white'
+              }`}
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>Advogado Individual</span>
+            </button>
+          </div>
+
+          {/* Botão Alternador de Tema */}
           <button
             type="button"
-            onClick={() => setAccountType('OFFICE')}
-            aria-pressed={accountType === 'OFFICE'}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
-              accountType === 'OFFICE'
-                ? 'bg-dex-navy-950 text-white shadow-sm font-semibold'
-                : 'text-dex-navy-950/70 hover:text-dex-navy-950'
-            }`}
+            onClick={toggleTheme}
+            title={`Tema: ${isDark ? 'Escuro (clique para Claro)' : 'Claro (clique para Escuro)'}`}
+            aria-label="Alternar tema claro e escuro"
+            className="p-2 rounded-full bg-white/60 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 text-dex-navy-950 dark:text-[#F9ECE2] transition-all cursor-pointer shadow-xs"
           >
-            <Building2 className="w-3.5 h-3.5" />
-            <span>Escritório</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setAccountType('LAWYER')}
-            aria-pressed={accountType === 'LAWYER'}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
-              accountType === 'LAWYER'
-                ? 'bg-dex-navy-950 text-white shadow-sm font-semibold'
-                : 'text-dex-navy-950/70 hover:text-dex-navy-950'
-            }`}
-          >
-            <UserCheck className="w-3.5 h-3.5" />
-            <span>Advogado Individual</span>
+            {isDark ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-dex-navy-900" />}
           </button>
         </div>
       </div>
@@ -217,7 +238,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
             aria-hidden="true"
             width="180"
             height="220"
-            className="w-20 md:w-28 lg:w-36 h-auto drop-shadow-md animate-feather-drift mt-10"
+            className="w-20 md:w-28 lg:w-36 h-auto drop-shadow-md animate-feather-drift mt-10 dex-illustration-glow"
           />
           <img
             src="/img/pena4.png"
@@ -225,35 +246,35 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
             aria-hidden="true"
             width="190"
             height="190"
-            className="w-20 md:w-28 lg:w-36 h-auto drop-shadow-md mb-2"
+            className="w-20 md:w-28 lg:w-36 h-auto drop-shadow-md mb-2 dex-illustration-glow"
           />
         </div>
 
-        {/* CARD PRINCIPAL PÊSSEGO (Anexo 3) */}
-        <div className="flex-1 max-w-[980px] w-full bg-dex-peach rounded-[28px] sm:rounded-[36px] shadow-2xl p-6 sm:p-10 lg:p-12 relative z-10 border border-[#D5B093]/70">
+        {/* CARD PRINCIPAL PÊSSEGO / NAVY (Anexo 3) */}
+        <div className="flex-1 max-w-[980px] w-full bg-dex-peach dark:bg-[#162B37] rounded-[28px] sm:rounded-[36px] shadow-2xl p-6 sm:p-10 lg:p-12 relative z-10 border border-[#D5B093]/70 dark:border-[#214154] transition-colors duration-200">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
           
           {/* COLUNA ESQUERDA: Logo, Textos e Corvo 2 (Anexo 3) */}
-          <div className="lg:col-span-4 flex flex-col justify-between items-center lg:items-start text-center lg:text-left border-b lg:border-b-0 lg:border-r border-[#35474B]/40 pb-8 lg:pb-0 lg:pr-8">
+          <div className="lg:col-span-4 flex flex-col justify-between items-center lg:items-start text-center lg:text-left border-b lg:border-b-0 lg:border-r border-[#35474B]/40 dark:border-[#214154]/70 pb-8 lg:pb-0 lg:pr-8">
             <div className="space-y-4 w-full flex flex-col items-center lg:items-start">
               {/* Logo com Balança e Texto Dex */}
-              <DexLogo variant="dark" size="lg" />
-              <p className="text-xs sm:text-sm text-dex-navy-950/80 italic font-serif">
+              <DexLogo variant={isDark ? "white" : "dark"} size="lg" />
+              <p className="text-xs sm:text-sm text-dex-navy-950/80 dark:text-[#A6C5CD] italic font-serif">
                 Sistema de Advocacia
               </p>
 
               {/* Título Principal */}
               <div className="pt-2">
-                <h1 className="text-2xl sm:text-3xl font-display font-bold text-dex-navy-950 leading-tight">
+                <h1 className="text-2xl sm:text-3xl font-display font-bold text-dex-navy-950 dark:text-[#F9ECE2] leading-tight">
                   {accountType === 'OFFICE' ? 'Crie seu escritório' : 'Cadastro Individual'}
                 </h1>
-                <p className="text-xs sm:text-sm text-dex-support italic mt-1">
+                <p className="text-xs sm:text-sm text-dex-support dark:text-[#A6C5CD] italic mt-1">
                   Preencha os dados para começar
                 </p>
               </div>
 
               {/* Linha horizontal decorativa */}
-              <div className="w-3/4 lg:w-full h-[1px] bg-[#35474B]/40 my-3" />
+              <div className="w-3/4 lg:w-full h-[1px] bg-[#35474B]/40 dark:bg-[#214154]/70 my-3" />
             </div>
 
             {/* Ilustração Mobile: corvo3.png (usado no mobile como solicitado) */}
@@ -266,7 +287,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                 decoding="async"
                 width="180"
                 height="180"
-                className="w-28 sm:w-36 h-auto drop-shadow-md select-none"
+                className="w-28 sm:w-36 h-auto drop-shadow-md select-none dex-illustration-glow"
               />
             </div>
 
@@ -281,20 +302,56 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                 width="380"
                 height="380"
                 style={{ transform: 'translateX(25%)' }}
-                className="w-[300px] xl:w-[340px] max-w-none h-auto drop-shadow-md select-none"
+                className="w-[280px] xl:w-[320px] max-w-none h-auto drop-shadow-md select-none dex-illustration-glow"
               />
             </div>
           </div>
 
           {/* COLUNA DIREITA: Formulário com Inputs Cinza-Azulado (Anexo 3) */}
           <div className="lg:col-span-8 flex flex-col justify-center">
-            {error && (
-              <div className="mb-4 p-3.5 rounded-xl bg-dex-coral/20 border border-dex-coral/60 text-dex-navy-950 text-xs font-semibold">
-                {error}
-              </div>
-            )}
+            {registrationCompletedEmail ? (
+              <div className="text-center py-8 space-y-6">
+                <div className="w-16 h-16 rounded-full bg-dex-slate-dark/15 text-dex-slate-dark flex items-center justify-center mx-auto shadow-sm">
+                  <CheckCircle2 className="w-10 h-10 text-dex-slate-dark" />
+                </div>
+                <div className="space-y-3">
+                  <h3 className="text-2xl font-bold font-display text-dex-navy-950">
+                    Cadastro recebido com sucesso!
+                  </h3>
+                  <p className="text-sm text-dex-navy-950/80 leading-relaxed max-w-md mx-auto">
+                    Enviamos um link de confirmação para o endereço <strong className="text-dex-navy-950">{registrationCompletedEmail}</strong>.
+                  </p>
+                  <p className="text-xs text-dex-support italic max-w-sm mx-auto">
+                    Por segurança institucional, sua conta ficará pendente de ativação até a confirmação do e-mail (válido por 24 horas).
+                  </p>
+                </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={onNavigateToLogin}
+                    className="px-8 py-3 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-xs sm:text-sm font-semibold rounded-xl shadow-md transition-all cursor-pointer"
+                  >
+                    Ir para Login
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRegistrationCompletedEmail(null)}
+                    className="text-xs text-dex-terracotta hover:underline font-semibold cursor-pointer italic"
+                  >
+                    Voltar ao formulário
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {error && (
+                  <div className="mb-4 p-3.5 rounded-xl bg-dex-coral/20 border border-dex-coral/60 text-dex-navy-950 text-xs font-semibold">
+                    {error}
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-5">
               {/* DADOS DO ESCRITÓRIO OU TIPO DE VÍNCULO */}
               {accountType === 'OFFICE' ? (
                 <div className="space-y-4">
@@ -557,6 +614,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                 </div>
               </div>
             </form>
+            </>
+            )}
           </div>
         </div>
         </div>
@@ -569,7 +628,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
             aria-hidden="true"
             width="180"
             height="260"
-            className="w-20 md:w-28 lg:w-36 h-auto drop-shadow-md animate-feather-drift -mt-4"
+            className="w-20 md:w-28 lg:w-36 h-auto drop-shadow-md animate-feather-drift -mt-4 dex-illustration-glow"
           />
           <img
             src="/img/pena3.png"
@@ -577,7 +636,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
             aria-hidden="true"
             width="240"
             height="300"
-            className="w-24 md:w-32 lg:w-44 h-auto drop-shadow-lg mb-8"
+            className="w-24 md:w-32 lg:w-44 h-auto drop-shadow-lg mb-8 dex-illustration-glow"
           />
         </div>
 
@@ -589,7 +648,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
             aria-hidden="true"
             width="120"
             height="120"
-            className="w-16 h-auto drop-shadow-md"
+            className="w-16 h-auto drop-shadow-md dex-illustration-glow"
           />
           <img
             src="/img/pena3.png"
@@ -597,7 +656,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
             aria-hidden="true"
             width="140"
             height="180"
-            className="w-20 h-auto drop-shadow-lg"
+            className="w-20 h-auto drop-shadow-lg dex-illustration-glow"
           />
         </div>
       </div>

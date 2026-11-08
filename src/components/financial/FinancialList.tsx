@@ -12,7 +12,10 @@ import {
   Download,
   Eye,
   ArrowUpRight,
-  ArrowDownLeft
+  ArrowDownLeft,
+  FileSpreadsheet,
+  Loader2,
+  X
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -23,10 +26,11 @@ import { ConfirmDialog } from '../common/ConfirmDialog';
 import { EmptyState } from '../common/EmptyState';
 import { Modal } from '../common/Modal';
 import { InternalPageLayout, SummaryCardItem } from '../layout/InternalPageLayout';
+import { exportFinancialSheet } from '../../services/financialExportService';
 
 export const FinancialList: React.FC = () => {
-  const { userFinancial, clients, cases, deleteFinancial, updateFinancial } = useData();
-  const { isAdmin } = useAuth();
+  const { userFinancial, clients, cases, lawyers, deleteFinancial, updateFinancial, showToast } = useData();
+  const { isAdmin, currentUser } = useAuth();
 
   const [search, setSearch] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
@@ -37,16 +41,31 @@ export const FinancialList: React.FC = () => {
   const [entryToDelete, setEntryToDelete] = useState<FinancialEntry | null>(null);
   const [viewingReceipt, setViewingReceipt] = useState<FinancialEntry | null>(null);
 
+  // Estados do Modal de Exportação de Planilha
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState<'xlsx' | 'csv'>('xlsx');
+  const [exportPeriod, setExportPeriod] = useState<'CURRENT_FILTER' | 'ALL' | 'THIS_MONTH' | 'THIS_YEAR'>('CURRENT_FILTER');
+  const [isExporting, setIsExporting] = useState(false);
+
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(val);
   };
 
+  const cleanS = search.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
   const filteredFinancial = userFinancial.filter(f => {
     const client = clients.find(c => c.id === f.clientId);
-    const matchesSearch = 
-      f.title.toLowerCase().includes(search.toLowerCase()) ||
-      (client && client.name.toLowerCase().includes(search.toLowerCase())) ||
-      (f.description && f.description.toLowerCase().includes(search.toLowerCase()));
+    const titleNorm = (f.title || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const clientNameNorm = client ? (client.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : '';
+    const descNorm = (f.description || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const methodNorm = (f.paymentMethod || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    const matchesSearch = !cleanS || (
+      titleNorm.includes(cleanS) ||
+      clientNameNorm.includes(cleanS) ||
+      descNorm.includes(cleanS) ||
+      methodNorm.includes(cleanS)
+    );
 
     const matchesStatus = selectedStatus === 'ALL' || f.status === selectedStatus;
     const matchesType = selectedType === 'ALL' || f.type === selectedType;
@@ -90,6 +109,54 @@ export const FinancialList: React.FC = () => {
       status: 'PAGO',
       paymentDate: new Date().toISOString().substring(0, 10)
     });
+  };
+
+  const handleExecuteExport = async () => {
+    let targetEntries: FinancialEntry[] = [];
+    let periodText = 'Filtro Atual da Tela';
+
+    const now = new Date();
+    const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const currentYearPrefix = `${now.getFullYear()}`;
+
+    if (exportPeriod === 'CURRENT_FILTER') {
+      targetEntries = filteredFinancial;
+      periodText = `Filtro Aplicado (${filteredFinancial.length} registros)`;
+    } else if (exportPeriod === 'ALL') {
+      targetEntries = userFinancial;
+      periodText = 'Todo o Histórico';
+    } else if (exportPeriod === 'THIS_MONTH') {
+      targetEntries = userFinancial.filter(f => (f.dueDate && f.dueDate.startsWith(currentMonthPrefix)) || (f.paymentDate && f.paymentDate.startsWith(currentMonthPrefix)));
+      periodText = `Mês Atual (${currentMonthPrefix})`;
+    } else if (exportPeriod === 'THIS_YEAR') {
+      targetEntries = userFinancial.filter(f => (f.dueDate && f.dueDate.startsWith(currentYearPrefix)) || (f.paymentDate && f.paymentDate.startsWith(currentYearPrefix)));
+      periodText = `Ano Atual (${currentYearPrefix})`;
+    }
+
+    if (targetEntries.length === 0) {
+      showToast('Não há lançamentos financeiros no período selecionado para exportação.', 'warning');
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const res = await exportFinancialSheet({
+        entries: targetEntries,
+        clients,
+        cases,
+        lawyers,
+        currentUser,
+        periodLabel: periodText,
+        format: exportFormat
+      });
+
+      showToast(`Planilha ${res.filename} exportada com sucesso!`, 'success');
+      setIsExportModalOpen(false);
+    } catch (err: any) {
+      showToast(err?.message || 'Erro ao gerar o arquivo de planilha financeira.', 'error');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const formatDateBR = (dateStr: string) => {
@@ -175,13 +242,25 @@ export const FinancialList: React.FC = () => {
         </>
       }
       headerActions={
-        <button
-          onClick={() => setIsNewModalOpen(true)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-dex-coral hover:bg-dex-coral-hover text-white text-xs font-semibold rounded-xl shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer font-serif"
-        >
-          <Plus className="w-4 h-4 stroke-[2.5]" />
-          <span>Novo Lançamento</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsExportModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#EAE0DA] hover:bg-white text-dex-navy-950 text-xs font-semibold rounded-xl shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer font-serif"
+            title="Exportar planilha financeira em formato XLSX ou CSV"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-dex-slate-dark stroke-[2]" />
+            <span>Exportar planilha</span>
+          </button>
+
+          <button
+            onClick={() => setIsNewModalOpen(true)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-dex-coral hover:bg-dex-coral-hover text-white text-xs font-semibold rounded-xl shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer font-serif"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>Novo Lançamento</span>
+          </button>
+        </div>
       }
     >
       {filteredFinancial.length === 0 ? (
@@ -343,6 +422,120 @@ export const FinancialList: React.FC = () => {
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* MODAL DE EXPORTAÇÃO DE PLANILHA (.XLSX / .CSV) */}
+      {isExportModalOpen && (
+        <div className="fixed inset-0 z-50 bg-dex-navy-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-dex-peach rounded-[28px] max-w-lg w-full p-6 sm:p-8 border border-[#D5B093] shadow-2xl relative font-serif text-dex-navy-950">
+            <button
+              onClick={() => setIsExportModalOpen(false)}
+              className="absolute top-5 right-5 p-1.5 text-dex-support hover:text-dex-navy-950 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-dex-slate-dark/15 text-dex-slate-dark flex items-center justify-center">
+                <FileSpreadsheet className="w-5 h-5 text-dex-slate-dark" />
+              </div>
+              <div>
+                <h3 className="text-xl font-display font-bold text-dex-navy-950">
+                  Exportar Planilha Financeira
+                </h3>
+                <p className="text-xs text-dex-support italic">
+                  Gere relatórios tabulares em Excel ou CSV com total proteção contra injeção de fórmulas
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4 my-6">
+              {/* Formato de Arquivo */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-serif italic text-dex-navy-950 font-medium">
+                  Formato do Arquivo
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setExportFormat('xlsx')}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      exportFormat === 'xlsx'
+                        ? 'bg-dex-slate-dark text-white border-dex-slate-dark shadow-sm'
+                        : 'bg-dex-input text-dex-navy-950 border-transparent hover:bg-white/80'
+                    }`}
+                  >
+                    <div className="text-xs font-bold">Pasta de Trabalho Excel (.xlsx)</div>
+                    <div className="text-[10px] opacity-80 mt-0.5">Abas "Lançamentos" e "Resumo" com fórmulas e cabeçalho congelado</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setExportFormat('csv')}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      exportFormat === 'csv'
+                        ? 'bg-dex-slate-dark text-white border-dex-slate-dark shadow-sm'
+                        : 'bg-dex-input text-dex-navy-950 border-transparent hover:bg-white/80'
+                    }`}
+                  >
+                    <div className="text-xs font-bold">Arquivo CSV (.csv)</div>
+                    <div className="text-[10px] opacity-80 mt-0.5">Compatível com Excel Brasil (UTF-8 com BOM e separador ;)</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Período / Escopo de Registros */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-serif italic text-dex-navy-950 font-medium">
+                  Período / Seleção de Lançamentos
+                </label>
+                <select
+                  value={exportPeriod}
+                  onChange={(e) => setExportPeriod(e.target.value as any)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-slate-dark shadow-inner"
+                >
+                  <option value="CURRENT_FILTER">Filtro atual da tela ({filteredFinancial.length} registros)</option>
+                  <option value="ALL">Todo o histórico do escritório ({userFinancial.length} registros)</option>
+                  <option value="THIS_MONTH">Mês atual</option>
+                  <option value="THIS_YEAR">Ano atual</option>
+                </select>
+              </div>
+
+              {/* Nota de Segurança e Proteção de Fórmulas */}
+              <div className="p-3 bg-[#FAF0E6] rounded-xl border border-[#D5B093]/70 text-[11px] text-dex-support italic">
+                <strong>Proteção Forense:</strong> Os valores numéricos são exportados em formato monetário nativo R$ e todas as células de texto passam por sanitização contra injeção de fórmulas.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-[#35474B]/20">
+              <button
+                type="button"
+                onClick={() => setIsExportModalOpen(false)}
+                className="px-4 py-2 text-xs text-dex-support hover:text-dex-navy-950 cursor-pointer italic"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteExport}
+                disabled={isExporting}
+                className="px-6 py-2.5 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-xs font-semibold rounded-xl shadow-md transition-all hover:scale-105 active:scale-95 disabled:opacity-60 cursor-pointer flex items-center gap-2"
+              >
+                {isExporting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Gerando arquivo...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4" />
+                    <span>Baixar Planilha ({exportFormat.toUpperCase()})</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <ConfirmDialog

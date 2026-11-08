@@ -24,7 +24,7 @@ import { EmptyState } from '../common/EmptyState';
 import { InternalPageLayout, SummaryCardItem } from '../layout/InternalPageLayout';
 
 export const ClientList: React.FC = () => {
-  const { clients, userCases, deleteClient, exportClientsCsv } = useData();
+  const { userClients, userCases, deleteClient, exportClientsCsv } = useData();
   const { currentUser, isAdmin } = useAuth();
 
   const [search, setSearch] = useState('');
@@ -36,12 +36,21 @@ export const ClientList: React.FC = () => {
   const [viewingClient, setViewingClient] = useState<Client | null>(null);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
 
-  const filteredClients = clients.filter(c => {
-    const matchesSearch = 
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.document.includes(search) ||
-      c.email.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone.includes(search);
+  const cleanS = search.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const digitsS = search.replace(/\D/g, '');
+
+  const filteredClients = userClients.filter(c => {
+    const clientNameNorm = (c.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const clientDocDigits = (c.document || '').replace(/\D/g, '');
+    const clientPhoneDigits = (c.phone || '').replace(/\D/g, '');
+    const clientEmail = (c.email || '').toLowerCase();
+
+    const matchesSearch = !cleanS || (
+      clientNameNorm.includes(cleanS) ||
+      (digitsS.length >= 3 && clientDocDigits.includes(digitsS)) ||
+      clientEmail.includes(cleanS) ||
+      (digitsS.length >= 3 && clientPhoneDigits.includes(digitsS))
+    );
 
     const matchesType = selectedType === 'ALL' || c.type === selectedType;
     const matchesStatus = selectedStatus === 'ALL' || c.status === selectedStatus;
@@ -49,32 +58,32 @@ export const ClientList: React.FC = () => {
     return matchesSearch && matchesType && matchesStatus;
   });
 
-  // 4 Cards de Resumo (Anexo 5)
+  // 4 Cards de Resumo (Anexo 5) calculados estritamente sobre userClients isolados
   const summaryCards: SummaryCardItem[] = [
     {
       label: 'Carteira de Clientes',
-      value: clients.length,
+      value: userClients.length,
       icon: <Users className="w-5 h-5 stroke-[2]" />,
       iconBgColor: 'bg-[#CBEBD8]',
       iconTextColor: 'text-[#2B8255]',
     },
     {
       label: 'Pessoas Físicas (PF)',
-      value: clients.filter(c => c.type === 'PF').length,
+      value: userClients.filter(c => c.type === 'PF').length,
       icon: <UserCheck className="w-5 h-5 stroke-[2]" />,
       iconBgColor: 'bg-[#F9D9C3]',
       iconTextColor: 'text-[#C48A5C]',
     },
     {
       label: 'Pessoas Jurídicas (PJ)',
-      value: clients.filter(c => c.type === 'PJ').length,
+      value: userClients.filter(c => c.type === 'PJ').length,
       icon: <Building className="w-5 h-5 stroke-[2]" />,
       iconBgColor: 'bg-[#E0D7F5]',
       iconTextColor: 'text-[#6B46C1]',
     },
     {
       label: 'Clientes Ativos',
-      value: clients.filter(c => c.status === 'ACTIVE').length,
+      value: userClients.filter(c => c.status === 'ACTIVE').length,
       icon: <Users className="w-5 h-5 stroke-[2]" />,
       iconBgColor: 'bg-[#FDF0CD]',
       iconTextColor: 'text-[#B7791F]',

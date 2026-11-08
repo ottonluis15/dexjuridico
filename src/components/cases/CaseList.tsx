@@ -43,13 +43,24 @@ export const CaseList: React.FC = () => {
   }, [pendingAiDraft]);
 
   // Filtragem
+  const cleanS = search.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const digitsS = search.replace(/\D/g, '');
+
   const filteredCases = userCases.filter(c => {
     const client = clients.find(cl => cl.id === c.clientId);
-    const matchesSearch = 
-      c.caseNumber.toLowerCase().includes(search.toLowerCase()) ||
-      c.actionType.toLowerCase().includes(search.toLowerCase()) ||
-      c.court.toLowerCase().includes(search.toLowerCase()) ||
-      (client && client.name.toLowerCase().includes(search.toLowerCase()));
+    const numDigits = (c.caseNumber || '').replace(/\D/g, '');
+    const numNorm = (c.caseNumber || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const actionNorm = (c.actionType || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const courtNorm = (c.court || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const clientNameNorm = client ? (client.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : '';
+
+    const matchesSearch = !cleanS || (
+      numNorm.includes(cleanS) ||
+      (digitsS.length >= 3 && numDigits.includes(digitsS)) ||
+      actionNorm.includes(cleanS) ||
+      courtNorm.includes(cleanS) ||
+      clientNameNorm.includes(cleanS)
+    );
 
     const matchesArea = selectedArea === 'ALL' || c.legalArea === selectedArea;
     const matchesStatus = selectedStatus === 'ALL' || c.status === selectedStatus;

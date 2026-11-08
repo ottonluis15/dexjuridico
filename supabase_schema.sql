@@ -32,6 +32,38 @@ ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "isSuperAdmin" BOOLEAN DEF
 ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "cnpj" TEXT;
 ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "address" TEXT;
 ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "primaryArea" TEXT;
+ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "isEmailConfirmed" BOOLEAN DEFAULT true;
+ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "pendingEmail" TEXT;
+ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "subscriptionPlan" TEXT DEFAULT 'OFFICE';
+ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "subscriptionStatus" TEXT DEFAULT 'ACTIVE';
+ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "subscriptionPeriod" TEXT DEFAULT 'MONTHLY';
+
+-- Migração de segurança: marcar todas as contas existentes como confirmadas
+UPDATE public.dex_users 
+SET "isEmailConfirmed" = true 
+WHERE "isEmailConfirmed" IS NULL;
+
+-- 1B. Tabela de Tokens de Autenticação (Confirmação de e-mail e Redefinição de Senha)
+-- Tokens são guardados APENAS como hash criptográfico SHA-256
+CREATE TABLE IF NOT EXISTS public.dex_auth_tokens (
+    id TEXT PRIMARY KEY,
+    "userId" TEXT NOT NULL,
+    email TEXT NOT NULL,
+    "tokenHash" TEXT NOT NULL,
+    type TEXT NOT NULL, -- 'EMAIL_VERIFICATION' | 'PASSWORD_RESET' | 'INVITE_VERIFICATION' | 'CHANGE_EMAIL'
+    "expiresAt" TIMESTAMPTZ NOT NULL,
+    "usedAt" TIMESTAMPTZ,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_dex_auth_tokens_hash ON public.dex_auth_tokens ("tokenHash");
+CREATE INDEX IF NOT EXISTS idx_dex_auth_tokens_user_type ON public.dex_auth_tokens ("userId", type);
+
+-- Habilitar RLS e políticas na tabela de tokens
+ALTER TABLE public.dex_auth_tokens ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Permitir Leitura Dex Auth Tokens" ON public.dex_auth_tokens FOR SELECT USING (true);
+CREATE POLICY "Permitir Gravacao Dex Auth Tokens" ON public.dex_auth_tokens FOR ALL USING (true);
 
 -- 2. Tabela de Clientes
 CREATE TABLE IF NOT EXISTS public.dex_clients (

@@ -16,10 +16,15 @@ import {
   FileDown, 
   CheckCircle2, 
   KeyRound, 
-  Upload 
+  Upload,
+  Sun,
+  Moon,
+  Monitor,
+  Palette
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
+import { useTheme } from '../../context/ThemeContext';
 import { LGPDCompliance } from '../lgpd/LGPDCompliance';
 import { 
   getSupabaseCredentials, 
@@ -34,8 +39,9 @@ import { DecorativeBars } from '../common/DecorativeBars';
 export const SettingsView: React.FC = () => {
   const { currentUser, isAdmin, updateProfilePhoto, updateProfileData } = useAuth();
   const { showToast } = useData();
+  const { themeMode, setThemeMode, effectiveTheme } = useTheme();
 
-  const [activeSubTab, setActiveSubTab] = useState<'database' | 'general' | 'profile' | 'security' | 'integrations'>('database');
+  const [activeSubTab, setActiveSubTab] = useState<'database' | 'general' | 'profile' | 'appearance' | 'security' | 'integrations'>('database');
 
   // Form states - Sociedade
   const [officeName, setOfficeName] = useState(currentUser?.officeName || 'Dex Sociedade de Advogados');
@@ -296,6 +302,18 @@ export const SettingsView: React.FC = () => {
           <span>Meu Perfil &amp; Foto</span>
         </button>
 
+        <button
+          onClick={() => setActiveSubTab('appearance')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all ${
+            activeSubTab === 'appearance'
+              ? 'bg-dex-coral text-white shadow-md'
+              : 'text-[#8F8A87] hover:text-white'
+          }`}
+        >
+          <Palette className="w-4 h-4" />
+          <span>Aparência &amp; Tema</span>
+        </button>
+
         {isAdmin && (
           <button
             onClick={() => setActiveSubTab('general')}
@@ -334,6 +352,145 @@ export const SettingsView: React.FC = () => {
           <span>Integrações</span>
         </button>
       </div>
+
+      {/* Tab: Aparência & Tema */}
+      {activeSubTab === 'appearance' && (
+        <div className="p-6 md:p-8 rounded-[24px] bg-dex-navy-900 border border-white/5 space-y-8 max-w-4xl">
+          <div>
+            <h3 className="font-serif text-lg font-bold text-white flex items-center gap-2">
+              <Palette className="w-5 h-5 text-dex-coral" />
+              <span>Personalização de Aparência e Tema</span>
+            </h3>
+            <p className="text-xs text-[#8F8A87] font-serif mt-1">
+              Selecione o esquema visual que melhor se adapta à sua rotina forense, ambiente de trabalho ou iluminação
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Modo Claro */}
+            <div 
+              onClick={() => setThemeMode('light')}
+              className={`p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                themeMode === 'light'
+                  ? 'border-dex-coral bg-dex-navy-800 shadow-lg ring-1 ring-dex-coral/30'
+                  : 'border-white/10 bg-dex-navy-950/60 hover:border-white/20'
+              }`}
+            >
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="p-2.5 rounded-xl bg-amber-400/20 text-amber-300">
+                    <Sun className="w-5 h-5" />
+                  </div>
+                  {themeMode === 'light' && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-dex-coral text-white px-2 py-0.5 rounded-full">
+                      Ativo
+                    </span>
+                  )}
+                </div>
+                <h4 className="font-serif text-base font-bold text-white">Modo Claro</h4>
+                <p className="text-xs text-[#8F8A87] mt-1.5 leading-relaxed">
+                  Visual clássico e caloroso em tom creme (#F9ECE2), pêssego e azul-marinho. Ideal para salas bem iluminadas e leitura diurna.
+                </p>
+              </div>
+
+              {/* Mini Preview Claro */}
+              <div className="mt-5 p-3 rounded-xl bg-[#F9ECE2] border border-[#D8C3B5] space-y-1.5">
+                <div className="h-2.5 w-16 bg-[#0F2733] rounded-sm" />
+                <div className="h-1.5 w-28 bg-[#D8C3B5] rounded-sm" />
+                <div className="flex gap-1.5 pt-1">
+                  <div className="h-4 flex-1 bg-[#F0CBAE] rounded" />
+                  <div className="h-4 flex-1 bg-[#DCE5E4] rounded" />
+                </div>
+              </div>
+            </div>
+
+            {/* Modo Escuro */}
+            <div 
+              onClick={() => setThemeMode('dark')}
+              className={`p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                themeMode === 'dark'
+                  ? 'border-dex-coral bg-dex-navy-800 shadow-lg ring-1 ring-dex-coral/30'
+                  : 'border-white/10 bg-dex-navy-950/60 hover:border-white/20'
+              }`}
+            >
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="p-2.5 rounded-xl bg-[#4A808E]/20 text-[#82B3C0]">
+                    <Moon className="w-5 h-5" />
+                  </div>
+                  {themeMode === 'dark' && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-dex-coral text-white px-2 py-0.5 rounded-full">
+                      Ativo
+                    </span>
+                  )}
+                </div>
+                <h4 className="font-serif text-base font-bold text-white">Modo Escuro (Padrão)</h4>
+                <p className="text-xs text-[#8F8A87] mt-1.5 leading-relaxed">
+                  Fundo azul-marinho profundo (#0A1922 / #162B37) com tipografia suave. Reduz a fadiga ocular em noites de elaboração de peças e prazos.
+                </p>
+              </div>
+
+              {/* Mini Preview Escuro */}
+              <div className="mt-5 p-3 rounded-xl bg-[#0A1922] border border-[#214154] space-y-1.5">
+                <div className="h-2.5 w-16 bg-[#F9ECE2] rounded-sm" />
+                <div className="h-1.5 w-28 bg-[#4A808E] rounded-sm" />
+                <div className="flex gap-1.5 pt-1">
+                  <div className="h-4 flex-1 bg-[#162B37] border border-[#214154] rounded" />
+                  <div className="h-4 flex-1 bg-[#162B37] border border-[#214154] rounded" />
+                </div>
+              </div>
+            </div>
+
+            {/* Modo Automático */}
+            <div 
+              onClick={() => setThemeMode('system')}
+              className={`p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                themeMode === 'system'
+                  ? 'border-dex-coral bg-dex-navy-800 shadow-lg ring-1 ring-dex-coral/30'
+                  : 'border-white/10 bg-dex-navy-950/60 hover:border-white/20'
+              }`}
+            >
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="p-2.5 rounded-xl bg-purple-500/20 text-purple-300">
+                    <Monitor className="w-5 h-5" />
+                  </div>
+                  {themeMode === 'system' && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-dex-coral text-white px-2 py-0.5 rounded-full">
+                      Ativo
+                    </span>
+                  )}
+                </div>
+                <h4 className="font-serif text-base font-bold text-white">Automático (Sistema)</h4>
+                <p className="text-xs text-[#8F8A87] mt-1.5 leading-relaxed">
+                  Acompanha dinamicamente a configuração do seu dispositivo (Windows, Mac, iOS ou Android). Atualmente detectado: <strong className="text-white">{effectiveTheme === 'dark' ? 'Escuro' : 'Claro'}</strong>.
+                </p>
+              </div>
+
+              {/* Mini Preview Dividido */}
+              <div className="mt-5 p-3 rounded-xl bg-gradient-to-r from-[#F9ECE2] to-[#0A1922] border border-[#D8C3B5] space-y-1.5 overflow-hidden">
+                <div className="h-2.5 w-16 bg-[#0F2733] rounded-sm" />
+                <div className="h-1.5 w-28 bg-white/60 rounded-sm" />
+                <div className="flex gap-1.5 pt-1">
+                  <div className="h-4 flex-1 bg-[#F0CBAE] rounded" />
+                  <div className="h-4 flex-1 bg-[#162B37] border border-[#214154] rounded" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Dica Forense / Impressão e PDF */}
+          <div className="p-4 rounded-2xl bg-dex-navy-800 border border-white/5 flex items-start gap-3">
+            <CheckCircle2 className="w-5 h-5 text-dex-teal flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-[#8F8A87] space-y-1">
+              <strong className="text-white block font-semibold">Garantia de Padronização Processual para Impressão &amp; PDF:</strong>
+              <p>
+                Independentemente do tema ativo na sua tela, exportações de relatórios em PDF, planilhas financeiras (.xlsx / .csv) e impressões de minutas são renderizadas exclusivamente em fundo branco e fontes de alto contraste preto/cinza, atendendo aos padrões oficiais dos tribunais brasileiros.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tab: Perfil & Foto */}
       {activeSubTab === 'profile' && (

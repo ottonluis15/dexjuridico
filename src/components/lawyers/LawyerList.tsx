@@ -30,17 +30,37 @@ export const LawyerList: React.FC = () => {
   const [editingLawyer, setEditingLawyer] = useState<Lawyer | null>(null);
   const [lawyerToDelete, setLawyerToDelete] = useState<Lawyer | null>(null);
 
-  const filteredLawyers = lawyers.filter(l => 
-    l.name.toLowerCase().includes(search.toLowerCase()) ||
-    l.oab.toLowerCase().includes(search.toLowerCase()) ||
-    l.email.toLowerCase().includes(search.toLowerCase()) ||
-    l.specialties.some(s => s.toLowerCase().includes(search.toLowerCase()))
-  );
+  // Isolamento estrito por escritório
+  const officeLawyers = React.useMemo(() => {
+    if (!currentUser) return [];
+    if (currentUser.isIndependent) {
+      return lawyers.filter(l => l.userId === currentUser.id);
+    }
+    return lawyers.filter(l => !currentUser.officeId || l.officeId === currentUser.officeId);
+  }, [lawyers, currentUser]);
 
-  const totalLawyers = lawyers.length;
-  const partnersCount = lawyers.filter(l => l.roleTitle?.toLowerCase().includes('sócio') || l.roleTitle?.toLowerCase().includes('titular')).length;
+  const cleanS = search.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
+  const filteredLawyers = officeLawyers.filter(l => {
+    const nameNorm = (l.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const oabNorm = (l.oab || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const emailNorm = (l.email || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const roleNorm = (l.roleTitle || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const specsNorm = (l.specialties || []).map(s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')).join(' ');
+
+    return !cleanS || (
+      nameNorm.includes(cleanS) ||
+      oabNorm.includes(cleanS) ||
+      emailNorm.includes(cleanS) ||
+      roleNorm.includes(cleanS) ||
+      specsNorm.includes(cleanS)
+    );
+  });
+
+  const totalLawyers = officeLawyers.length;
+  const partnersCount = officeLawyers.filter(l => l.roleTitle?.toLowerCase().includes('sócio') || l.roleTitle?.toLowerCase().includes('titular')).length;
   const associatesCount = totalLawyers - partnersCount;
-  const activeCasesTotal = cases.filter(c => c.status !== 'ARQUIVADO').length;
+  const activeCasesTotal = cases.filter(c => (!currentUser?.officeId || c.officeId === currentUser.officeId) && c.status !== 'ARQUIVADO').length;
 
   const kpis = [
     {

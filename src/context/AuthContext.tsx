@@ -4,6 +4,8 @@ import { storageService } from '../services/storageService';
 import { cryptoService } from '../services/cryptoService';
 import { supabaseService } from '../services/supabaseService';
 import { isSupabaseConfigured } from '../services/supabaseClient';
+import { PlanId, SubscriptionPeriod, getPlanById } from '../config/plans';
+import { activePaymentProvider } from '../services/payment/PaymentProvider';
 
 export interface RegisterUserData {
   name: string;
@@ -39,11 +41,15 @@ interface AuthContextType {
   isAdmin: boolean;
   isAppAdmin: boolean;
   isLawyer: boolean;
-  login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
-  registerUser: (userData: RegisterUserData) => Promise<{ success: boolean; user?: User; error?: string }>;
+  login: (email: string, password?: string) => Promise<{ success: boolean; error?: string; pendingConfirmation?: boolean; email?: string }>;
+  registerUser: (userData: RegisterUserData) => Promise<{ success: boolean; user?: User; error?: string; pendingConfirmation?: boolean }>;
+  resendVerificationEmail: (email: string) => Promise<{ success: boolean; error?: string }>;
+  requestEmailChange: (newEmail: string) => Promise<{ success: boolean; error?: string; message?: string }>;
   addLawyerByOffice: (lawyerData: CreateLawyerByOfficeData) => Promise<{ success: boolean; lawyer?: Lawyer; error?: string }>;
   updateProfilePhoto: (photoUrl: string | undefined) => boolean;
   updateProfileData: (updates: Partial<User>) => boolean;
+  changeSubscription: (planId: PlanId, period: SubscriptionPeriod, cardDetails?: any) => Promise<{ success: boolean; message: string; error?: string }>;
+  cancelSubscription: (reason?: string) => Promise<{ success: boolean; message: string; error?: string }>;
   logout: () => void;
   availableUsers: User[]; // Apenas o usuário atual e advogados vinculados (se for escritório)
 }
@@ -90,7 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return storageService.getVisibleUsersForUser(currentUser);
   }, [currentUser, allUsers]);
 
-  const login = async (email: string, password?: string): Promise<{ success: boolean; error?: string }> => {
+  const login = async (email: string, password?: string): Promise<{ success: boolean; error?: string; pendingConfirmation?: boolean; email?: string }> => {
     const cleanEmail = email.trim().toLowerCase();
     let foundUser = storageService.findUserByEmail(cleanEmail);
 
@@ -148,6 +154,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
     }
 
+    // BLOQUEIO DE CONTA NÃO CONFIRMADA (Tarefa 2)
+    if (foundUser.isEmailConfirmed === false || foundUser.status === 'PENDING_CONFIRMATION') {
+      return {
+        success: false,
+        error: 'Sua conta ainda não foi ativada. Por favor, confirme seu endereço de e-mail através do link que enviamos.',
+        pendingConfirmation: true,
+        email: cleanEmail
+      };
+    }
+
     setCurrentUser(foundUser);
     storageService.saveCurrentUser(foundUser);
 
@@ -165,7 +181,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true };
   };
 
-  const registerUser = async (userData: RegisterUserData): Promise<{ success: boolean; user?: User; error?: string }> => {
+  const registerUser = async (userData: RegisterUserData): Promise<{ success: boolean; user?: User; error?: string; pendingConfirmation?: boolean }> => {
     const cleanEmail = userData.email.trim().toLowerCase();
 
     // Validação de e-mail único
@@ -173,7 +189,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (existing) {
       return { 
         success: false, 
-        error: 'Já existe uma conta cadastrada com este e-mail. Por favor, faça login ou use outro e-mail.' 
+        error: 'Já existe uma conta cadastrada com este e-mail. Por favor, faça login ou utilize a recuperação de senha.' 
       };
     }
 
@@ -186,10 +202,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Validação de requisitos de senha
-    if (!userData.password || userData.password.length < 6) {
+    if (!userData.password || userData.password.length < 8) {
       return { 
         success: false, 
-        error: 'A senha deve conter no mínimo 6 caracteres.' 
+        error: 'A senha deve conter no mínimo 8 caracteres.' 
       };
     }
 
@@ -221,6 +237,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       officeName = targetOffice.officeName;
     }
 
+    // A conta nasce pendente de confirmação (Tarefa 2)
     const newUser: User = {
       id: `usr_${Date.now()}`,
       name: userData.name.trim(),
@@ -228,7 +245,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       role: userData.role,
       oab: userData.oab.trim().toUpperCase(),
       phone: userData.phone?.trim() || '(11) 99999-0000',
-      status: 'ACTIVE',
+      status: 'PENDING_CONFIRMATION',
+      isEmailConfirmed: false,
       officeId,
       officeName,
       officeCode,
@@ -236,6 +254,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       address: userData.address?.trim(),
       primaryArea: userData.primaryArea?.trim(),
       isIndependent: userData.role === 'LAWYER' ? !!userData.isIndependent : false,
+      subscriptionPlan: userData.plan || (userData.isIndependent ? 'ESSENTIAL' : 'TRIAL'),
+      subscriptionStatus: 'TRIAL',
+      subscriptionPeriod: 'MONTHLY',
       avatarUrl: userData.avatarUrl,
       passwordHash,
       salt
@@ -272,9 +293,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       supabaseService.upsertLawyer(newLawyer).catch(console.warn);
     }
 
-    // Autenticar imediatamente o novo usuário
-    setCurrentUser(newUser);
-    storageService.saveCurrentUser(newUser);
+    // DISPARO DE E-MAIL DE CONFIRMAÇÃO (Tarefa 2)
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      fetch('/api/auth/send-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: newUser.email,
+          name: newUser.name,
+          userId: newUser.id,
+          origin
+        })
+      }).catch(console.warn);
+
+      // Contingência local para teste em desenvolvimento standalone
+      storageService.createLocalAuthToken({
+        userId: newUser.id,
+        email: newUser.email,
+        type: 'EMAIL_VERIFICATION',
+        expiresInHours: 24,
+        metadata: { name: newUser.name }
+      }).catch(console.warn);
+    } catch (e) {
+      console.warn('Erro ao disparar verificação de e-mail:', e);
+    }
 
     storageService.addAuditLog({
       userId: newUser.id,
@@ -282,12 +325,81 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       userRole: newUser.role,
       action: 'CADASTRO_CONTA',
       entity: newUser.officeName || 'Advocacia Autônoma',
-      details: `Novo cadastro realizado com sucesso. Perfil: ${newUser.role}, OAB: ${newUser.oab}.`,
+      details: `Novo cadastro realizado (Confirmação de e-mail pendente). Perfil: ${newUser.role}, OAB: ${newUser.oab}.`,
       ipAddress: '187.54.12.90',
       officeId: newUser.officeId
     });
 
-    return { success: true, user: newUser };
+    // Retorna pendente de confirmação sem autenticar imediatamente
+    return { success: true, user: newUser, pendingConfirmation: true };
+  };
+
+  const resendVerificationEmail = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    const cleanEmail = email.trim().toLowerCase();
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const res = await fetch('/api/auth/send-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, origin })
+      });
+      if (res.ok) {
+        return { success: true };
+      }
+      const data = await res.json().catch(() => ({}));
+      return { success: false, error: data.error || 'Falha ao reenviar e-mail de confirmação.' };
+    } catch {
+      await storageService.createLocalAuthToken({
+        userId: `usr_${cleanEmail}`,
+        email: cleanEmail,
+        type: 'EMAIL_VERIFICATION',
+        expiresInHours: 24
+      });
+      return { success: true };
+    }
+  };
+
+  const requestEmailChange = async (newEmail: string): Promise<{ success: boolean; error?: string; message?: string }> => {
+    if (!currentUser) return { success: false, error: 'Usuário não autenticado.' };
+    const clean = newEmail.trim().toLowerCase();
+    if (!clean || clean === currentUser.email.toLowerCase()) {
+      return { success: false, error: 'O novo e-mail deve ser diferente do e-mail atual.' };
+    }
+
+    // Registra pendingEmail no usuário
+    const updated = { ...currentUser, pendingEmail: clean };
+    storageService.saveCurrentUser(updated);
+    setCurrentUser(updated);
+
+    const users = storageService.getUsers().map(u => u.id === currentUser.id ? { ...u, pendingEmail: clean } : u);
+    storageService.saveUsers(users);
+
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      await fetch('/api/auth/send-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: clean,
+          name: currentUser.name,
+          userId: currentUser.id,
+          origin
+        })
+      });
+    } catch {
+      await storageService.createLocalAuthToken({
+        userId: currentUser.id,
+        email: clean,
+        type: 'CHANGE_EMAIL',
+        expiresInHours: 24,
+        metadata: { newEmail: clean }
+      });
+    }
+
+    return { 
+      success: true, 
+      message: 'Enviamos um link de confirmação para o novo e-mail. A troca só será efetivada após você clicar no link.' 
+    };
   };
 
   // Cadastro de advogado realizado pelo escritório logado
@@ -308,6 +420,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (!lawyerData.password || lawyerData.password.length < 6) {
       return { success: false, error: 'A senha de acesso do advogado deve conter no mínimo 6 caracteres.' };
+    }
+
+    // Validação de Limite do Plano para Advogados Vinculados (Item 4)
+    const plan = getPlanById(currentUser.subscriptionPlan);
+    const officeLawyersCount = storageService.getLawyers().filter(l => l.officeId === currentUser.officeId).length;
+    if (officeLawyersCount >= plan.limits.maxLawyers) {
+      return {
+        success: false,
+        error: `Limite de equipe atingido! O plano atual (${plan.name}) permite até ${plan.limits.maxLawyers} advogados. Acesse a aba Planos para realizar o upgrade.`
+      };
     }
 
     const salt = cryptoService.generateSalt();
@@ -401,6 +523,219 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
+  const changeSubscription = async (
+    planId: PlanId,
+    period: SubscriptionPeriod,
+    cardDetails?: any
+  ): Promise<{ success: boolean; message: string; error?: string }> => {
+    if (!currentUser) {
+      return { success: false, message: 'Usuário não autenticado', error: 'Usuário não autenticado' };
+    }
+
+    // Regra de Autorização RBAC: apenas ADMIN do escritório ou advogado autônomo
+    if (currentUser.role === 'LAWYER' && !currentUser.isIndependent) {
+      return { 
+        success: false, 
+        message: 'Apenas o sócio administrador pode alterar o plano do escritório.',
+        error: 'Apenas o sócio administrador pode alterar o plano do escritório.'
+      };
+    }
+
+    if (currentUser.isDemo) {
+      return {
+        success: false,
+        message: 'A conta de demonstração não permite alteração de plano.',
+        error: 'A conta de demonstração não permite alteração de plano.'
+      };
+    }
+
+    const planDef = getPlanById(planId);
+    const amount = period === 'YEARLY' ? planDef.yearlyPricePerMonth * 12 : planDef.monthlyPrice;
+
+    try {
+      // 1. Tentar chamada à API Serverless Vercel
+      let apiSuccess = false;
+      try {
+        const resp = await fetch('/api/plans/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            planId,
+            planName: planDef.name,
+            period,
+            amount,
+            user: {
+              id: currentUser.id,
+              name: currentUser.name,
+              email: currentUser.email,
+              role: currentUser.role,
+              officeId: currentUser.officeId,
+              isIndependent: currentUser.isIndependent,
+              isDemo: currentUser.isDemo
+            },
+            cardHolder: cardDetails?.holderName,
+            lastDigits: cardDetails?.cardNumberMasked?.slice(-4)
+          })
+        });
+        if (resp.ok) {
+          apiSuccess = true;
+        }
+      } catch (e) {
+        // Fallback local caso o ambiente seja dev offline sem o serverless rodando
+        console.warn('API /api/plans/subscribe indisponível, aplicando fallback via activePaymentProvider');
+      }
+
+      // 2. Chamar o Adaptador de Pagamento (MockPaymentProvider)
+      const paymentResult = await activePaymentProvider.createSubscription({
+        planId,
+        planName: planDef.name,
+        period,
+        amount,
+        user: {
+          id: currentUser.id,
+          name: currentUser.name,
+          email: currentUser.email,
+          officeId: currentUser.officeId,
+          isIndependent: currentUser.isIndependent
+        },
+        cardInfo: cardDetails
+      });
+
+      if (!paymentResult.success) {
+        return { success: false, message: paymentResult.message, error: paymentResult.message };
+      }
+
+      // 3. Atualizar estado local e storage
+      const updatedUser = storageService.updateUserSubscription(currentUser.id, planId, period, 'ACTIVE');
+      if (updatedUser) {
+        setCurrentUser(updatedUser);
+        storageService.saveCurrentUser(updatedUser);
+      }
+
+      // 4. Salvar histórico da assinatura
+      storageService.addSubscription({
+        id: paymentResult.transactionId,
+        userId: currentUser.id,
+        officeId: currentUser.officeId,
+        planId,
+        period,
+        status: 'ACTIVE',
+        amount,
+        paymentMethod: 'MOCK_CARD',
+        startDate: paymentResult.subscription.startDate,
+        endDate: paymentResult.subscription.endDate,
+        createdAt: new Date().toISOString()
+      });
+
+      // 5. Auditoria
+      storageService.addAuditLog({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        userRole: currentUser.role,
+        action: 'ASSINATURA_PLANO',
+        entity: `Plano: ${planDef.name}`,
+        details: `Plano alterado para ${planDef.name} (${period === 'YEARLY' ? 'Anual' : 'Mensal'}). Provedor: ${paymentResult.provider}.`,
+        ipAddress: '187.54.12.90',
+        officeId: currentUser.officeId
+      });
+
+      refreshUsers();
+
+      return {
+        success: true,
+        message: `Plano ${planDef.name} ativado com sucesso!`
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err.message || 'Erro ao processar assinatura',
+        error: err.message
+      };
+    }
+  };
+
+  const cancelSubscription = async (reason?: string): Promise<{ success: boolean; message: string; error?: string }> => {
+    if (!currentUser) {
+      return { success: false, message: 'Usuário não autenticado', error: 'Usuário não autenticado' };
+    }
+
+    if (currentUser.role === 'LAWYER' && !currentUser.isIndependent) {
+      return { 
+        success: false, 
+        message: 'Apenas o sócio administrador pode cancelar a assinatura do escritório.',
+        error: 'Apenas o sócio administrador pode cancelar a assinatura.'
+      };
+    }
+
+    if (currentUser.isDemo) {
+      return {
+        success: false,
+        message: 'A conta de demonstração não permite cancelamento.',
+        error: 'A conta de demonstração não permite cancelamento.'
+      };
+    }
+
+    try {
+      try {
+        await fetch('/api/plans/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user: {
+              id: currentUser.id,
+              name: currentUser.name,
+              email: currentUser.email,
+              role: currentUser.role,
+              isIndependent: currentUser.isIndependent,
+              isDemo: currentUser.isDemo
+            },
+            reason
+          })
+        });
+      } catch (e) {
+        console.warn('API /api/plans/cancel indisponível, aplicando fallback local');
+      }
+
+      await activePaymentProvider.cancelSubscription(currentUser.id);
+
+      const updatedUser = storageService.updateUserSubscription(
+        currentUser.id, 
+        currentUser.subscriptionPlan || 'TRIAL', 
+        currentUser.subscriptionPeriod || 'MONTHLY', 
+        'CANCELED'
+      );
+
+      if (updatedUser) {
+        setCurrentUser(updatedUser);
+        storageService.saveCurrentUser(updatedUser);
+      }
+
+      storageService.addAuditLog({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        userRole: currentUser.role,
+        action: 'CANCELAMENTO_PLANO',
+        entity: `Plano: ${currentUser.subscriptionPlan}`,
+        details: `Cancelamento de assinatura solicitado. Motivo: ${reason || 'Não informado'}.`,
+        ipAddress: '187.54.12.90',
+        officeId: currentUser.officeId
+      });
+
+      refreshUsers();
+
+      return {
+        success: true,
+        message: 'Assinatura cancelada com sucesso. Seu acesso continuará ativo até o final do período vigente.'
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err.message || 'Erro ao cancelar assinatura',
+        error: err.message
+      };
+    }
+  };
+
   const logout = () => {
     if (currentUser) {
       storageService.addAuditLog({
@@ -439,9 +774,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLawyer,
         login,
         registerUser,
+        resendVerificationEmail,
+        requestEmailChange,
         addLawyerByOffice,
         updateProfilePhoto,
         updateProfileData,
+        changeSubscription,
+        cancelSubscription,
         logout,
         availableUsers
       }}

@@ -17,11 +17,30 @@ import { storageService } from '../services/storageService';
 import { supabaseService } from '../services/supabaseService';
 import { isSupabaseConfigured, getSupabaseClient } from '../services/supabaseClient';
 import { useAuth } from './AuthContext';
+import { getPlanById } from '../config/plans';
 
 export interface ToastNotification {
   id: string;
   message: string;
   type: 'success' | 'error' | 'info' | 'warning';
+}
+
+export interface PlanResourceUsage {
+  current: number;
+  max: number;
+  percentage: number;
+  isNearLimit: boolean;
+  isAtLimit: boolean;
+}
+
+export interface LimitsUsageSummary {
+  planId: string;
+  planName: string;
+  lawyers: PlanResourceUsage;
+  clients: PlanResourceUsage;
+  cases: PlanResourceUsage;
+  templates: PlanResourceUsage;
+  aiRequests: PlanResourceUsage;
 }
 
 interface DataContextType {
@@ -123,6 +142,10 @@ interface DataContextType {
   prefillCaseFromAI: (analysis: AIAnalysisResult, rawPrompt: string) => void;
   pendingAiDraft: { analysis: AIAnalysisResult; rawPrompt: string } | null;
   clearPendingAiDraft: () => void;
+
+  // Limites e Uso do Plano Ativo (Item 4)
+  limitsUsage: LimitsUsageSummary;
+  checkResourceLimit: (resource: 'clients' | 'cases' | 'lawyers' | 'templates' | 'aiRequests') => { allowed: boolean; message?: string };
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -331,8 +354,67 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [userCases, userDeadlines, userFinancial, userDocuments]);
 
+  // Cálculo em Tempo Real dos Limites de Uso do Plano Ativo (Item 4)
+  const currentPlan = useMemo(() => {
+    return getPlanById(currentUser?.subscriptionPlan);
+  }, [currentUser?.subscriptionPlan]);
+
+  const limitsUsage = useMemo<LimitsUsageSummary>(() => {
+    const limits = currentPlan.limits;
+
+    const currentLawyers = lawyers.length;
+    const currentClients = userClients.length;
+    const currentActiveCases = userCases.filter(c => c.status !== 'ARQUIVADO').length;
+    const currentTemplates = templates.length;
+    const currentAi = currentUser ? storageService.getAiMonthlyUsage(currentUser.id) : 0;
+
+    const calcUsage = (curr: number, max: number): PlanResourceUsage => {
+      const percentage = Math.min(100, Math.round((curr / Math.max(1, max)) * 100));
+      return {
+        current: curr,
+        max,
+        percentage,
+        isNearLimit: percentage >= 80 && percentage < 100,
+        isAtLimit: curr >= max
+      };
+    };
+
+    return {
+      planId: currentPlan.id,
+      planName: currentPlan.name,
+      lawyers: calcUsage(currentLawyers, limits.maxLawyers),
+      clients: calcUsage(currentClients, limits.maxClients),
+      cases: calcUsage(currentActiveCases, limits.maxActiveCases),
+      templates: calcUsage(currentTemplates, limits.maxTemplates),
+      aiRequests: calcUsage(currentAi, limits.maxAiRequestsPerMonth)
+    };
+  }, [currentPlan, lawyers.length, userClients.length, userCases, templates.length, currentUser]);
+
+  const checkResourceLimit = (resource: 'clients' | 'cases' | 'lawyers' | 'templates' | 'aiRequests'): { allowed: boolean; message?: string } => {
+    const usage = limitsUsage[resource];
+    if (usage && usage.isAtLimit) {
+      const labels: Record<string, string> = {
+        clients: 'clientes na carteira',
+        cases: 'processos ativos',
+        lawyers: 'advogados na equipe',
+        templates: 'modelos de peças e documentos',
+        aiRequests: 'consultas com IA no mês'
+      };
+      const label = labels[resource] || resource;
+      const msg = `Limite atingido! Seu plano atual (${currentPlan.name}) permite até ${usage.max} ${label}. Acesse a aba Planos para realizar o upgrade.`;
+      return { allowed: false, message: msg };
+    }
+    return { allowed: true };
+  };
+
   // CRUD Clientes com Validação Rigorosa de Escritório / Proprietário (Item 6)
   const addClient = (clientData: Omit<Client, 'id' | 'createdAt'>): Client => {
+    const limitCheck = checkResourceLimit('clients');
+    if (!limitCheck.allowed) {
+      showToast(limitCheck.message!, 'error');
+      throw new Error(limitCheck.message);
+    }
+
     const res = storageService.addClientForUser(clientData, currentUser, currentLawyer);
     if (res.status !== 200 || !res.client) {
       showToast(res.error || 'Erro ao cadastrar cliente.', 'error');
@@ -428,6 +510,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // CRUD Advogados
   const addLawyer = (lawyerData: Omit<Lawyer, 'id'>): Lawyer => {
+    const limitCheck = checkResourceLimit('lawyers');
+    if (!limitCheck.allowed) {
+      showToast(limitCheck.message!, 'error');
+      throw new Error(limitCheck.message);
+    }
+
     const newLawyer: Lawyer = {
       ...lawyerData,
       id: `law_${Date.now()}`,
@@ -549,6 +637,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // CRUD Processos
   const addCase = (caseData: Omit<LegalCase, 'id' | 'updatedAt'>): LegalCase => {
+    const limitCheck = checkResourceLimit('cases');
+    if (!limitCheck.allowed) {
+      showToast(limitCheck.message!, 'error');
+      throw new Error(limitCheck.message);
+    }
+
     const newCase: LegalCase = {
       ...caseData,
       id: `case_${Date.now()}`,
@@ -820,6 +914,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fileSize: number;
     fileData: string;
   }): TemplateDocument => {
+    const limitCheck = checkResourceLimit('templates');
+    if (!limitCheck.allowed) {
+      showToast(limitCheck.message!, 'error');
+      throw new Error(limitCheck.message);
+    }
+
     const newTemplate: TemplateDocument = {
       id: `tpl_${Date.now()}`,
       title: templateData.title,
@@ -1065,7 +1165,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         removeToast,
         prefillCaseFromAI,
         pendingAiDraft,
-        clearPendingAiDraft
+        clearPendingAiDraft,
+        limitsUsage,
+        checkResourceLimit
       }}
     >
       {children}

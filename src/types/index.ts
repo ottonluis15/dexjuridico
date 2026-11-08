@@ -4,13 +4,15 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  pendingEmail?: string; // Novo e-mail aguardando confirmação (troca de e-mail no perfil)
+  isEmailConfirmed?: boolean; // Status de confirmação do e-mail
   role: UserRole;
   isSuperAdmin?: boolean; // Admin do aplicativo Dex (dono da plataforma)
   avatarUrl?: string;
   oab?: string;
   phone?: string;
   specialties?: string[];
-  status: 'ACTIVE' | 'INACTIVE';
+  status: 'ACTIVE' | 'INACTIVE' | 'PENDING_CONFIRMATION';
   officeId?: string; // ID do escritório ao qual pertence (se houver)
   officeName?: string; // Nome do escritório
   officeCode?: string; // Código para convite/vínculo do escritório
@@ -21,6 +23,36 @@ export interface User {
   isDemo?: boolean; // Conta de demonstração para potenciais clientes
   passwordHash?: string; // Hash seguro com salt da senha
   salt?: string; // Salt criptográfico
+  subscriptionPlan?: string; // Plano do escritório ou autônomo (TRIAL, ESSENTIAL, PROFESSIONAL, OFFICE)
+  subscriptionStatus?: 'ACTIVE' | 'TRIAL' | 'CANCELED' | 'EXPIRED'; // Status da assinatura
+  subscriptionPeriod?: 'MONTHLY' | 'YEARLY'; // Faturamento mensal ou anual
+}
+
+export interface SubscriptionRecord {
+  id: string;
+  userId: string;
+  officeId?: string;
+  planId: string;
+  period: 'MONTHLY' | 'YEARLY';
+  status: 'ACTIVE' | 'TRIAL' | 'CANCELED' | 'EXPIRED';
+  amount: number;
+  paymentMethod: string;
+  startDate: string;
+  endDate?: string;
+  canceledAt?: string;
+  createdAt: string;
+}
+
+export interface AuthToken {
+  id: string;
+  userId: string;
+  email: string;
+  tokenHash: string;
+  type: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET' | 'INVITE_VERIFICATION' | 'CHANGE_EMAIL';
+  expiresAt: string;
+  usedAt?: string | null;
+  metadata?: Record<string, any>;
+  createdAt: string;
 }
 
 export type ClientType = 'PF' | 'PJ';

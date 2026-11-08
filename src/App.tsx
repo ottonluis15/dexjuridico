@@ -4,6 +4,9 @@ import { Layout } from './components/layout/Layout';
 import { TabType } from './components/layout/Sidebar';
 import { LoginScreen } from './components/auth/LoginScreen';
 import { RegisterScreen } from './components/auth/RegisterScreen';
+import { EmailConfirmationScreen } from './components/auth/EmailConfirmationScreen';
+import { ForgotPasswordScreen } from './components/auth/ForgotPasswordScreen';
+import { ResetPasswordScreen } from './components/auth/ResetPasswordScreen';
 import { LandingPage } from './components/landing/LandingPage';
 import { DashboardView } from './components/dashboard/DashboardView';
 import { LawyerWorkbench } from './components/lawyer-workbench/LawyerWorkbench';
@@ -20,6 +23,7 @@ import { ReportsView } from './components/reports/ReportsView';
 import { NotificationsView } from './components/notifications/NotificationsView';
 import { SettingsView } from './components/settings/SettingsView';
 import { UserProfileView } from './components/profile/UserProfileView';
+import { PlansView } from './components/plans/PlansView';
 import { CaseModal } from './components/cases/CaseModal';
 import { DeadlineModal } from './components/deadlines/DeadlineModal';
 import { ClientModal } from './components/clients/ClientModal';
@@ -202,6 +206,8 @@ export const App: React.FC = () => {
         return <DexAIAssistant onNavigateToCases={() => handleTabChange('cases')} />;
       case 'lgpd':
         return <LGPDCompliance />;
+      case 'plans':
+        return <PlansView />;
       default:
         return (
           <DashboardView
@@ -213,6 +219,59 @@ export const App: React.FC = () => {
         );
     }
   };
+
+  // ROTA: Confirmação de E-mail (por token na URL ou rota /confirmar-email)
+  const searchParams = new URLSearchParams(window.location.search);
+  const verifyToken = searchParams.get('verify_token');
+  const resetToken = searchParams.get('reset_token');
+  const paramEmail = searchParams.get('email') || '';
+
+  if (verifyToken || cleanPath === '/confirmar-email') {
+    return (
+      <EmailConfirmationScreen
+        token={verifyToken || ''}
+        email={paramEmail}
+        onNavigateToLogin={() => navigate('/login')}
+        onNavigateToLanding={() => navigate('/')}
+      />
+    );
+  }
+
+  // ROTA: Redefinição de Senha (por token na URL ou rota /redefinir-senha)
+  if (resetToken || cleanPath === '/redefinir-senha') {
+    return (
+      <ResetPasswordScreen
+        token={resetToken || ''}
+        email={paramEmail}
+        onNavigateToLogin={() => navigate('/login')}
+        onNavigateToLanding={() => navigate('/')}
+      />
+    );
+  }
+
+  // ROTA: Esqueci minha Senha (/esqueci-senha)
+  if (cleanPath === '/esqueci-senha') {
+    return (
+      <ForgotPasswordScreen
+        onNavigateToLogin={() => navigate('/login')}
+        onNavigateToLanding={() => navigate('/')}
+      />
+    );
+  }
+
+  // ROTA: Planos e Assinatura ("/planos")
+  if (cleanPath === '/planos') {
+    if (isAuthenticated) {
+      return (
+        <Layout activeTab="plans" setActiveTab={handleTabChange}>
+          <PlansView />
+          <CaseModal isOpen={isCaseModalOpen} onClose={() => setIsCaseModalOpen(false)} />
+          <DeadlineModal isOpen={isDeadlineModalOpen} onClose={() => setIsDeadlineModalOpen(false)} />
+          <ClientModal isOpen={isClientModalOpen} onClose={() => setIsClientModalOpen(false)} />
+        </Layout>
+      );
+    }
+  }
 
   // ROTA 1: Página Inicial / Landing Page ("/")
   if (cleanPath === '/' || cleanPath === '') {
@@ -266,6 +325,8 @@ export const App: React.FC = () => {
       <LoginScreen
         onNavigateToRegister={() => navigate('/cadastro')}
         onNavigateToLanding={() => navigate('/')}
+        onNavigateToForgotPassword={() => navigate('/esqueci-senha')}
+        onNavigateToConfirmEmail={(em) => navigate(em ? `/confirmar-email?email=${encodeURIComponent(em)}` : '/confirmar-email')}
       />
     );
   }
@@ -276,6 +337,8 @@ export const App: React.FC = () => {
       <LoginScreen
         onNavigateToRegister={() => navigate('/cadastro')}
         onNavigateToLanding={() => navigate('/')}
+        onNavigateToForgotPassword={() => navigate('/esqueci-senha')}
+        onNavigateToConfirmEmail={(em) => navigate(em ? `/confirmar-email?email=${encodeURIComponent(em)}` : '/confirmar-email')}
       />
     );
   }

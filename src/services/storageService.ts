@@ -8,7 +8,8 @@ import {
   AuditLog, 
   User,
   TemplateDocument,
-  WallPost 
+  WallPost,
+  SubscriptionRecord 
 } from '../types';
 import { 
   INITIAL_CLIENTS, 
@@ -36,6 +37,8 @@ const STORAGE_KEYS = {
   TEMPLATES: 'dex_templates',
   TEAM_POSTS: 'dex_team_posts',
   AUDIT_LOGS: 'dex_audit_logs',
+  AUTH_TOKENS: 'dex_auth_tokens',
+  SUBSCRIPTIONS: 'dex_subscriptions',
   CURRENT_USER: 'dex_current_user',
   API_SETTINGS: 'dex_api_settings',
   DATA_VERSION: 'dex_seed_version_v3'
@@ -67,6 +70,12 @@ export const storageService = {
           users.forEach(u => {
             if (u.id === 'usr_admin_otton' && !u.isSuperAdmin) {
               u.isSuperAdmin = true;
+              changed = true;
+            }
+            if (!u.subscriptionPlan) {
+              u.subscriptionPlan = u.isIndependent ? 'ESSENTIAL' : 'OFFICE';
+              u.subscriptionStatus = 'ACTIVE';
+              u.subscriptionPeriod = 'MONTHLY';
               changed = true;
             }
           });
@@ -220,6 +229,18 @@ export const storageService = {
         updated = true;
       }
     }
+    // Migração de segurança retroativa: contas existentes sem status de e-mail são marcadas como confirmadas
+    for (const u of users) {
+      if (u.isEmailConfirmed === undefined) {
+        u.isEmailConfirmed = true;
+        updated = true;
+      }
+      if (!u.status) {
+        u.status = 'ACTIVE';
+        updated = true;
+      }
+    }
+
     if (updated) {
       this.saveUsers(users);
     }
@@ -233,6 +254,110 @@ export const storageService = {
     } catch {
       // Falha silenciosa de cota ou storage bloqueado
     }
+  },
+
+  // Marcação e confirmação de e-mail do usuário
+  markUserEmailConfirmed(emailOrUserId: string): boolean {
+    const query = emailOrUserId.trim().toLowerCase();
+    const users = this.getUsers();
+    const index = users.findIndex(u => u.id === emailOrUserId || u.email.toLowerCase() === query);
+    if (index !== -1) {
+      users[index].isEmailConfirmed = true;
+      users[index].status = 'ACTIVE';
+      this.saveUsers(users);
+      return true;
+    }
+    return false;
+  },
+
+  // Tokens de Autenticação (Confirmação, Redefinição e Convites)
+  getAuthTokens(): any[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.AUTH_TOKENS);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  saveAuthTokens(tokens: any[]) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.AUTH_TOKENS, JSON.stringify(tokens));
+    } catch {}
+  },
+
+  async createLocalAuthToken(params: {
+    userId: string;
+    email: string;
+    type: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET' | 'INVITE_VERIFICATION' | 'CHANGE_EMAIL';
+    expiresInHours?: number;
+    metadata?: Record<string, any>;
+  }): Promise<{ rawToken: string; tokenRecord: any }> {
+    const rawBytes = new Uint8Array(24);
+    window.crypto.getRandomValues(rawBytes);
+    const rawToken = Array.from(rawBytes, b => b.toString(16).padStart(2, '0')).join('');
+    
+    // Calcula o hash SHA-256 no client
+    const encoder = new TextEncoder();
+    const data = encoder.encode(rawToken);
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+    const tokenHash = Array.from(new Uint8Array(hashBuffer), b => b.toString(16).padStart(2, '0')).join('');
+
+    const hours = params.expiresInHours || (params.type === 'PASSWORD_RESET' ? 1 : 24);
+    const expiresAt = new Date(Date.now() + hours * 3600 * 1000).toISOString();
+
+    const tokenRecord = {
+      id: `tok_${Date.now()}`,
+      userId: params.userId,
+      email: params.email.trim().toLowerCase(),
+      tokenHash,
+      type: params.type,
+      expiresAt,
+      usedAt: null,
+      metadata: params.metadata,
+      createdAt: new Date().toISOString()
+    };
+
+    const currentTokens = this.getAuthTokens().filter(
+      t => !(t.userId === params.userId && t.type === params.type && !t.usedAt)
+    );
+    currentTokens.push(tokenRecord);
+    this.saveAuthTokens(currentTokens);
+
+    return { rawToken, tokenRecord };
+  },
+
+  async verifyAndConsumeLocalToken(rawToken: string, expectedType: string): Promise<{ valid: boolean; tokenRecord?: any; error?: string }> {
+    if (!rawToken || rawToken.length < 16) {
+      return { valid: false, error: 'Token inválido.' };
+    }
+
+    const encoder = new TextEncoder();
+    const data = encoder.encode(rawToken);
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+    const incomingHash = Array.from(new Uint8Array(hashBuffer), b => b.toString(16).padStart(2, '0')).join('');
+
+    const tokens = this.getAuthTokens();
+    const index = tokens.findIndex(t => t.tokenHash === incomingHash && t.type === expectedType);
+
+    if (index === -1) {
+      return { valid: false, error: 'Link inválido ou não encontrado.' };
+    }
+
+    const record = tokens[index];
+    if (record.usedAt) {
+      return { valid: false, error: 'Este link já foi utilizado.' };
+    }
+
+    if (new Date(record.expiresAt) < new Date()) {
+      return { valid: false, error: 'Este link expirou. Por favor, solicite um novo.' };
+    }
+
+    record.usedAt = new Date().toISOString();
+    tokens[index] = record;
+    this.saveAuthTokens(tokens);
+
+    return { valid: true, tokenRecord: record };
   },
 
   async resetUserPassword(email: string, newPassword: string): Promise<boolean> {
@@ -1024,5 +1149,94 @@ export const storageService = {
       liked: !hasLiked,
       count: updatedLikedBy.length
     };
+  },
+
+  // ==========================================
+  // GESTÃO DE PLANOS & ASSINATURAS (Item 4)
+  // ==========================================
+  getSubscriptions(): SubscriptionRecord[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.SUBSCRIPTIONS);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  saveSubscriptions(subs: SubscriptionRecord[]) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.SUBSCRIPTIONS, JSON.stringify(subs));
+    } catch (e) {
+      console.warn('Erro ao salvar assinaturas no localStorage:', e);
+    }
+  },
+
+  addSubscription(record: SubscriptionRecord): SubscriptionRecord {
+    const all = this.getSubscriptions();
+    const updated = [record, ...all];
+    this.saveSubscriptions(updated);
+    return record;
+  },
+
+  updateUserSubscription(
+    userId: string, 
+    planId: string, 
+    period: 'MONTHLY' | 'YEARLY', 
+    status: 'ACTIVE' | 'TRIAL' | 'CANCELED' | 'EXPIRED' = 'ACTIVE'
+  ): User | null {
+    const users = this.getUsers();
+    const idx = users.findIndex(u => u.id === userId);
+    if (idx === -1) return null;
+
+    users[idx] = {
+      ...users[idx],
+      subscriptionPlan: planId,
+      subscriptionPeriod: period,
+      subscriptionStatus: status
+    };
+    this.saveUsers(users);
+
+    // Se for sócio administrador de escritório, sincronizar os advogados do escritório com o mesmo plano
+    if (users[idx].officeId && users[idx].role === 'ADMIN' && !users[idx].isIndependent) {
+      const targetOfficeId = users[idx].officeId;
+      users.forEach((other, otherIdx) => {
+        if (other.officeId === targetOfficeId) {
+          users[otherIdx] = {
+            ...other,
+            subscriptionPlan: planId,
+            subscriptionPeriod: period,
+            subscriptionStatus: status
+          };
+        }
+      });
+      this.saveUsers(users);
+    }
+
+    return users[idx];
+  },
+
+  // ==========================================
+  // CONTROLE DE USO MENSAL DE IA
+  // ==========================================
+  getAiMonthlyUsage(userId: string): number {
+    try {
+      const currentMonthKey = `dex_ai_usage_${userId}_${new Date().toISOString().substring(0, 7)}`;
+      const val = localStorage.getItem(currentMonthKey);
+      return val ? parseInt(val, 10) : 0;
+    } catch {
+      return 0;
+    }
+  },
+
+  incrementAiUsage(userId: string): number {
+    try {
+      const currentMonthKey = `dex_ai_usage_${userId}_${new Date().toISOString().substring(0, 7)}`;
+      const current = this.getAiMonthlyUsage(userId);
+      const next = current + 1;
+      localStorage.setItem(currentMonthKey, next.toString());
+      return next;
+    } catch {
+      return 1;
+    }
   }
 };

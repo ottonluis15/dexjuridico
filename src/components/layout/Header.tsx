@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Menu, 
   Search, 
@@ -6,13 +6,18 @@ import {
   Minimize2, 
   Sun, 
   Moon, 
+  Monitor,
+  Check,
   Bell, 
   LogOut,
   Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
+import { useTheme, ThemeMode } from '../../context/ThemeContext';
 import { TabType } from './Sidebar';
+import { GlobalSearch } from './GlobalSearch';
+import { LegalCase, Client } from '../../types';
 
 interface HeaderProps {
   activeTab: TabType;
@@ -21,19 +26,37 @@ interface HeaderProps {
   onOpenNewCaseModal?: () => void;
   onOpenNewDeadlineModal?: () => void;
   onOpenNewClientModal?: () => void;
+  onOpenCaseDetail?: (caseItem: LegalCase) => void;
+  onOpenClientDetail?: (client: Client) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
   onOpenMobileMenu,
+  onOpenCaseDetail,
+  onOpenClientDetail
 }) => {
   const { currentUser, logout } = useAuth();
   const { userDeadlines } = useData();
 
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  const [globalSearch, setGlobalSearch] = useState('');
+  const { themeMode, effectiveTheme, setThemeMode, isDark } = useTheme();
+  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
+  const themeMenuRef = useRef<HTMLDivElement>(null);
+
+  // Fechar menu de tema ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (themeMenuRef.current && !themeMenuRef.current.contains(e.target as Node)) {
+        setIsThemeMenuOpen(false);
+      }
+    };
+    if (isThemeMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isThemeMenuOpen]);
 
   // Título amigável da aba atual
   const tabTitles: Record<TabType, string> = {
@@ -52,6 +75,7 @@ export const Header: React.FC<HeaderProps> = ({
     profile: 'Meu Perfil',
     'lawyer-workbench': 'Minha Bancada',
     lgpd: 'Conformidade LGPD',
+    plans: 'Planos & Assinatura',
     landing: 'Página Web',
   };
 
@@ -78,21 +102,6 @@ export const Header: React.FC<HeaderProps> = ({
         document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
       }
     }
-  };
-
-  // Alternar tema
-  const toggleTheme = () => {
-    setIsDarkMode(prev => {
-      const next = !prev;
-      if (next) {
-        document.documentElement.classList.add('dark');
-        document.documentElement.classList.remove('theme-light');
-      } else {
-        document.documentElement.classList.remove('dark');
-        document.documentElement.classList.add('theme-light');
-      }
-      return next;
-    });
   };
 
   const urgentCount = userDeadlines.filter(
@@ -124,18 +133,13 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Centro: Campo de Busca com Lupa */}
-        <div className="hidden sm:flex items-center flex-1 max-w-md mx-2">
-          <div className="relative w-full">
-            <Search className="w-4 h-4 text-white/60 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={globalSearch}
-              onChange={(e) => setGlobalSearch(e.target.value)}
-              placeholder="Buscar processos, Clientes..."
-              className="w-full pl-9 pr-4 py-2 rounded-full bg-white/10 text-white placeholder:text-white/60 text-xs font-serif border border-white/15 focus:outline-none focus:ring-2 focus:ring-dex-coral transition-all"
-            />
-          </div>
+        {/* Centro: Campo de Busca Global Funcional (Processos, Clientes, Modelos, Finanças, Equipe, Mural) */}
+        <div className="flex items-center flex-1 max-w-md mx-2">
+          <GlobalSearch
+            onNavigateToTab={(tab) => setActiveTab(tab)}
+            onOpenCaseDetail={onOpenCaseDetail}
+            onOpenClientDetail={onOpenClientDetail}
+          />
         </div>
 
         {/* Direita: 4 Botões Circulares Claros com Ícones (Anexo 4) */}
@@ -155,20 +159,90 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
-          {/* 2. Alternador de Tema (Sol / Lua) */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            title="Alternar tema"
-            aria-label="Alternar tema claro ou escuro"
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#EAE0DA] hover:bg-white text-dex-navy-950 flex items-center justify-center shadow transition-all hover:scale-105 active:scale-95 cursor-pointer"
-          >
-            {isDarkMode ? (
-              <Sun className="w-4 h-4" />
-            ) : (
-              <Moon className="w-4 h-4" />
+          {/* 2. Seletor de Tema (Claro, Escuro, Automático) - Item 6 */}
+          <div className="relative" ref={themeMenuRef}>
+            <button
+              type="button"
+              onClick={() => setIsThemeMenuOpen(!isThemeMenuOpen)}
+              title={`Tema: ${themeMode === 'system' ? 'Automático (Sistema)' : isDark ? 'Escuro' : 'Claro'}`}
+              aria-label="Selecionar modo de tema"
+              aria-expanded={isThemeMenuOpen}
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#EAE0DA] hover:bg-white text-dex-navy-950 flex items-center justify-center shadow transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            >
+              {themeMode === 'system' ? (
+                <Monitor className="w-4 h-4" />
+              ) : isDark ? (
+                <Moon className="w-4 h-4" />
+              ) : (
+                <Sun className="w-4 h-4" />
+              )}
+            </button>
+
+            {/* Menu Popover de Seleção de Tema */}
+            {isThemeMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-[#FAF3ED] dark:bg-[#162B37] border border-[#D8C3B5] dark:border-[#214154] rounded-2xl shadow-xl p-1.5 z-50 text-xs font-serif animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-3 py-1.5 font-bold uppercase tracking-wider text-[10px] text-dex-navy-700 dark:text-[#A6C5CD] border-b border-[#D8C3B5]/50 dark:border-[#214154]/50 mb-1">
+                  Aparência
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setThemeMode('light');
+                    setIsThemeMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-colors cursor-pointer ${
+                    themeMode === 'light'
+                      ? 'bg-[#4A808E] text-white font-bold'
+                      : 'text-dex-navy-950 dark:text-[#F9ECE2] hover:bg-[#F0CBAE]/40 dark:hover:bg-[#1F3A4B]'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <Sun className="w-4 h-4" />
+                    <span>Claro</span>
+                  </span>
+                  {themeMode === 'light' && <Check className="w-3.5 h-3.5" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setThemeMode('dark');
+                    setIsThemeMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-colors cursor-pointer ${
+                    themeMode === 'dark'
+                      ? 'bg-[#4A808E] text-white font-bold'
+                      : 'text-dex-navy-950 dark:text-[#F9ECE2] hover:bg-[#F0CBAE]/40 dark:hover:bg-[#1F3A4B]'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <Moon className="w-4 h-4" />
+                    <span>Escuro</span>
+                  </span>
+                  {themeMode === 'dark' && <Check className="w-3.5 h-3.5" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setThemeMode('system');
+                    setIsThemeMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-colors cursor-pointer ${
+                    themeMode === 'system'
+                      ? 'bg-[#4A808E] text-white font-bold'
+                      : 'text-dex-navy-950 dark:text-[#F9ECE2] hover:bg-[#F0CBAE]/40 dark:hover:bg-[#1F3A4B]'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <Monitor className="w-4 h-4" />
+                    <span>Automático</span>
+                  </span>
+                  {themeMode === 'system' && <Check className="w-3.5 h-3.5" />}
+                </button>
+              </div>
             )}
-          </button>
+          </div>
 
           {/* 3. Notificações */}
           <button
