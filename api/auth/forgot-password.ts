@@ -52,8 +52,8 @@ export default async function handler(req: any, res: any) {
           }
         });
         if (uRes.ok) {
-          const list = await uRes.json();
-          if (list && list.length > 0) {
+          const list: any = await uRes.json();
+          if (Array.isArray(list) && list.length > 0) {
             if (list[0].isDemo) {
               return res.status(200).json({
                 success: true,

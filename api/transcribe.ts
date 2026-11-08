@@ -61,7 +61,7 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    const geminiData = await geminiRes.json();
+    const geminiData: any = await geminiRes.json();
     const transcribedText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
 
     if (!transcribedText) {

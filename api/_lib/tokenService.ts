@@ -177,8 +177,8 @@ export async function verifyAndConsumeToken(params: {
         }
       });
       if (res.ok) {
-        const list: AuthTokenRecord[] = await res.json();
-        if (list && list.length > 0) {
+        const list: any = await res.json();
+        if (Array.isArray(list) && list.length > 0) {
           record = list[0];
         }
       }

@@ -3,6 +3,8 @@
 // Provedor principal: Resend (REST API direta via fetch, zero-dependency, ultra-rápido)
 // Em desenvolvimento ou sem RESEND_API_KEY configurada: simula o envio e imprime o link no console do servidor.
 
+import nodemailer from 'nodemailer';
+
 export interface EmailActionLink {
   label: string;
   url: string;
@@ -11,12 +13,14 @@ export interface EmailActionLink {
 export interface SendEmailPayload {
   to: string | string[];
   subject: string;
-  headline: string;
+  headline?: string;
   recipientName?: string;
-  paragraphs: string[];
+  paragraphs?: string[];
   actionLink?: EmailActionLink;
   subtext?: string;
   securityNotice?: string;
+  html?: string;
+  text?: string;
 }
 
 export interface EmailSendResult {
@@ -33,10 +37,14 @@ export interface EmailSendResult {
  * - 100% responsivo e com estilos inline para máxima compatibilidade com Outlook, Gmail, Apple Mail
  */
 export function buildDexEmailHtml(payload: SendEmailPayload): string {
+  if (payload.html) {
+    return payload.html;
+  }
+
   const {
-    headline,
+    headline = 'Notificação Dex',
     recipientName,
-    paragraphs,
+    paragraphs = [],
     actionLink,
     subtext,
     securityNotice
@@ -155,14 +163,18 @@ export function buildDexEmailHtml(payload: SendEmailPayload): string {
  * Converte o payload em versão texto puro para clientes sem suporte a HTML
  */
 export function buildDexEmailText(payload: SendEmailPayload): string {
+  if (payload.text) {
+    return payload.text;
+  }
+
   const parts: string[] = [
     `DEX — GESTÃO JURÍDICA INTELIGENTE`,
     `----------------------------------------`,
-    payload.headline,
+    payload.headline || 'Notificação Dex',
     ``,
     payload.recipientName ? `Olá, ${payload.recipientName}.` : `Olá.`,
     ``,
-    ...payload.paragraphs,
+    ...(payload.paragraphs || []),
     ``
   ];
 
@@ -189,82 +201,122 @@ export function buildDexEmailText(payload: SendEmailPayload): string {
 }
 
 /**
- * Envia o e-mail via Resend API (se configurado) ou simula em desenvolvimento
+ * Envia o e-mail via SMTP (Gmail, Outlook etc.), Resend API ou simula em desenvolvimento
  */
 export async function sendEmail(payload: SendEmailPayload): Promise<EmailSendResult> {
-  const apiKey = process.env.RESEND_API_KEY || '';
-  const fromEmail = process.env.EMAIL_FROM || 'Dex Gestão Jurídica <nao-responda@dexjuridico.adv.br>';
+  const fromEmail = process.env.EMAIL_FROM || 'Dex Jurídico <confirm.dex@gmail.com>';
   const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
 
   const recipients = Array.isArray(payload.to) ? payload.to : [payload.to];
   const htmlContent = buildDexEmailHtml(payload);
   const textContent = buildDexEmailText(payload);
 
-  // MODO DESENVOLVIMENTO OU SEM CHAVE CONFIGURADA
-  if (!apiKey) {
-    // Imprime com destaque no console do servidor para inspeção imediata
-    console.log('\n================== [DEX EMAIL SIMULADO] ==================');
-    console.log(`Para: ${recipients.join(', ')}`);
-    console.log(`Remetente: ${fromEmail}`);
-    console.log(`Assunto: ${payload.subject}`);
-    console.log(`Título: ${payload.headline}`);
-    if (payload.actionLink) {
-      console.log(`LINK DE AÇÃO: ${payload.actionLink.url}`);
-    }
-    console.log('----------------------------------------------------------');
-    console.log(textContent);
-    console.log('==========================================================\n');
+  // 1. PRIORIDADE: ENVIO VIA SMTP (Gmail, Outlook etc. - ideal para domínio público sem taxas)
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpUser = process.env.SMTP_USER || process.env.EMAIL_USER;
+  const smtpPass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
 
-    if (isProduction) {
-      console.warn('[DEX EMAIL] AVISO: RESEND_API_KEY não está configurada no ambiente de produção da Vercel!');
-    }
+  if (smtpUser && smtpPass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost || 'smtp.gmail.com',
+        port: Number(process.env.SMTP_PORT) || 465,
+        secure: (Number(process.env.SMTP_PORT) || 465) === 465, // true para 465, false para 587
+        auth: {
+          user: smtpUser,
+          pass: smtpPass
+        }
+      });
 
-    return {
-      success: true,
-      simulated: true,
-      messageId: `sim_${Date.now()}`
-    };
-  }
-
-  // ENVIO REAL VIA RESEND REST API
-  try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
+      const info = await transporter.sendMail({
         from: fromEmail,
-        to: recipients,
+        to: recipients.join(', '),
         subject: payload.subject,
         html: htmlContent,
         text: textContent
-      })
-    });
+      });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('[DEX EMAIL] Erro ao enviar e-mail via Resend API:', response.status, errText);
+      console.log(`[DEX EMAIL - SMTP] Enviado com sucesso para ${recipients.join(', ')} | ID: ${info.messageId}`);
+      return {
+        success: true,
+        messageId: info.messageId,
+        simulated: false
+      };
+    } catch (smtpError: any) {
+      console.error('[DEX EMAIL - SMTP] Erro ao enviar via SMTP:', smtpError?.message || smtpError);
       return {
         success: false,
-        error: 'Falha no envio do e-mail pelo provedor transacional.'
+        error: 'Falha no envio do e-mail via servidor SMTP.'
       };
     }
-
-    const data = await response.json();
-    return {
-      success: true,
-      messageId: data.id,
-      simulated: false
-    };
-  } catch (error: any) {
-    console.error('[DEX EMAIL] Erro inesperado na chamada ao Resend:', error?.message || error);
-    return {
-      success: false,
-      error: 'Erro de comunicação ao disparar e-mail.'
-    };
   }
+
+  // 2. SEGUNDA OPÇÃO: RESEND REST API (se RESEND_API_KEY estiver configurado)
+  const resendApiKey = process.env.RESEND_API_KEY || '';
+
+  if (resendApiKey) {
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: recipients,
+          subject: payload.subject,
+          html: htmlContent,
+          text: textContent
+        })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error('[DEX EMAIL - Resend] Erro ao enviar e-mail:', response.status, errText);
+        return {
+          success: false,
+          error: 'Falha no envio do e-mail pelo provedor Resend.'
+        };
+      }
+
+      const data: any = await response.json();
+      return {
+        success: true,
+        messageId: data?.id,
+        simulated: false
+      };
+    } catch (error: any) {
+      console.error('[DEX EMAIL - Resend] Erro inesperado:', error?.message || error);
+      return {
+        success: false,
+        error: 'Erro de comunicação ao disparar e-mail via Resend.'
+      };
+    }
+  }
+
+  // 3. MODO DESENVOLVIMENTO OU SEM PROVEDOR CONFIGURADO (SIMULAÇÃO)
+  console.log('\n================== [DEX EMAIL SIMULADO] ==================');
+  console.log(`Para: ${recipients.join(', ')}`);
+  console.log(`Remetente: ${fromEmail}`);
+  console.log(`Assunto: ${payload.subject}`);
+  console.log(`Título: ${payload.headline}`);
+  if (payload.actionLink) {
+    console.log(`LINK DE AÇÃO: ${payload.actionLink.url}`);
+  }
+  console.log('----------------------------------------------------------');
+  console.log(textContent);
+  console.log('==========================================================\n');
+
+  if (isProduction) {
+    console.warn('[DEX EMAIL] AVISO: Nem SMTP (SMTP_USER / SMTP_PASS) nem RESEND_API_KEY estão configurados no ambiente da Vercel!');
+  }
+
+  return {
+    success: true,
+    simulated: true,
+    messageId: `sim_${Date.now()}`
+  };
 }
 
 function escapeHtml(text: string): string {
