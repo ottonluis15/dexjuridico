@@ -213,44 +213,84 @@ export async function sendEmail(payload: SendEmailPayload): Promise<EmailSendRes
 
   // 1. PRIORIDADE: ENVIO VIA SMTP (Gmail, Outlook etc. - ideal para domínio público sem taxas)
   const smtpHost = process.env.SMTP_HOST;
-  const rawUser = process.env.SMTP_USER || process.env.EMAIL_USER || '';
-  const rawPass = process.env.SMTP_PASS || process.env.EMAIL_PASS || '';
+  const rawUser = 
+    process.env.SMTP_USER || 
+    process.env.EMAIL_USER || 
+    process.env.GMAIL_USER || 
+    process.env.MAIL_USER || 
+    process.env.VITE_SMTP_USER || 
+    '';
+
+  const rawPass = 
+    process.env.SMTP_PASS || 
+    process.env.SMTP_PASSWORD || 
+    process.env.EMAIL_PASS || 
+    process.env.EMAIL_PASSWORD || 
+    process.env.GMAIL_PASS || 
+    process.env.GMAIL_PASSWORD || 
+    process.env.GMAIL_APP_PASSWORD || 
+    process.env.MAIL_PASS || 
+    process.env.MAIL_PASSWORD || 
+    process.env.VITE_SMTP_PASS || 
+    '';
 
   // Limpeza de segurança: remove espaços do código do Google (ex: 'abcd efgh ijkl mnop' -> 'abcdefghijklmnop') e aspas
   const cleanUser = rawUser.trim().replace(/^["']|["']$/g, '');
   const cleanPass = rawPass.trim().replace(/\s+/g, '').replace(/^["']|["']$/g, '');
 
   if (cleanUser && cleanPass) {
-    try {
-      const isGmail = !smtpHost || smtpHost.includes('gmail') || cleanUser.endsWith('@gmail.com');
+    const isGmail = !smtpHost || smtpHost.includes('gmail') || cleanUser.endsWith('@gmail.com');
+    const configuredPort = Number(process.env.SMTP_PORT) || 465;
+    const effectiveFrom = process.env.EMAIL_FROM || `Dex Jurídico <${cleanUser}>`;
 
-      const transporter = isGmail
-        ? nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-              user: cleanUser,
-              pass: cleanPass
-            }
-          })
-        : nodemailer.createTransport({
-            host: smtpHost,
-            port: Number(process.env.SMTP_PORT) || 587,
-            secure: (Number(process.env.SMTP_PORT) || 587) === 465,
-            auth: {
-              user: cleanUser,
-              pass: cleanPass
-            }
-          });
-
-      const effectiveFrom = process.env.EMAIL_FROM || `Dex Jurídico <${cleanUser}>`;
-
-      const info = await transporter.sendMail({
-        from: effectiveFrom,
-        to: recipients.join(', '),
-        subject: payload.subject,
-        html: htmlContent,
-        text: textContent
+    // Função auxiliar de criação de transporte com timeouts seguros para ambiente serverless
+    const makeTransporter = (port: number, secure: boolean) => {
+      return nodemailer.createTransport({
+        host: isGmail ? 'smtp.gmail.com' : (smtpHost || 'smtp.gmail.com'),
+        port,
+        secure,
+        auth: {
+          user: cleanUser,
+          pass: cleanPass
+        },
+        connectionTimeout: 8000,
+        greetingTimeout: 8000,
+        socketTimeout: 10000,
+        tls: {
+          rejectUnauthorized: false
+        }
       });
+    };
+
+    try {
+      let transporter = makeTransporter(configuredPort, configuredPort === 465);
+      let info;
+
+      try {
+        info = await transporter.sendMail({
+          from: effectiveFrom,
+          to: recipients.join(', '),
+          subject: payload.subject,
+          html: htmlContent,
+          text: textContent
+        });
+      } catch (firstError: any) {
+        // Se a tentativa na porta 465 falhou por timeout ou rede, tenta automaticamente na porta 587 (STARTTLS)
+        const isNetworkErr = firstError.code === 'ETIMEDOUT' || firstError.code === 'ECONNREFUSED' || firstError.code === 'ESOCKET' || firstError.code === 'ENOTFOUND';
+        if (configuredPort === 465 && isNetworkErr) {
+          console.warn('[DEX EMAIL - SMTP] Tentativa na porta 465 falhou por rede. Tentando fallback na porta 587 (STARTTLS)...');
+          transporter = makeTransporter(587, false);
+          info = await transporter.sendMail({
+            from: effectiveFrom,
+            to: recipients.join(', '),
+            subject: payload.subject,
+            html: htmlContent,
+            text: textContent
+          });
+        } else {
+          throw firstError;
+        }
+      }
 
       console.log(`[DEX EMAIL - SMTP] Enviado com sucesso para ${recipients.join(', ')} | ID: ${info.messageId}`);
       return {
@@ -260,9 +300,17 @@ export async function sendEmail(payload: SendEmailPayload): Promise<EmailSendRes
       };
     } catch (smtpError: any) {
       console.error('[DEX EMAIL - SMTP] Erro detalhado ao enviar via SMTP:', smtpError?.code, smtpError?.response || smtpError?.message || smtpError);
+      
+      let friendlyError = smtpError?.message || 'Erro ao conectar ao provedor SMTP.';
+      if (smtpError?.code === 'EAUTH' || (smtpError?.response && smtpError.response.includes('535'))) {
+        friendlyError = 'Falha de autenticação no Google (535): Senha de App incorreta ou revogada. Verifique se o 2FA está ativo no confirm.dex@gmail.com e gere uma nova Senha de App de 16 caracteres.';
+      } else if (smtpError?.code === 'ETIMEDOUT') {
+        friendlyError = 'Tempo limite de conexão esgotado ao conectar ao servidor SMTP do Google (porta 465/587).';
+      }
+
       return {
         success: false,
-        error: `Falha no envio via SMTP (${smtpError?.code || 'AUTH_ERROR'}): ${smtpError?.message || 'Erro ao conectar ao provedor'}`
+        error: `Falha no envio via SMTP (${smtpError?.code || 'AUTH_ERROR'}): ${friendlyError}`
       };
     }
   }

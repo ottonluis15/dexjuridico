@@ -54,6 +54,8 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
         const data = await res.json().catch(() => ({}));
         if (res.status === 429) {
           setError(data.error || 'Muitas solicitações recentes. Por favor, aguarde alguns minutos.');
+        } else if (res.status === 500) {
+          setError(data.error || 'Falha ao disparar o e-mail pelo servidor. Verifique as credenciais de SMTP.');
         } else {
           // Para segurança OWASP, exibe mensagem genérica
           setIsSubmitted(true);

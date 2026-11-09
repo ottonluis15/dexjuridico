@@ -60,6 +60,15 @@ export default async function handler(req: any, res: any) {
       securityNotice: 'Se você não solicitou este cadastro no Dex, desconsidere esta mensagem. Nenhuma ação será realizada na sua conta.'
     });
 
+    if (!emailResult.success) {
+      console.error('[API Send Verification] Falha no envio do e-mail:', emailResult.error);
+      return res.status(500).json({
+        success: false,
+        error: `Falha no envio do e-mail de confirmação: ${emailResult.error}`,
+        actionUrl: process.env.NODE_ENV !== 'production' ? confirmUrl : undefined
+      });
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Se o e-mail for válido, enviamos as instruções de confirmação.',

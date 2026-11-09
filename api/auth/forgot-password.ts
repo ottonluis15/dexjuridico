@@ -99,6 +99,15 @@ export default async function handler(req: any, res: any) {
       securityNotice: 'Se você não solicitou a alteração da sua senha, ignore este e-mail. Sua senha atual permanecerá inalterada e segura.'
     });
 
+    if (!emailResult.success) {
+      console.error('[API Forgot Password] Falha no envio do e-mail:', emailResult.error);
+      return res.status(500).json({
+        success: false,
+        error: `Falha no envio do e-mail de recuperação: ${emailResult.error}`,
+        actionUrl: process.env.NODE_ENV !== 'production' ? resetUrl : undefined
+      });
+    }
+
     // Resposta genérica padrão OWASP (nunca revela se o e-mail existe)
     return res.status(200).json({
       success: true,

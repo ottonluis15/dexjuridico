@@ -145,7 +145,12 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
       setRegistrationCompletedEmail(email.trim().toLowerCase());
       setIsSubmitting(false);
-      showToast(`Cadastro recebido! Enviamos um link de confirmação para o seu e-mail.`, 'success');
+
+      if (res.emailWarning) {
+        showToast(`Cadastro criado, mas houve aviso no envio do e-mail: ${res.emailWarning}`, 'warning');
+      } else {
+        showToast(`Cadastro recebido! Enviamos um link de confirmação para o seu e-mail.`, 'success');
+      }
     } catch {
       setError('Ocorreu um erro inesperado ao realizar o cadastro. Tente novamente.');
       setIsSubmitting(false);

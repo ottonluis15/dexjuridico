@@ -42,7 +42,7 @@ interface AuthContextType {
   isAppAdmin: boolean;
   isLawyer: boolean;
   login: (email: string, password?: string) => Promise<{ success: boolean; error?: string; pendingConfirmation?: boolean; email?: string }>;
-  registerUser: (userData: RegisterUserData) => Promise<{ success: boolean; user?: User; error?: string; pendingConfirmation?: boolean }>;
+  registerUser: (userData: RegisterUserData) => Promise<{ success: boolean; user?: User; error?: string; pendingConfirmation?: boolean; emailWarning?: string }>;
   resendVerificationEmail: (email: string) => Promise<{ success: boolean; error?: string }>;
   requestEmailChange: (newEmail: string) => Promise<{ success: boolean; error?: string; message?: string }>;
   addLawyerByOffice: (lawyerData: CreateLawyerByOfficeData) => Promise<{ success: boolean; lawyer?: Lawyer; error?: string }>;
@@ -181,7 +181,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true };
   };
 
-  const registerUser = async (userData: RegisterUserData): Promise<{ success: boolean; user?: User; error?: string; pendingConfirmation?: boolean }> => {
+  const registerUser = async (userData: RegisterUserData): Promise<{ success: boolean; user?: User; error?: string; pendingConfirmation?: boolean; emailWarning?: string }> => {
     const cleanEmail = userData.email.trim().toLowerCase();
 
     // Validação de e-mail único
@@ -294,9 +294,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // DISPARO DE E-MAIL DE CONFIRMAÇÃO (Tarefa 2)
+    let emailWarning: string | undefined = undefined;
     try {
       const origin = typeof window !== 'undefined' ? window.location.origin : '';
-      fetch('/api/auth/send-verification', {
+      const sendRes = await fetch('/api/auth/send-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -305,7 +306,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           userId: newUser.id,
           origin
         })
-      }).catch(console.warn);
+      });
+
+      if (!sendRes.ok) {
+        const errJson = await sendRes.json().catch(() => ({}));
+        emailWarning = errJson?.error || 'Não foi possível disparar o e-mail pelo servidor SMTP no momento.';
+        console.warn('[Cadastro] Falha no disparo do e-mail:', emailWarning);
+      }
 
       // Contingência local para teste em desenvolvimento standalone
       storageService.createLocalAuthToken({
@@ -315,7 +322,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         expiresInHours: 24,
         metadata: { name: newUser.name }
       }).catch(console.warn);
-    } catch (e) {
+    } catch (e: any) {
+      emailWarning = e?.message || 'Falha de comunicação ao conectar com o serviço de e-mail.';
       console.warn('Erro ao disparar verificação de e-mail:', e);
     }
 
@@ -330,8 +338,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       officeId: newUser.officeId
     });
 
-    // Retorna pendente de confirmação sem autenticar imediatamente
-    return { success: true, user: newUser, pendingConfirmation: true };
+    // Retorna pendente de confirmação sem autenticar imediatamente, reportando qualquer aviso de e-mail
+    return { success: true, user: newUser, pendingConfirmation: true, emailWarning };
   };
 
   const resendVerificationEmail = async (email: string): Promise<{ success: boolean; error?: string }> => {
