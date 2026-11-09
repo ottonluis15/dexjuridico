@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sendEmail } from '../_lib/emailService.ts';
+import nodemailer from 'nodemailer';
 
 // Vercel Serverless Function: Cancelamento de Assinatura
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -41,27 +41,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const canceledAt = new Date().toISOString();
 
     try {
-      await sendEmail({
-        to: user.email,
-        subject: `Cancelamento de Assinatura — Dex Gestão Jurídica`,
-        html: `
-          <div style="background-color: #F9ECE2; border-radius: 8px; padding: 24px; border: 1px solid #D8C3B5; margin: 20px 0;">
-            <p style="margin: 0 0 14px; font-size: 17px; font-weight: bold; color: #0F2733;">
-              Olá, ${user.name || 'Doutor(a)'}!
-            </p>
-            <p style="margin: 0 0 16px; color: #162B37; line-height: 1.6;">
-              Confirmamos que o cancelamento da sua assinatura Dex foi processado com sucesso.
-            </p>
-            <p style="margin: 0 0 16px; color: #162B37; line-height: 1.6;">
-              Seus dados, processos e clientes permanecerão salvos com segurança. Você continuará com acesso aos seus recursos até o término do ciclo de faturamento contratado.
-            </p>
-            <p style="margin: 16px 0 0; font-size: 13px; color: #7B8794; line-height: 1.5;">
-              Caso queira reativar seu plano ou escolher outra modalidade a qualquer momento, basta acessar a aba <strong>Planos</strong> no Dex.
-            </p>
-          </div>
-        `,
-        text: `Olá ${user.name}!\n\nConfirmamos o cancelamento da sua assinatura Dex em ${new Date(canceledAt).toLocaleDateString('pt-BR')}.\nSeus dados permanecem seguros e você pode reativar seu plano a qualquer momento.`
-      });
+      const rawUser = process.env.SMTP_USER || process.env.EMAIL_USER || '';
+      const rawPass = process.env.SMTP_PASS || process.env.EMAIL_PASS || '';
+      const cleanUser = rawUser.trim().replace(/^["']|["']$/g, '');
+      const cleanPass = rawPass.trim().replace(/\s+/g, '').replace(/^["']|["']$/g, '');
+
+      if (cleanUser && cleanPass) {
+        const transporter = nodemailer.createTransport({
+          host: 'smtp.gmail.com',
+          port: 465,
+          secure: true,
+          auth: { user: cleanUser, pass: cleanPass },
+          connectionTimeout: 5000,
+          tls: { rejectUnauthorized: false }
+        });
+
+        await transporter.sendMail({
+          from: process.env.EMAIL_FROM || `Dex Jurídico <${cleanUser}>`,
+          to: user.email,
+          subject: `Cancelamento de Assinatura — Dex Gestão Jurídica`,
+          html: `
+            <div style="background-color: #F9ECE2; border-radius: 8px; padding: 24px; border: 1px solid #D8C3B5; margin: 20px 0; font-family: Georgia, serif;">
+              <p style="margin: 0 0 14px; font-size: 17px; font-weight: bold; color: #0F2733;">
+                Olá, ${user.name || 'Doutor(a)'}!
+              </p>
+              <p style="margin: 0 0 16px; color: #162B37; line-height: 1.6;">
+                Confirmamos que o cancelamento da sua assinatura Dex foi processado com sucesso.
+              </p>
+              <p style="margin: 0 0 16px; color: #162B37; line-height: 1.6;">
+                Seus dados, processos e clientes permanecerão salvos com segurança. Você continuará com acesso aos seus recursos até o término do ciclo de faturamento contratado.
+              </p>
+              <p style="margin: 16px 0 0; font-size: 13px; color: #7B8794; line-height: 1.5;">
+                Caso queira reativar seu plano ou escolher outra modalidade a qualquer momento, basta acessar a aba <strong>Planos</strong> no Dex.
+              </p>
+            </div>`,
+          text: `Olá ${user.name}!\n\nConfirmamos o cancelamento da sua assinatura Dex em ${new Date(canceledAt).toLocaleDateString('pt-BR')}.\nSeus dados permanecem seguros e você pode reativar seu plano a qualquer momento.`
+        });
+      }
     } catch (emailErr) {
       console.warn('[Dex Plans API] Falha no disparo do e-mail de cancelamento:', emailErr);
     }

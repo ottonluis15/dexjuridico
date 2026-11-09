@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sendEmail } from '../_lib/emailService.ts';
+import nodemailer from 'nodemailer';
 
 // Vercel Serverless Function: Assinatura ou Alteração de Plano (Simulada / Sandboxed)
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -65,46 +65,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const formattedRenewal = endDate.toLocaleDateString('pt-BR');
 
     try {
-      await sendEmail({
-        to: user.email,
-        subject: `Confirmação de Assinatura — Plano ${planName || planId} [Dex]`,
-        html: `
-          <div style="background-color: #F9ECE2; border-radius: 8px; padding: 24px; border: 1px solid #D8C3B5; margin: 20px 0;">
-            <p style="margin: 0 0 14px; font-size: 17px; font-weight: bold; color: #0F2733;">
-              Olá, ${user.name || 'Doutor(a)'}!
-            </p>
-            <p style="margin: 0 0 16px; color: #162B37; line-height: 1.6;">
-              Sua assinatura do plano <strong>${planName || planId}</strong> foi ativada com sucesso no sistema Dex.
-            </p>
-            <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px;">
-              <tr style="border-bottom: 1px solid #E8D5C8;">
-                <td style="padding: 8px 0; color: #5A7184;">Plano Selecionado:</td>
-                <td style="padding: 8px 0; font-weight: bold; color: #0F2733; text-align: right;">${planName || planId}</td>
-              </tr>
-              <tr style="border-bottom: 1px solid #E8D5C8;">
-                <td style="padding: 8px 0; color: #5A7184;">Periodicidade:</td>
-                <td style="padding: 8px 0; font-weight: bold; color: #0F2733; text-align: right;">${periodLabel}</td>
-              </tr>
-              <tr style="border-bottom: 1px solid #E8D5C8;">
-                <td style="padding: 8px 0; color: #5A7184;">Valor:</td>
-                <td style="padding: 8px 0; font-weight: bold; color: #0F2733; text-align: right;">${formattedAmount}</td>
-              </tr>
-              <tr style="border-bottom: 1px solid #E8D5C8;">
-                <td style="padding: 8px 0; color: #5A7184;">Próxima Renovação:</td>
-                <td style="padding: 8px 0; font-weight: bold; color: #0F2733; text-align: right;">${formattedRenewal}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; color: #5A7184;">Código da Transação:</td>
-                <td style="padding: 8px 0; font-family: monospace; color: #4A808E; text-align: right;">${txId}</td>
-              </tr>
-            </table>
-            <p style="margin: 16px 0 0; font-size: 13px; color: #7B8794; line-height: 1.5;">
-              <em>Nota: Esta é uma confirmação gerada no ambiente de demonstração simulada do Dex. Nenhuma cobrança monetária real foi efetuada.</em>
-            </p>
-          </div>
-        `,
-        text: `Olá ${user.name}!\n\nSua assinatura do plano ${planName || planId} foi ativada com sucesso no Dex.\nPeriodicidade: ${periodLabel}\nValor: ${formattedAmount}\nPróxima Renovação: ${formattedRenewal}\nTransação: ${txId}\n\n(Ambiente de demonstração - nenhuma cobrança real efetuada)`
-      });
+      const rawUser = process.env.SMTP_USER || process.env.EMAIL_USER || '';
+      const rawPass = process.env.SMTP_PASS || process.env.EMAIL_PASS || '';
+      const cleanUser = rawUser.trim().replace(/^["']|["']$/g, '');
+      const cleanPass = rawPass.trim().replace(/\s+/g, '').replace(/^["']|["']$/g, '');
+
+      if (cleanUser && cleanPass) {
+        const transporter = nodemailer.createTransport({
+          host: 'smtp.gmail.com',
+          port: 465,
+          secure: true,
+          auth: { user: cleanUser, pass: cleanPass },
+          connectionTimeout: 5000,
+          tls: { rejectUnauthorized: false }
+        });
+
+        await transporter.sendMail({
+          from: process.env.EMAIL_FROM || `Dex Jurídico <${cleanUser}>`,
+          to: user.email,
+          subject: `Confirmação de Assinatura — Plano ${planName || planId} [Dex]`,
+          html: `
+            <div style="background-color: #F9ECE2; border-radius: 8px; padding: 24px; border: 1px solid #D8C3B5; margin: 20px 0; font-family: Georgia, serif;">
+              <p style="margin: 0 0 14px; font-size: 17px; font-weight: bold; color: #0F2733;">
+                Olá, ${user.name || 'Doutor(a)'}!
+              </p>
+              <p style="margin: 0 0 16px; color: #162B37; line-height: 1.6;">
+                Sua assinatura do plano <strong>${planName || planId}</strong> foi ativada com sucesso no sistema Dex.
+              </p>
+            </div>`
+        });
+      }
     } catch (emailErr) {
       console.warn('[Dex Plans API] Falha no disparo do e-mail de confirmação de assinatura:', emailErr);
     }

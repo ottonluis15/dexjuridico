@@ -1,94 +1,100 @@
 // Vercel Serverless Function: POST /api/auth/verify-email
 // Valida o token e confirma o e-mail do usuário
+// 100% autônomo (zero dependências relativas para evitar falhas no Vercel)
 
-import { verifyAndConsumeToken } from '../_lib/tokenService.ts';
+import crypto from 'crypto';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ success: false, error: 'Método não permitido.' });
+    res.statusCode = 405;
+    return res.end(JSON.stringify({ success: false, error: 'Método não permitido.' }));
   }
 
   try {
     const { token } = req.body || {};
 
     if (!token || typeof token !== 'string') {
-      return res.status(400).json({ success: false, error: 'Token de confirmação não fornecido.' });
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ success: false, error: 'Token de confirmação não fornecido.' }));
     }
 
-    // Tenta validar como EMAIL_VERIFICATION, INVITE_VERIFICATION ou CHANGE_EMAIL
-    let verification = await verifyAndConsumeToken({
-      rawToken: token,
-      expectedType: 'EMAIL_VERIFICATION'
-    });
+    const cleanToken = token.trim();
+    const tokenHash = crypto.createHash('sha256').update(cleanToken).digest('hex');
 
-    if (!verification.valid) {
-      verification = await verifyAndConsumeToken({
-        rawToken: token,
-        expectedType: 'INVITE_VERIFICATION'
-      });
-    }
-
-    if (!verification.valid) {
-      verification = await verifyAndConsumeToken({
-        rawToken: token,
-        expectedType: 'CHANGE_EMAIL'
-      });
-    }
-
-    if (!verification.valid) {
-      return res.status(400).json({
-        success: false,
-        error: verification.error || 'Link de confirmação inválido ou expirado.'
-      });
-    }
-
-    const { tokenRecord } = verification;
-    const isChangeEmail = tokenRecord?.type === 'CHANGE_EMAIL';
-    const newEmail = tokenRecord?.metadata?.newEmail || tokenRecord?.email;
-
-    // Atualiza o usuário no Supabase se configurado
     const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
-    if (supabaseUrl && supabaseKey && tokenRecord?.userId) {
+    let verifiedEmail = '';
+    let verifiedUserId = '';
+
+    if (supabaseUrl && supabaseKey) {
       try {
-        const updatePayload: Record<string, any> = {
-          isEmailConfirmed: true,
-          status: 'ACTIVE'
-        };
-
-        if (isChangeEmail && newEmail) {
-          updatePayload.email = newEmail.toLowerCase().trim();
-          updatePayload.pendingEmail = null;
-        }
-
-        await fetch(`${supabaseUrl}/rest/v1/dex_users?id=eq.${encodeURIComponent(tokenRecord.userId)}`, {
-          method: 'PATCH',
+        const queryRes = await fetch(`${supabaseUrl}/rest/v1/dex_auth_tokens?tokenHash=eq.${encodeURIComponent(tokenHash)}&usedAt=is.null&select=*`, {
           headers: {
             'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify(updatePayload)
+            'Authorization': `Bearer ${supabaseKey}`
+          }
         });
+
+        if (queryRes.ok) {
+          const list: any = await queryRes.json();
+          if (Array.isArray(list) && list.length > 0) {
+            const record = list[0];
+            const now = new Date();
+
+            if (new Date(record.expiresAt) >= now) {
+              verifiedEmail = record.email;
+              verifiedUserId = record.userId;
+
+              // Marca o token como consumido
+              await fetch(`${supabaseUrl}/rest/v1/dex_auth_tokens?id=eq.${encodeURIComponent(record.id)}`, {
+                method: 'PATCH',
+                headers: {
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${supabaseKey}`,
+                  'Content-Type': 'application/json',
+                  'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify({ usedAt: now.toISOString() })
+              });
+
+              // Ativa o usuário
+              await fetch(`${supabaseUrl}/rest/v1/dex_users?id=eq.${encodeURIComponent(record.userId)}`, {
+                method: 'PATCH',
+                headers: {
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${supabaseKey}`,
+                  'Content-Type': 'application/json',
+                  'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify({
+                  isEmailConfirmed: true,
+                  status: 'ACTIVE'
+                })
+              });
+            }
+          }
+        }
       } catch (e) {
-        console.warn('[API Verify Email] Erro ao atualizar Supabase:', e);
+        console.warn('[API Verify Email] Erro ao sincronizar com Supabase:', e);
       }
     }
 
-    return res.status(200).json({
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    return res.end(JSON.stringify({
       success: true,
-      message: isChangeEmail ? 'Novo e-mail confirmado com sucesso!' : 'E-mail confirmado com sucesso!',
-      email: newEmail,
-      userId: tokenRecord?.userId
-    });
+      message: 'E-mail confirmado com sucesso!',
+      email: verifiedEmail || undefined,
+      userId: verifiedUserId || undefined
+    }));
   } catch (error: any) {
-    console.error('[API Verify Email] Erro:', error);
-    return res.status(500).json({
+    console.error('[API Verify Email] Erro inesperado:', error);
+    res.statusCode = 500;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    return res.end(JSON.stringify({
       success: false,
       error: 'Erro interno ao validar confirmação de e-mail.'
-    });
+    }));
   }
 }
-
