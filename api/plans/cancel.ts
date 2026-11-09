@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sendEmail } from '../_lib/emailService';
+import { sendEmail } from '../_lib/emailService.ts';
 
 // Vercel Serverless Function: Cancelamento de Assinatura
 export default async function handler(req: VercelRequest, res: VercelResponse) {

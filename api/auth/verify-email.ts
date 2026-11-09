@@ -1,7 +1,7 @@
 // Vercel Serverless Function: POST /api/auth/verify-email
 // Valida o token e confirma o e-mail do usuário
 
-import { verifyAndConsumeToken } from '../_lib/tokenService';
+import { verifyAndConsumeToken } from '../_lib/tokenService.ts';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {

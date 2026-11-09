@@ -1,8 +1,8 @@
 // Vercel Serverless Function: POST /api/auth/forgot-password
 // Solicitação de redefinição de senha com proteção contra enumeração de contas
 
-import { sendEmail } from '../_lib/emailService';
-import { createTokenRecord, checkRateLimit } from '../_lib/tokenService';
+import { sendEmail } from '../_lib/emailService.ts';
+import { createTokenRecord, checkRateLimit } from '../_lib/tokenService.ts';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {

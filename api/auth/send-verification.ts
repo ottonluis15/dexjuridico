@@ -1,8 +1,8 @@
 // Vercel Serverless Function: POST /api/auth/send-verification
 // Envia e-mail de confirmação de cadastro ou reenvio de confirmação
 
-import { sendEmail } from '../_lib/emailService';
-import { createTokenRecord, checkRateLimit } from '../_lib/tokenService';
+import { sendEmail } from '../_lib/emailService.ts';
+import { createTokenRecord, checkRateLimit } from '../_lib/tokenService.ts';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {

@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sendEmail } from '../_lib/emailService';
+import { sendEmail } from '../_lib/emailService.ts';
 
 // Vercel Serverless Function: Assinatura ou Alteração de Plano (Simulada / Sandboxed)
 export default async function handler(req: VercelRequest, res: VercelResponse) {

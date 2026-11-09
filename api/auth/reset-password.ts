@@ -2,8 +2,8 @@
 // Redefinição segura de senha com invalidação de token e aviso por e-mail
 
 import crypto from 'crypto';
-import { sendEmail } from '../_lib/emailService';
-import { verifyAndConsumeToken, checkRateLimit } from '../_lib/tokenService';
+import { sendEmail } from '../_lib/emailService.ts';
+import { verifyAndConsumeToken, checkRateLimit } from '../_lib/tokenService.ts';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {

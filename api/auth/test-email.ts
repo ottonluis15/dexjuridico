@@ -1,12 +1,40 @@
 // Vercel Serverless Function: GET/POST /api/auth/test-email
-// Endpoint de diagnóstico avançado para verificar conexão SMTP com Gmail e variáveis de ambiente
+// Endpoint de diagnóstico 100% autônomo (zero dependências relativas para evitar falhas de módulo no Vercel)
 // Renderiza HTML amigável no navegador ou JSON quando chamado via API
 
 import nodemailer from 'nodemailer';
-import { sendEmail } from '../_lib/emailService';
 
 export default async function handler(req: any, res: any) {
-  const isHtmlRequest = req.headers?.accept?.includes('text/html') && !req.query?.json;
+  // Funções de resposta seguras e universais (compatíveis com Node puro e Vercel runtime)
+  const sendHtml = (statusCode: number, html: string) => {
+    try {
+      res.statusCode = statusCode;
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      if (typeof res.send === 'function') {
+        return res.send(html);
+      }
+      return res.end(html);
+    } catch {
+      res.statusCode = statusCode;
+      return res.end(html);
+    }
+  };
+
+  const sendJson = (statusCode: number, data: any) => {
+    try {
+      res.statusCode = statusCode;
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      if (typeof res.json === 'function') {
+        return res.json(data);
+      }
+      return res.end(JSON.stringify(data));
+    } catch {
+      res.statusCode = statusCode;
+      return res.end(JSON.stringify(data));
+    }
+  };
+
+  const isHtmlRequest = req?.headers?.accept?.includes('text/html') && !req?.query?.json;
 
   try {
     const rawUser = 
@@ -55,7 +83,7 @@ export default async function handler(req: any, res: any) {
       if (!cleanPass) missingVars.push('SMTP_PASS');
 
       if (isHtmlRequest) {
-        return res.status(200).send(renderDiagnosticHtml({
+        return sendHtml(200, renderDiagnosticHtml({
           success: false,
           diagnostic,
           title: 'Variáveis de Ambiente Não Encontradas',
@@ -70,15 +98,14 @@ export default async function handler(req: any, res: any) {
         }));
       }
 
-      return res.status(200).json({
+      return sendJson(200, {
         success: false,
         error: `Variáveis ${missingVars.join(' e ')} não foram encontradas no ambiente da Vercel. Certifique-se de adicioná-las em Settings > Environment Variables e fazer um Redeploy.`,
         diagnostic
       });
     }
 
-    // Testa a conexão e autenticação direta com o servidor do Gmail
-    // Tenta primeiro na porta 465 (SSL)
+    // Testa a conexão e autenticação com timeout curto (4s) para evitar 504 no serverless
     let authSuccess = false;
     let authPort = 465;
     let authError: any = null;
@@ -89,9 +116,9 @@ export default async function handler(req: any, res: any) {
         port: 465,
         secure: true,
         auth: { user: cleanUser, pass: cleanPass },
-        connectionTimeout: 8000,
-        greetingTimeout: 8000,
-        socketTimeout: 10000,
+        connectionTimeout: 4000,
+        greetingTimeout: 4000,
+        socketTimeout: 5000,
         tls: { rejectUnauthorized: false }
       });
       await transporter465.verify();
@@ -99,39 +126,37 @@ export default async function handler(req: any, res: any) {
       authPort = 465;
     } catch (err465: any) {
       authError = err465;
-      // Se falhou na 465 por rede, tenta na 587 (STARTTLS)
-      if (err465.code === 'ETIMEDOUT' || err465.code === 'ECONNREFUSED' || err465.code === 'ESOCKET') {
-        try {
-          const transporter587 = nodemailer.createTransport({
-            host: 'smtp.gmail.com',
-            port: 587,
-            secure: false,
-            auth: { user: cleanUser, pass: cleanPass },
-            connectionTimeout: 8000,
-            greetingTimeout: 8000,
-            socketTimeout: 10000,
-            tls: { rejectUnauthorized: false }
-          });
-          await transporter587.verify();
-          authSuccess = true;
-          authPort = 587;
-          authError = null;
-        } catch (err587: any) {
-          authError = err587;
-        }
+      // Se falhou na 465 por timeout ou conexão, tenta na porta 587 (STARTTLS)
+      try {
+        const transporter587 = nodemailer.createTransport({
+          host: 'smtp.gmail.com',
+          port: 587,
+          secure: false,
+          auth: { user: cleanUser, pass: cleanPass },
+          connectionTimeout: 4000,
+          greetingTimeout: 4000,
+          socketTimeout: 5000,
+          tls: { rejectUnauthorized: false }
+        });
+        await transporter587.verify();
+        authSuccess = true;
+        authPort = 587;
+        authError = null;
+      } catch (err587: any) {
+        authError = err587;
       }
     }
 
     if (!authSuccess) {
       let advice = 'Verifique se as credenciais do Google estão corretas.';
       if (authError?.code === 'EAUTH' || (authError?.response && authError.response.includes('535'))) {
-        advice = 'Falha de Autenticação (535): O Google não aceitou este usuário ou senha de App. Certifique-se de que a Verificação em 2 Etapas está ativada na conta confirm.dex@gmail.com e crie uma nova Senha de App de 16 letras em myaccount.google.com/apppasswords.';
+        advice = 'Falha de Autenticação (535): O Google não aceitou este usuário ou senha de App. Certifique-se de que a Verificação em 2 Etapas está ativada na conta confirm.dex@gmail.com e gere uma nova Senha de App de 16 letras em myaccount.google.com/apppasswords.';
       } else if (authError?.code === 'ETIMEDOUT') {
-        advice = 'Tempo esgotado ao conectar no Google. O firewall da nuvem demorou para responder.';
+        advice = 'Tempo esgotado ao conectar no Google. O provedor em nuvem demorou para responder.';
       }
 
       if (isHtmlRequest) {
-        return res.status(200).send(renderDiagnosticHtml({
+        return sendHtml(200, renderDiagnosticHtml({
           success: false,
           diagnostic,
           title: `Erro de Conexão com o Gmail (${authError?.code || 'AUTH_ERROR'})`,
@@ -149,7 +174,7 @@ export default async function handler(req: any, res: any) {
         }));
       }
 
-      return res.status(200).json({
+      return sendJson(200, {
         success: false,
         error: authError?.message || 'Falha ao autenticar com o Gmail.',
         errorCode: authError?.code,
@@ -159,25 +184,41 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // Se o usuário passou ?to=email@..., envia um e-mail de teste real
+    // Se o usuário passou ?to=email@..., envia um e-mail de teste real diretamente
     const targetEmail = req.query?.to || req.body?.to;
     let sendResult: any = null;
 
     if (targetEmail) {
-      sendResult = await sendEmail({
-        to: targetEmail,
-        subject: 'Teste de Conexão de E-mail — Dex Jurídico',
-        headline: 'Serviço de E-mail Conectado!',
-        paragraphs: [
-          'Este é um e-mail de teste confirmando que a sua integração SMTP com o Gmail foi configurada com absoluto sucesso.',
-          'A partir de agora, confirmações de cadastro e redefinições de senha serão enviadas normalmente para os seus usuários.'
-        ],
-        subtext: `Diagnóstico do sistema Dex Jurídico via Gmail SMTP (porta ${authPort}).`
-      });
+      try {
+        const directTransporter = nodemailer.createTransport({
+          host: 'smtp.gmail.com',
+          port: authPort,
+          secure: authPort === 465,
+          auth: { user: cleanUser, pass: cleanPass },
+          connectionTimeout: 5000,
+          tls: { rejectUnauthorized: false }
+        });
+
+        const info = await directTransporter.sendMail({
+          from: emailFrom,
+          to: targetEmail,
+          subject: 'Teste de Conexão de E-mail — Dex Jurídico',
+          html: `<div style="font-family: Georgia, serif; padding: 24px; background: #FAF5F0; border: 1px solid #EAE0DA; border-radius: 12px; max-width: 500px; margin: 0 auto;">
+            <h2 style="color: #0F2733; margin: 0 0 12px;">⚖️ Dex Jurídico — Teste Concluído</h2>
+            <p style="color: #35474B; font-size: 14px; line-height: 1.5;">Este e-mail confirma que a integração SMTP com o Gmail via porta <strong>${authPort}</strong> está ativa e operando perfeitamente.</p>
+            <p style="color: #8F8A87; font-size: 11px; margin-top: 16px;">Disparado automaticamente pelo diagnóstico do Dex.</p>
+          </div>`,
+          text: `Dex Jurídico — Teste Concluído!\nSua integração SMTP com o Gmail via porta ${authPort} está ativa e operando perfeitamente.`
+        });
+
+        sendResult = { success: true, messageId: info.messageId };
+      } catch (sendErr: any) {
+        sendResult = { success: false, error: sendErr.message };
+      }
     }
 
     if (isHtmlRequest) {
-      return res.status(200).send(renderDiagnosticHtml({
+      return sendHtml(200, renderDiagnosticHtml({
         success: true,
         diagnostic,
         title: 'Conexão SMTP com o Gmail Autenticada com Sucesso! 🚀',
@@ -187,7 +228,7 @@ export default async function handler(req: any, res: any) {
       }));
     }
 
-    return res.status(200).json({
+    return sendJson(200, {
       success: true,
       message: `Conexão SMTP com o Gmail verificada e autenticada com sucesso na porta ${authPort}!`,
       authPort,
@@ -195,15 +236,15 @@ export default async function handler(req: any, res: any) {
       emailSent: targetEmail ? sendResult : 'Para disparar um e-mail de teste agora, acesse esta mesma URL passando ?to=seu_email@dominio.com'
     });
   } catch (error: any) {
-    console.error('[API Test Email] Erro inesperado:', error);
+    console.error('[API Test Email] Erro inesperado capturado:', error);
     if (isHtmlRequest) {
-      return res.status(200).send(renderDiagnosticHtml({
+      return sendHtml(200, renderDiagnosticHtml({
         success: false,
-        title: 'Erro Inesperado no Diagnóstico',
+        title: 'Aviso do Servidor',
         description: error?.message || 'Ocorreu um erro ao processar o diagnóstico.'
       }));
     }
-    return res.status(500).json({
+    return sendJson(200, {
       success: false,
       error: error?.message || 'Erro inesperado no servidor.'
     });
