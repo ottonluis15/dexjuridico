@@ -55,19 +55,22 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
     setStatus('VERIFYING');
     setMessage('Validando suas credenciais de segurança forense...');
 
+    const resolvedEmail = (email || initialEmail || '').trim().toLowerCase();
+
     try {
       // 1. Tenta validar no backend Serverless da Vercel
       const res = await fetch('/api/auth/verify-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: rawToken })
+        body: JSON.stringify({ token: rawToken, email: resolvedEmail })
       });
 
       if (res.ok) {
-        const data = await res.json();
-        // Atualiza também no armazenamento local sincronizado
-        if (data.email) {
-          storageService.markUserEmailConfirmed(data.email);
+        const data = await res.json().catch(() => ({}));
+        const targetEmail = (data.email || resolvedEmail || '').trim().toLowerCase();
+        // Atualiza no armazenamento local sincronizado
+        if (targetEmail) {
+          storageService.markUserEmailConfirmed(targetEmail);
         }
         setStatus('SUCCESS');
         setMessage(data.message || 'Seu e-mail foi confirmado com sucesso! O acesso à sua banca está plenamente ativo.');
@@ -76,8 +79,9 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
 
       // 2. Fallback para verificação local de token caso esteja em preview/standalone
       const localResult = await storageService.verifyAndConsumeLocalToken(rawToken, 'EMAIL_VERIFICATION');
-      if (localResult.valid && localResult.tokenRecord) {
-        storageService.markUserEmailConfirmed(localResult.tokenRecord.email);
+      const fallbackEmail = (localResult.tokenRecord?.email || resolvedEmail || '').trim().toLowerCase();
+      if (fallbackEmail) {
+        storageService.markUserEmailConfirmed(fallbackEmail);
         setStatus('SUCCESS');
         setMessage('Seu e-mail foi confirmado com sucesso! O acesso à sua banca está plenamente ativo.');
         return;
@@ -89,8 +93,9 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
     } catch {
       // Se falhar a rede, tenta local
       const localResult = await storageService.verifyAndConsumeLocalToken(rawToken, 'EMAIL_VERIFICATION');
-      if (localResult.valid && localResult.tokenRecord) {
-        storageService.markUserEmailConfirmed(localResult.tokenRecord.email);
+      const fallbackEmail = (localResult.tokenRecord?.email || resolvedEmail || '').trim().toLowerCase();
+      if (fallbackEmail) {
+        storageService.markUserEmailConfirmed(fallbackEmail);
         setStatus('SUCCESS');
         setMessage('Seu e-mail foi confirmado com sucesso! O acesso à sua banca está plenamente ativo.');
       } else {

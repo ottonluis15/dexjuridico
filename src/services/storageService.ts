@@ -258,13 +258,22 @@ export const storageService = {
 
   // Marcação e confirmação de e-mail do usuário
   markUserEmailConfirmed(emailOrUserId: string): boolean {
+    if (!emailOrUserId) return false;
     const query = emailOrUserId.trim().toLowerCase();
     const users = this.getUsers();
-    const index = users.findIndex(u => u.id === emailOrUserId || u.email.toLowerCase() === query);
+    const index = users.findIndex(u => u.id === emailOrUserId || (u.email && u.email.trim().toLowerCase() === query));
     if (index !== -1) {
       users[index].isEmailConfirmed = true;
       users[index].status = 'ACTIVE';
       this.saveUsers(users);
+
+      // Atualiza também se for o usuário atual da sessão
+      const currentUser = this.getCurrentUser();
+      if (currentUser && (currentUser.id === emailOrUserId || (currentUser.email && currentUser.email.trim().toLowerCase() === query))) {
+        currentUser.isEmailConfirmed = true;
+        currentUser.status = 'ACTIVE';
+        this.saveCurrentUser(currentUser);
+      }
       return true;
     }
     return false;
@@ -361,13 +370,14 @@ export const storageService = {
   },
 
   async resetUserPassword(email: string, newPassword: string): Promise<boolean> {
+    if (!email) return false;
     const query = email.trim().toLowerCase();
     const users = this.getUsers();
-    let index = users.findIndex(u => u.email.toLowerCase() === query);
+    let index = users.findIndex(u => (u.email || '').trim().toLowerCase() === query);
 
     // Se não estiver no storage, busca nos usuários padrão
     if (index === -1) {
-      const initUser = INITIAL_USERS.find(u => u.email.toLowerCase() === query);
+      const initUser = INITIAL_USERS.find(u => (u.email || '').trim().toLowerCase() === query);
       if (initUser) {
         users.push({ ...initUser });
         index = users.length - 1;
@@ -379,7 +389,18 @@ export const storageService = {
       const passwordHash = await cryptoService.hashPassword(newPassword, salt);
       users[index].salt = salt;
       users[index].passwordHash = passwordHash;
+      users[index].isEmailConfirmed = true; // Garante que a conta fique confirmada
+      users[index].status = 'ACTIVE';
       this.saveUsers(users);
+
+      const currentUser = this.getCurrentUser();
+      if (currentUser && (currentUser.email || '').trim().toLowerCase() === query) {
+        currentUser.salt = salt;
+        currentUser.passwordHash = passwordHash;
+        currentUser.isEmailConfirmed = true;
+        currentUser.status = 'ACTIVE';
+        this.saveCurrentUser(currentUser);
+      }
       return true;
     }
     return false;

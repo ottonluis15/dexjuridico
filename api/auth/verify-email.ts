@@ -11,7 +11,7 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { token } = req.body || {};
+    const { token, email } = req.body || {};
 
     if (!token || typeof token !== 'string') {
       res.statusCode = 400;
@@ -19,6 +19,7 @@ export default async function handler(req: any, res: any) {
     }
 
     const cleanToken = token.trim();
+    const clientEmail = (email || '').trim().toLowerCase();
     const tokenHash = crypto.createHash('sha256').update(cleanToken).digest('hex');
 
     const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -85,7 +86,7 @@ export default async function handler(req: any, res: any) {
     return res.end(JSON.stringify({
       success: true,
       message: 'E-mail confirmado com sucesso!',
-      email: verifiedEmail || undefined,
+      email: verifiedEmail || clientEmail || undefined,
       userId: verifiedUserId || undefined
     }));
   } catch (error: any) {

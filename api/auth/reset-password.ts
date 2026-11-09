@@ -78,7 +78,7 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { token, newPassword } = req.body || {};
+    const { token, newPassword, email } = req.body || {};
 
     if (!token || typeof token !== 'string') {
       res.statusCode = 400;
@@ -90,6 +90,7 @@ export default async function handler(req: any, res: any) {
       return res.end(JSON.stringify({ success: false, error: 'A nova senha deve conter no mínimo 6 caracteres.' }));
     }
 
+    const clientEmail = (email || '').trim().toLowerCase();
     const tokenHash = crypto.createHash('sha256').update(token.trim()).digest('hex');
 
     const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -149,8 +150,10 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    if (targetEmail) {
-      sendSecurityAlertEmail(targetEmail).catch(console.warn);
+    const finalEmail = targetEmail || clientEmail;
+
+    if (finalEmail) {
+      sendSecurityAlertEmail(finalEmail).catch(console.warn);
     }
 
     res.statusCode = 200;
@@ -158,7 +161,7 @@ export default async function handler(req: any, res: any) {
     return res.end(JSON.stringify({
       success: true,
       message: 'Sua senha foi redefinida com sucesso! Você já pode fazer login com sua nova credencial.',
-      email: targetEmail || undefined,
+      email: finalEmail || undefined,
       newSalt,
       newPasswordHash
     }));

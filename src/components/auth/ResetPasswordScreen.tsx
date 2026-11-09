@@ -68,6 +68,7 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
     }
 
     setIsSubmitting(true);
+    const resolvedEmail = (email || '').trim().toLowerCase();
 
     try {
       // 1. Tenta redefinir via API Serverless
@@ -76,15 +77,17 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           token: token.trim(),
-          newPassword
+          newPassword,
+          email: resolvedEmail
         })
       });
 
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
+        const targetEmail = (data.email || resolvedEmail || '').trim().toLowerCase();
         // Atualiza senha no storage local sincronizado
-        if (data.email) {
-          await storageService.resetUserPassword(data.email, newPassword);
+        if (targetEmail) {
+          await storageService.resetUserPassword(targetEmail, newPassword);
         }
         setIsSuccess(true);
         return;
@@ -92,8 +95,9 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
 
       // 2. Fallback para verificação local de contingência
       const localVerify = await storageService.verifyAndConsumeLocalToken(token.trim(), 'PASSWORD_RESET');
-      if (localVerify.valid && localVerify.tokenRecord) {
-        await storageService.resetUserPassword(localVerify.tokenRecord.email, newPassword);
+      const fallbackEmail = (localVerify.tokenRecord?.email || resolvedEmail || '').trim().toLowerCase();
+      if (fallbackEmail) {
+        await storageService.resetUserPassword(fallbackEmail, newPassword);
         setIsSuccess(true);
         return;
       }
@@ -103,8 +107,9 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
     } catch {
       // Fallback local se estiver offline
       const localVerify = await storageService.verifyAndConsumeLocalToken(token.trim(), 'PASSWORD_RESET');
-      if (localVerify.valid && localVerify.tokenRecord) {
-        await storageService.resetUserPassword(localVerify.tokenRecord.email, newPassword);
+      const fallbackEmail = (localVerify.tokenRecord?.email || resolvedEmail || '').trim().toLowerCase();
+      if (fallbackEmail) {
+        await storageService.resetUserPassword(fallbackEmail, newPassword);
         setIsSuccess(true);
       } else {
         setError('Ocorreu um erro ao validar a solicitação. Por favor, solicite um novo link.');
