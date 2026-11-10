@@ -3,6 +3,7 @@
 // 100% autônomo (zero dependências relativas para evitar falhas no Vercel)
 
 import nodemailer from 'nodemailer';
+import { createClient } from '@supabase/supabase-js';
 
 // Rate Limiter em memória por IP / E-mail (máximo 5 tentativas por janela de 15 min)
 const failedAttempts = new Map<string, { count: number; lockUntil: number }>();
@@ -233,6 +234,26 @@ export default async function handler(req: any, res: any) {
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify({ error: 'Para confirmar, digite exatamente a palavra EXCLUIR.' }));
       return;
+    }
+
+    // Expurgo direto de dados no Supabase (se configurado no ambiente Vercel)
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
+
+    if (supabaseUrl && supabaseKey) {
+      try {
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        if (targetType === 'USER') {
+          await supabase.from('dex_users').delete().eq('email', normalizedEmail);
+          await supabase.from('dex_lawyers').delete().eq('email', normalizedEmail);
+          await supabase.from('dex_auth_tokens').delete().eq('email', normalizedEmail);
+        } else if (targetType === 'OFFICE' && officeName) {
+          await supabase.from('dex_users').update({ isIndependent: true, officeId: null, officeName: null, officeCode: null }).eq('officeName', officeName);
+          await supabase.from('dex_lawyers').update({ officeId: null, roleTitle: 'Advogado Autônomo' }).eq('officeName', officeName);
+        }
+      } catch (sbErr: any) {
+        console.warn('[Delete Account Serverless] Aviso ao expurgar no Supabase:', sbErr?.message);
+      }
     }
 
     // Dispara e-mail de confirmação e aviso

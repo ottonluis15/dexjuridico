@@ -113,6 +113,84 @@ export const supabaseService = {
   },
 
   /**
+   * Remove usuário e registros associados no Supabase (LGPD / Exclusão de Conta)
+   */
+  async deleteUser(userId: string, email?: string): Promise<boolean> {
+    const client = getSupabaseClient();
+    if (!client) return false;
+
+    try {
+      const cleanEmail = email?.trim().toLowerCase();
+      // 1. Exclui da tabela de usuários por ID e/ou e-mail
+      await client.from('dex_users').delete().eq('id', userId);
+      if (cleanEmail) {
+        await client.from('dex_users').delete().eq('email', cleanEmail);
+      }
+
+      // 2. Exclui de dex_lawyers
+      await client.from('dex_lawyers').delete().eq('userId', userId);
+      if (cleanEmail) {
+        await client.from('dex_lawyers').delete().eq('email', cleanEmail);
+      }
+
+      // 3. Exclui tokens de verificação/redefinição pendentes
+      await client.from('dex_auth_tokens').delete().eq('userId', userId);
+      if (cleanEmail) {
+        await client.from('dex_auth_tokens').delete().eq('email', cleanEmail);
+      }
+
+      return true;
+    } catch (err) {
+      console.warn('Erro ao deletar usuário do Supabase:', err);
+      return false;
+    }
+  },
+
+  /**
+   * Encerra escritório no Supabase (LGPD)
+   */
+  async deleteOffice(officeId: string): Promise<boolean> {
+    const client = getSupabaseClient();
+    if (!client) return false;
+
+    try {
+      // 1. Desvincula advogados integrantes, convertendo em autônomos
+      await client
+        .from('dex_users')
+        .update({
+          isIndependent: true,
+          officeId: null,
+          officeName: null,
+          officeCode: null,
+          role: 'LAWYER'
+        })
+        .eq('officeId', officeId);
+
+      await client
+        .from('dex_lawyers')
+        .update({
+          officeId: null,
+          roleTitle: 'Advogado Autônomo'
+        })
+        .eq('officeId', officeId);
+
+      // 2. Exclui dados vinculados ao escritório
+      await client.from('dex_cases').delete().eq('officeId', officeId);
+      await client.from('dex_deadlines').delete().eq('officeId', officeId);
+      await client.from('dex_clients').delete().eq('officeId', officeId);
+      await client.from('dex_financial').delete().eq('officeId', officeId);
+      await client.from('dex_documents').delete().eq('officeId', officeId);
+      await client.from('dex_templates').delete().eq('officeId', officeId);
+      await client.from('dex_team_posts').delete().eq('officeId', officeId);
+
+      return true;
+    } catch (err) {
+      console.warn('Erro ao encerrar escritório no Supabase:', err);
+      return false;
+    }
+  },
+
+  /**
    * Busca clientes no Supabase com isolamento rigoroso por escritório ou advogado autônomo
    */
   async fetchClients(officeId?: string, lawyerId?: string): Promise<Client[] | null> {

@@ -41,12 +41,41 @@ const STORAGE_KEYS = {
   SUBSCRIPTIONS: 'dex_subscriptions',
   CURRENT_USER: 'dex_current_user',
   API_SETTINGS: 'dex_api_settings',
-  DATA_VERSION: 'dex_seed_version_v3'
+  DATA_VERSION: 'dex_seed_version_v3',
+  DELETED_EMAILS: 'dex_deleted_emails'
 };
 
 const CURRENT_SEED_VERSION = 'v3_moreira_alcaraz_6lawyers_15cases';
 
 export const storageService = {
+  // Controle de contas excluídas (LGPD / Impede ressuscitação)
+  getDeletedEmails(): string[] {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.DELETED_EMAILS);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  addDeletedEmail(email: string) {
+    try {
+      const clean = email.trim().toLowerCase();
+      const current = this.getDeletedEmails();
+      if (!current.includes(clean)) {
+        localStorage.setItem(STORAGE_KEYS.DELETED_EMAILS, JSON.stringify([...current, clean]));
+      }
+    } catch {}
+  },
+
+  removeDeletedEmail(email: string) {
+    try {
+      const clean = email.trim().toLowerCase();
+      const current = this.getDeletedEmails().filter(e => e !== clean);
+      localStorage.setItem(STORAGE_KEYS.DELETED_EMAILS, JSON.stringify(current));
+    } catch {}
+  },
+
   // Inicialização padrão segura e auto-recuperável
   init() {
     try {
@@ -60,9 +89,14 @@ export const storageService = {
         try {
           const users: User[] = JSON.parse(rawUsers);
           let changed = false;
-          // Preserva todos os usuários cadastrados e assegura que as contas padrão do seed existam
+          const deletedEmails = this.getDeletedEmails();
+          // Preserva todos os usuários cadastrados e assegura que as contas padrão do seed existam (desde que não tenham sido excluídas)
           for (const initUser of INITIAL_USERS) {
-            if (!users.some(u => u.email.trim().toLowerCase() === initUser.email.trim().toLowerCase())) {
+            const cleanInitEmail = initUser.email.trim().toLowerCase();
+            if (deletedEmails.includes(cleanInitEmail)) {
+              continue;
+            }
+            if (!users.some(u => u.email.trim().toLowerCase() === cleanInitEmail)) {
               users.push(initUser);
               changed = true;
             }
@@ -445,13 +479,18 @@ export const storageService = {
 
   findUserByEmail(email: string): User | undefined {
     const query = email.trim().toLowerCase();
+    const deletedEmails = this.getDeletedEmails();
+    if (deletedEmails.includes(query)) {
+      return undefined;
+    }
+
     const users = this.getUsers();
     const found = users.find(u => (u.email || '').trim().toLowerCase() === query);
-    if (found) return found;
+    if (found && !found.deletedAt && found.status !== 'DELETED') return found;
 
-    // Contingência direta nos usuários iniciais caso não esteja no storage
+    // Contingência direta nos usuários iniciais caso não esteja no storage (e não tenha sido deletado)
     const fallback = INITIAL_USERS.find(u => (u.email || '').trim().toLowerCase() === query);
-    if (fallback) {
+    if (fallback && !deletedEmails.includes(query)) {
       const merged = [...users, fallback];
       this.saveUsers(merged);
       return fallback;
@@ -1368,9 +1407,14 @@ export const storageService = {
       this.saveLawyers(lawyers);
     }
 
-    // 4. Remove a conta do usuário de dex_users
-    const remainingUsers = users.filter(u => u.id !== userId);
+    // 4. Remove a conta do usuário de dex_users e registra e-mail como excluído (LGPD)
+    const remainingUsers = users.filter(u => u.id !== userId && u.email.toLowerCase() !== user.email.toLowerCase());
     this.saveUsers(remainingUsers);
+    this.addDeletedEmail(user.email);
+
+    // Remove tokens de autenticação/recuperação pendentes
+    const tokens = this.getAuthTokens().filter(t => t.userId !== userId && t.email.toLowerCase() !== user.email.toLowerCase());
+    this.saveAuthTokens(tokens);
 
     // 5. Se for o usuário logado, limpa sessão
     const current = this.getCurrentUser();

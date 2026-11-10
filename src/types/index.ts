@@ -12,7 +12,9 @@ export interface User {
   oab?: string;
   phone?: string;
   specialties?: string[];
-  status: 'ACTIVE' | 'INACTIVE' | 'PENDING_CONFIRMATION';
+  status: 'ACTIVE' | 'INACTIVE' | 'PENDING_CONFIRMATION' | 'DELETED';
+  deletedAt?: string; // Data de solicitação de exclusão / anonimização (LGPD)
+  scheduledDeletionDate?: string; // Data prevista para expurgo definitivo
   officeId?: string; // ID do escritório ao qual pertence (se houver)
   officeName?: string; // Nome do escritório
   officeCode?: string; // Código para convite/vínculo do escritório

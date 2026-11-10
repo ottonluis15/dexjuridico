@@ -69,17 +69,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [allUsers, setAllUsers] = useState<User[]>(() => storageService.getUsers());
 
-  // Sincronização inicial com Supabase se configurado (merge seguro, sem apagar cadastros locais)
+  // Sincronização inicial com Supabase se configurado (merge seguro, sem apagar cadastros locais e respeitando exclusões)
   useEffect(() => {
     if (isSupabaseConfigured()) {
       supabaseService.fetchUsers().then(remoteUsers => {
         if (remoteUsers && remoteUsers.length > 0) {
+          const deletedEmails = storageService.getDeletedEmails();
           const localUsers = storageService.getUsers();
-          const remoteEmailSet = new Set(remoteUsers.map(u => u.email.trim().toLowerCase()));
-          const merged = [...remoteUsers];
-          // Preserva usuários cadastrados localmente que ainda não estejam na nuvem
+          // Ignora contas que foram excluídas pelo usuário ou marcadas para expurgo
+          const activeRemoteUsers = remoteUsers.filter(u => 
+            !deletedEmails.includes(u.email.trim().toLowerCase()) && 
+            !u.deletedAt && 
+            u.status !== 'DELETED'
+          );
+          const remoteEmailSet = new Set(activeRemoteUsers.map(u => u.email.trim().toLowerCase()));
+          const merged = [...activeRemoteUsers];
+          // Preserva usuários cadastrados localmente que ainda não estejam na nuvem (e não estejam deletados)
           for (const localUser of localUsers) {
-            if (!remoteEmailSet.has(localUser.email.trim().toLowerCase())) {
+            const cleanLocal = localUser.email.trim().toLowerCase();
+            if (!deletedEmails.includes(cleanLocal) && !remoteEmailSet.has(cleanLocal)) {
               merged.push(localUser);
               supabaseService.upsertUser(localUser).catch(console.warn);
             }
@@ -105,14 +113,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanEmail = email.trim().toLowerCase();
     let foundUser = storageService.findUserByEmail(cleanEmail);
 
-    // Se não encontrou no armazenamento local e o Supabase estiver configurado, tenta buscar na nuvem
-    if (!foundUser && isSupabaseConfigured()) {
+    // Se não encontrou no armazenamento local e o Supabase estiver configurado, tenta buscar na nuvem (exceto se foi excluído)
+    const deletedEmails = storageService.getDeletedEmails();
+    if (!foundUser && isSupabaseConfigured() && !deletedEmails.includes(cleanEmail)) {
       try {
         const remoteUsers = await supabaseService.fetchUsers();
         if (remoteUsers && remoteUsers.length > 0) {
+          const activeRemotes = remoteUsers.filter(u => !deletedEmails.includes(u.email.trim().toLowerCase()) && !u.deletedAt && u.status !== 'DELETED');
           const localUsers = storageService.getUsers();
-          const remoteEmailSet = new Set(remoteUsers.map(u => u.email.trim().toLowerCase()));
-          const merged = [...remoteUsers];
+          const remoteEmailSet = new Set(activeRemotes.map(u => u.email.trim().toLowerCase()));
+          const merged = [...activeRemotes];
           for (const localUser of localUsers) {
             if (!remoteEmailSet.has(localUser.email.trim().toLowerCase())) {
               merged.push(localUser);
@@ -189,13 +199,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const registerUser = async (userData: RegisterUserData): Promise<{ success: boolean; user?: User; error?: string; pendingConfirmation?: boolean; emailWarning?: string }> => {
     const cleanEmail = userData.email.trim().toLowerCase();
 
+    // Se o e-mail estava registrado no histórico de excluídos, libera para novo cadastro
+    storageService.removeDeletedEmail(cleanEmail);
+
     // Validação de e-mail único
     const existing = storageService.findUserByEmail(cleanEmail);
     if (existing) {
-      return { 
-        success: false, 
-        error: 'Já existe uma conta cadastrada com este e-mail. Por favor, faça login ou utilize a recuperação de senha.' 
-      };
+      if (existing.deletedAt || existing.status === 'DELETED') {
+        const cleanedUsers = storageService.getUsers().filter(u => u.email.trim().toLowerCase() !== cleanEmail);
+        storageService.saveUsers(cleanedUsers);
+      } else {
+        return { 
+          success: false, 
+          error: 'Já existe uma conta ativa cadastrada com este e-mail. Por favor, faça login ou utilize a recuperação de senha.' 
+        };
+      }
     }
 
     // Validação de OAB
@@ -294,6 +312,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Sincronizar na nuvem (Supabase) se configurado
     if (isSupabaseConfigured()) {
+      // Expurga registro antigo com o mesmo ID ou e-mail para não violar a restrição UNIQUE
+      await supabaseService.deleteUser(newUser.id, newUser.email).catch(console.warn);
       supabaseService.upsertUser(newUser).catch(console.warn);
       supabaseService.upsertLawyer(newLawyer).catch(console.warn);
     }
@@ -487,6 +507,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Sincronizar na nuvem (Supabase) se configurado
     if (isSupabaseConfigured()) {
+      // Expurga registro antigo com o mesmo ID ou e-mail para não violar a restrição UNIQUE
+      await supabaseService.deleteUser(newUser.id, newUser.email).catch(console.warn);
       supabaseService.upsertUser(newUser).catch(console.warn);
       supabaseService.upsertLawyer(newLawyer).catch(console.warn);
     }
@@ -851,10 +873,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn('[deleteMyAccount] Endpoint serverless falhou ou offline:', e);
     }
 
+    // Expurgo no Supabase se configurado
+    if (isSupabaseConfigured()) {
+      await supabaseService.deleteUser(currentUser.id, currentUser.email).catch(console.warn);
+    }
+
     const result = storageService.deleteUserAccount(currentUser.id);
     if (!result.success) {
       return result;
     }
+
+    setAllUsers(prev => prev.filter(u => u.id !== currentUser.id && u.email.toLowerCase() !== currentUser.email.toLowerCase()));
 
     sessionStorage.setItem('dex_account_deleted_msg', 'Sua conta foi excluída com sucesso em conformidade com a LGPD.');
     logout();
@@ -910,6 +939,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn('[deleteMyOffice] Endpoint serverless falhou:', e);
     }
 
+    // Expurgo no Supabase se configurado
+    if (isSupabaseConfigured()) {
+      await supabaseService.deleteOffice(currentUser.officeId).catch(console.warn);
+    }
+
     const result = storageService.deleteOffice(currentUser.officeId);
     if (!result.success) {
       return result;
@@ -924,6 +958,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!isAppAdmin) {
       return { success: false, error: 'Permissão negada. Apenas o Administrador da Plataforma pode realizar esta ação.' };
     }
+    const targetUser = allUsers.find(u => u.id === userId);
+    if (isSupabaseConfigured()) {
+      await supabaseService.deleteUser(userId, targetUser?.email).catch(console.warn);
+    }
     const result = storageService.deleteUserAccount(userId);
     refreshUsers();
     return result;
@@ -932,6 +970,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const adminDeleteOffice = async (officeId: string): Promise<{ success: boolean; error?: string }> => {
     if (!isAppAdmin) {
       return { success: false, error: 'Permissão negada. Apenas o Administrador da Plataforma pode realizar esta ação.' };
+    }
+    if (isSupabaseConfigured()) {
+      await supabaseService.deleteOffice(officeId).catch(console.warn);
     }
     const result = storageService.deleteOffice(officeId);
     refreshUsers();
