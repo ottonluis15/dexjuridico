@@ -12,7 +12,8 @@ import {
   Award,
   Lock,
   ShieldAlert,
-  AlertTriangle
+  AlertTriangle,
+  Copy
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -42,6 +43,17 @@ export const UserProfileView: React.FC = () => {
 
   // Estados para exclusão de conta (Zona de Perigo)
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [copiedOfficeCode, setCopiedOfficeCode] = useState(false);
+
+  const resolvedOfficeCode = currentUser?.officeCode || (currentUser?.officeId === 'off_dex_principal' || !currentUser?.isIndependent ? 'DEX-1001' : undefined);
+
+  const handleCopyOfficeCode = () => {
+    if (!resolvedOfficeCode) return;
+    navigator.clipboard.writeText(resolvedOfficeCode);
+    setCopiedOfficeCode(true);
+    showToast('Código DEX copiado para a área de transferência!', 'success');
+    setTimeout(() => setCopiedOfficeCode(false), 2500);
+  };
 
   // Foto de Perfil
   const [photoPreview, setPhotoPreview] = useState<string | undefined>(currentUser?.avatarUrl);
@@ -217,6 +229,27 @@ export const UserProfileView: React.FC = () => {
               <p className="text-[11px] text-[#8F8A87] mt-1 font-serif">{userEmail}</p>
             </div>
 
+            {resolvedOfficeCode && !currentUser?.isIndependent && (
+              <div className="mt-3 flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-dex-navy-800 border border-dex-peach/30 w-full shadow-inner">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-[#8F8A87] font-serif">Código DEX do Escritório</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-bold text-sm text-dex-peach tracking-widest">{resolvedOfficeCode}</span>
+                  <button
+                    type="button"
+                    onClick={handleCopyOfficeCode}
+                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-dex-peach hover:text-white transition-colors"
+                    title="Copiar Código DEX"
+                    aria-label="Copiar Código DEX do escritório"
+                  >
+                    {copiedOfficeCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+                <span className="text-[10px] text-[#8F8A87] text-center font-serif leading-tight">
+                  Código para novos advogados se vincularem à sua banca
+                </span>
+              </div>
+            )}
+
             {photoError && (
               <div className="flex items-center gap-2 p-2 bg-dex-coral/20 border border-dex-coral/30 rounded-xl text-dex-coral text-xs text-left w-full font-serif">
                 <AlertCircle className="w-4 h-4 shrink-0" />
@@ -337,6 +370,32 @@ export const UserProfileView: React.FC = () => {
                 />
               </div>
             </div>
+
+            {resolvedOfficeCode && !currentUser?.isIndependent && (
+              <div className="p-4 rounded-xl bg-dex-navy-950/80 border border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-dex-peach/15 text-dex-peach flex items-center justify-center shrink-0">
+                    <Building2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-serif font-bold text-white">
+                      {currentUser?.officeName || 'Moreira & Associados Advocacia'}
+                    </p>
+                    <p className="text-[11px] text-[#8F8A87] font-serif">
+                      Código de vínculo: <strong className="text-dex-peach font-mono">{resolvedOfficeCode}</strong>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyOfficeCode}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-dex-navy-800 hover:bg-dex-navy-700 text-dex-peach hover:text-white text-xs font-serif border border-white/10 transition-colors"
+                >
+                  {copiedOfficeCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedOfficeCode ? 'Código Copiado!' : 'Copiar Código DEX'}</span>
+                </button>
+              </div>
+            )}
 
             <div className="pt-4 border-t border-white/10 flex items-center justify-end">
               <button

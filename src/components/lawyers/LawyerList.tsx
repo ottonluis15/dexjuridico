@@ -11,7 +11,10 @@ import {
   Trash2,
   Users,
   Award,
-  ShieldCheck
+  ShieldCheck,
+  Copy,
+  Check,
+  Building2
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -29,6 +32,16 @@ export const LawyerList: React.FC = () => {
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [editingLawyer, setEditingLawyer] = useState<Lawyer | null>(null);
   const [lawyerToDelete, setLawyerToDelete] = useState<Lawyer | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
+
+  const officeCode = currentUser?.officeCode || (currentUser?.officeId === 'off_dex_principal' || !currentUser?.isIndependent ? 'DEX-1001' : undefined);
+
+  const handleCopyCode = () => {
+    if (!officeCode) return;
+    navigator.clipboard.writeText(officeCode);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2500);
+  };
 
   // Isolamento estrito por escritório
   const officeLawyers = React.useMemo(() => {
@@ -101,6 +114,32 @@ export const LawyerList: React.FC = () => {
         searchValue={search}
         onSearchChange={setSearch}
       >
+        {isAdmin && officeCode && !currentUser?.isIndependent && (
+          <div className="mb-6 p-4 rounded-[20px] bg-dex-navy-850 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 font-serif">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-dex-coral/15 text-dex-coral flex items-center justify-center shrink-0">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-white">
+                  Código de Vínculo da Banca: <span className="font-mono text-dex-peach tracking-wider text-sm">{officeCode}</span>
+                </p>
+                <p className="text-[11px] text-[#8F8A87]">
+                  Novos advogados podem criar conta usando este código ou o e-mail da banca (<span className="text-dex-peach">{currentUser?.email}</span>) para se vincular.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleCopyCode}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-dex-navy-900 hover:bg-dex-navy-950 text-dex-peach hover:text-white text-xs border border-white/10 transition-all shrink-0 self-start sm:self-auto"
+            >
+              {copiedCode ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+              <span>{copiedCode ? 'Código Copiado!' : 'Copiar Código DEX'}</span>
+            </button>
+          </div>
+        )}
+
         {filteredLawyers.length === 0 ? (
           <EmptyState
             title="Nenhum advogado encontrado"
