@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   ArrowLeft, 
   Mail, 
@@ -8,7 +8,9 @@ import {
   Clock, 
   Send,
   Sun,
-  Moon
+  Moon,
+  ShieldCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { DexLogo } from '../common/DexLogo';
 import { AuthSwitchLink } from '../common/AuthSwitchLink';
@@ -30,14 +32,20 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
 }) => {
   const { isDark, toggleTheme } = useTheme();
   const [email, setEmail] = useState(initialEmail);
-  const [status, setStatus] = useState<'IDLE' | 'VERIFYING' | 'SUCCESS' | 'ERROR'>('IDLE');
+
+  // Se houver token na URL, inicia em 'READY_TO_CONFIRM' para exigir clique intencional do usuário
+  // Isso impede que scanners automáticos de antivírus e clientes de e-mail queimem o token de uso único (GET prévio)
+  const hasToken = Boolean(token && token.trim().length > 10);
+  const [status, setStatus] = useState<'READY_TO_CONFIRM' | 'IDLE' | 'VERIFYING' | 'SUCCESS' | 'ALREADY_USED' | 'EXPIRED' | 'ERROR'>(
+    hasToken ? 'READY_TO_CONFIRM' : 'IDLE'
+  );
   const [message, setMessage] = useState<string>('');
   const [cooldown, setCooldown] = useState(0);
   const [isResending, setIsResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
 
   // Contador de cooldown de 60 segundos para evitar disparos em massa
-  useEffect(() => {
+  React.useEffect(() => {
     if (cooldown <= 0) return;
     const timer = setInterval(() => {
       setCooldown(c => Math.max(0, c - 1));
@@ -45,31 +53,25 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
     return () => clearInterval(timer);
   }, [cooldown]);
 
-  // Se houver um token na URL, valida automaticamente
-  useEffect(() => {
-    if (token && token.trim().length > 10) {
-      verifyToken(token.trim());
-    }
-  }, [token]);
-
-  const verifyToken = async (rawToken: string) => {
+  const handleConfirmClick = async () => {
+    if (!token || token.trim().length < 10) return;
     setStatus('VERIFYING');
-    setMessage('Validando suas credenciais de segurança forense...');
+    setMessage('Validando credenciais e ativando sua conta forense...');
 
     const resolvedEmail = (email || initialEmail || '').trim().toLowerCase();
 
     try {
-      // 1. Tenta validar no backend Serverless da Vercel
+      // 1. Valida no backend Serverless da Vercel via POST intencional
       const res = await fetch('/api/auth/verify-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: rawToken, email: resolvedEmail })
+        body: JSON.stringify({ token: token.trim(), email: resolvedEmail })
       });
 
-      if (res.ok) {
-        const data = await res.json().catch(() => ({}));
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.success) {
         const targetEmail = (data.email || resolvedEmail || '').trim().toLowerCase();
-        // Atualiza no armazenamento local sincronizado
         if (targetEmail) {
           storageService.markUserEmailConfirmed(targetEmail);
         }
@@ -78,8 +80,22 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
         return;
       }
 
-      // 2. Fallback para verificação local de token caso esteja em preview/standalone
-      const localResult = await storageService.verifyAndConsumeLocalToken(rawToken, 'EMAIL_VERIFICATION');
+      // Trata códigos específicos retornados pelo servidor
+      if (res.status === 410) {
+        if (data.code === 'ALREADY_USED') {
+          setStatus('ALREADY_USED');
+          setMessage('Este link de confirmação já foi utilizado anteriormente. Se sua conta já está ativada, você pode acessar diretamente o sistema.');
+          return;
+        }
+        if (data.code === 'EXPIRED_TOKEN') {
+          setStatus('EXPIRED');
+          setMessage('Este link de confirmação expirou por segurança (validade de 24 horas). Solicite um novo link abaixo.');
+          return;
+        }
+      }
+
+      // 2. Fallback para verificação local de token caso esteja em preview/standalone offline
+      const localResult = await storageService.verifyAndConsumeLocalToken(token.trim(), 'EMAIL_VERIFICATION');
       const fallbackEmail = (localResult.tokenRecord?.email || resolvedEmail || '').trim().toLowerCase();
       if (fallbackEmail) {
         storageService.markUserEmailConfirmed(fallbackEmail);
@@ -88,12 +104,11 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
         return;
       }
 
-      const errData = await res.json().catch(() => ({}));
       setStatus('ERROR');
-      setMessage(errData.error || localResult.error || 'Link de confirmação inválido ou expirado. Por favor, solicite um novo envio.');
+      setMessage(data.error || localResult.error || 'Link de confirmação inválido ou expirado. Por favor, solicite um novo envio.');
     } catch {
-      // Se falhar a rede, tenta local
-      const localResult = await storageService.verifyAndConsumeLocalToken(rawToken, 'EMAIL_VERIFICATION');
+      // Fallback local se estiver offline
+      const localResult = await storageService.verifyAndConsumeLocalToken(token.trim(), 'EMAIL_VERIFICATION');
       const fallbackEmail = (localResult.tokenRecord?.email || resolvedEmail || '').trim().toLowerCase();
       if (fallbackEmail) {
         storageService.markUserEmailConfirmed(fallbackEmail);
@@ -108,10 +123,10 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
 
   const handleResend = async () => {
     if (cooldown > 0 || isResending) return;
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanEmail = (email || initialEmail).trim().toLowerCase();
 
     if (!cleanEmail) {
-      setMessage('Por favor, informe seu e-mail para receber as instruções.');
+      setMessage('Por favor, informe seu e-mail para receber as instruções de confirmação.');
       return;
     }
 
@@ -128,8 +143,8 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
 
       if (res.ok) {
         setResendSuccess(true);
-        setCooldown(60); // 60 segundos de intervalo mínimo entre reenvios
-        setMessage('E-mail de confirmação reenviado com sucesso! Verifique sua caixa de entrada.');
+        setCooldown(60);
+        setMessage('Novo e-mail de confirmação enviado com sucesso! Verifique sua caixa de entrada.');
       } else {
         const err = await res.json().catch(() => ({}));
         setMessage(err.error || 'Muitas tentativas recentes. Por favor, aguarde alguns minutos antes de reenviar.');
@@ -174,7 +189,7 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
         </button>
       </div>
 
-      {/* CONTAINER FLEX: PENAS ESQUERDA + CARD CENTRAL + PENAS DIREITA */}
+      {/* CONTAINER PRINCIPAL */}
       <div className="w-full max-w-[1340px] mx-auto flex flex-col sm:flex-row items-center sm:items-stretch justify-center gap-4 md:gap-6 lg:gap-8">
         
         {/* Penas do Topo no Mobile (< sm) */}
@@ -217,7 +232,7 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
           />
         </div>
 
-        {/* CARD PRINCIPAL PÊSSEGO / NAVY (Design System Anexo 3) */}
+        {/* CARD PRINCIPAL PÊSSEGO / NAVY */}
         <div className="flex-1 max-w-[960px] w-full bg-dex-peach dark:bg-[#162B37] rounded-[28px] sm:rounded-[36px] shadow-2xl p-6 sm:p-10 lg:p-12 relative z-10 border border-[#D5B093]/70 dark:border-[#214154] transition-colors duration-200">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
             
@@ -231,17 +246,17 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
 
                 <div className="pt-2">
                   <h1 className="text-2xl sm:text-3xl font-display font-bold text-dex-navy-950 dark:text-[#F9ECE2] leading-tight">
-                    {status === 'SUCCESS' ? 'E-mail Confirmado!' : 'Confirmação de Acesso'}
+                    {status === 'SUCCESS' ? 'E-mail Confirmado!' : 'Ativação de Conta'}
                   </h1>
                   <p className="text-xs sm:text-sm text-dex-support dark:text-[#A6C5CD] italic mt-1">
-                    Ativação segura de conta forense
+                    Confirmação segura de acesso à banca
                   </p>
                 </div>
 
                 <div className="w-3/4 lg:w-full h-[1px] bg-[#35474B]/40 dark:bg-[#214154]/70 my-3" />
               </div>
 
-              {/* Corvo 2 no Desktop (encostando na linha divisória) */}
+              {/* Corvo 2 no Desktop */}
               <div className="hidden lg:flex w-full justify-end items-end pt-4 -mr-8 overflow-hidden pointer-events-none select-none">
                 <img
                   src="/img/corvo2.png"
@@ -272,33 +287,76 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
             {/* COLUNA DIREITA: Conteúdo e Ações */}
             <div className="lg:col-span-7 flex flex-col justify-center py-2 sm:py-6">
               
-              {/* ESTADO 1: VERIFICANDO TOKEN */}
+              {/* ESTADO 1: PRONTO PARA CONFIRMAR (Proteção contra link preview de bots) */}
+              {status === 'READY_TO_CONFIRM' && (
+                <div className="space-y-6">
+                  <div className="flex items-start gap-3 p-4 bg-[#FAF0E6] dark:bg-[#0F2733] rounded-2xl border border-[#D5B093]/80 dark:border-[#214154]">
+                    <div className="w-10 h-10 rounded-xl bg-dex-slate-dark/10 dark:bg-white/10 text-dex-slate-dark dark:text-[#A6C5CD] flex items-center justify-center shrink-0 mt-0.5">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-dex-navy-950 dark:text-[#F9ECE2]">
+                        Confirmação de Acesso à sua Banca
+                      </h4>
+                      <p className="text-xs text-dex-support dark:text-[#A6C5CD] mt-1 leading-relaxed">
+                        Recebemos a solicitação de ativação para o e-mail:
+                      </p>
+                      <p className="text-xs font-mono font-bold text-dex-navy-950 dark:text-white mt-1 bg-white/70 dark:bg-black/20 px-2.5 py-1 rounded-md inline-block">
+                        {email || initialEmail || 'Seu e-mail cadastrado'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-dex-support dark:text-[#A6C5CD] italic">
+                    Clique no botão abaixo para confirmar seu endereço e desbloquear o acesso completo ao Dex:
+                  </p>
+
+                  <div className="pt-2 flex flex-col sm:flex-row items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={handleConfirmClick}
+                      className="w-full sm:w-auto px-8 py-3.5 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-sm font-semibold rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      <span>Confirmar meu e-mail</span>
+                    </button>
+
+                    <AuthSwitchLink
+                      prompt="Já tem acesso?"
+                      actionLabel="Fazer login"
+                      onAction={onNavigateToLogin}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* ESTADO 2: VALIDANDO TOKEN */}
               {status === 'VERIFYING' && (
                 <div className="text-center py-12 space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-dex-slate-dark/10 text-dex-slate-dark flex items-center justify-center mx-auto animate-spin">
+                  <div className="w-16 h-16 rounded-full bg-dex-slate-dark/10 text-dex-slate-dark dark:text-white flex items-center justify-center mx-auto animate-spin">
                     <RefreshCw className="w-8 h-8" />
                   </div>
-                  <h3 className="text-xl font-bold font-display text-dex-navy-950">
+                  <h3 className="text-xl font-bold font-display text-dex-navy-950 dark:text-[#F9ECE2]">
                     Validando confirmação...
                   </h3>
-                  <p className="text-sm text-dex-support italic max-w-md mx-auto">
+                  <p className="text-sm text-dex-support dark:text-[#A6C5CD] italic max-w-md mx-auto">
                     {message}
                   </p>
                 </div>
               )}
 
-              {/* ESTADO 2: SUCESSO */}
+              {/* ESTADO 3: SUCESSO */}
               {status === 'SUCCESS' && (
                 <div className="text-center py-8 space-y-6">
-                  <div className="w-16 h-16 rounded-full bg-emerald-500/15 text-emerald-700 flex items-center justify-center mx-auto shadow-sm">
+                  <div className="w-16 h-16 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-sm">
                     <CheckCircle2 className="w-10 h-10" />
                   </div>
                   <div className="space-y-2">
-                    <h3 className="text-2xl font-bold font-display text-dex-navy-950">
+                    <h3 className="text-2xl font-bold font-display text-dex-navy-950 dark:text-[#F9ECE2]">
                       Conta ativada com sucesso!
                     </h3>
-                    <p className="text-sm text-dex-navy-950/80 leading-relaxed max-w-md mx-auto">
-                      Seu endereço de e-mail foi validado e sua credencial forense está pronta para uso no Dex.
+                    <p className="text-sm text-dex-navy-950/80 dark:text-[#C2D6DC] leading-relaxed max-w-md mx-auto">
+                      Seu endereço de e-mail foi validado e sua credencial forense está liberada para acesso imediato.
                     </p>
                   </div>
 
@@ -308,32 +366,74 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
                       onClick={onNavigateToLogin}
                       className="px-8 py-3.5 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-sm font-semibold rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer inline-flex items-center gap-2"
                     >
-                      <span>Acessar minha conta</span>
+                      <span>Fazer login agora</span>
                       <ArrowLeft className="w-4 h-4 rotate-180" />
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* ESTADO 3: ERRO OU AGUARDANDO CONFIRMAÇÃO */}
-              {(status === 'IDLE' || status === 'ERROR') && (
+              {/* ESTADO 4: LINK JÁ UTILIZADO */}
+              {status === 'ALREADY_USED' && (
                 <div className="space-y-6">
-                  <div className="flex items-center gap-3 p-4 bg-[#FAF0E6] rounded-2xl border border-[#D5B093]/80">
-                    <div className="w-10 h-10 rounded-xl bg-dex-coral/15 text-dex-coral flex items-center justify-center shrink-0">
-                      {status === 'ERROR' ? <AlertCircle className="w-5 h-5" /> : <Mail className="w-5 h-5" />}
+                  <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/30 rounded-2xl border border-amber-300 dark:border-amber-700/50">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                      <AlertTriangle className="w-5 h-5" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-dex-navy-950">
-                        {status === 'ERROR' ? 'Atenção na validação' : 'Verifique sua caixa de entrada'}
+                      <h4 className="text-sm font-bold text-amber-900 dark:text-amber-300">
+                        Link de confirmação já utilizado
                       </h4>
-                      <p className="text-xs text-dex-support italic mt-0.5">
-                        {status === 'ERROR' ? message : 'Enviamos um link de confirmação para ativar o acesso à sua conta.'}
+                      <p className="text-xs text-amber-800 dark:text-amber-400 mt-1 leading-relaxed">
+                        Este link já confirmou a sua conta anteriormente. Você já pode fazer login normalmente.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex flex-col sm:flex-row items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={onNavigateToLogin}
+                      className="w-full sm:w-auto px-6 py-3 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-sm font-semibold rounded-xl shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <span>Ir para o Login</span>
+                      <ArrowLeft className="w-4 h-4 rotate-180" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setStatus('IDLE')}
+                      className="text-xs text-dex-support dark:text-[#A6C5CD] hover:underline cursor-pointer"
+                    >
+                      Não consegue entrar? Solicitar novo link
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ESTADO 5: EXPIRADO, INVÁLIDO OU FORMULÁRIO DE REENVIO */}
+              {(status === 'IDLE' || status === 'ERROR' || status === 'EXPIRED') && (
+                <div className="space-y-6">
+                  <div className="flex items-start gap-3 p-4 bg-[#FAF0E6] dark:bg-[#0F2733] rounded-2xl border border-[#D5B093]/80 dark:border-[#214154]">
+                    <div className="w-10 h-10 rounded-xl bg-dex-coral/15 text-dex-coral flex items-center justify-center shrink-0 mt-0.5">
+                      {status === 'IDLE' ? <Mail className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-dex-navy-950 dark:text-[#F9ECE2]">
+                        {status === 'EXPIRED' 
+                          ? 'Link de confirmação expirado' 
+                          : (status === 'ERROR' ? 'Atenção na confirmação' : 'Verifique sua caixa de entrada')}
+                      </h4>
+                      <p className="text-xs text-dex-support dark:text-[#A6C5CD] mt-1 leading-relaxed">
+                        {status === 'EXPIRED'
+                          ? 'Por razões de segurança, os links expiram após 24 horas. Informe seu e-mail abaixo para gerar um novo link de ativação.'
+                          : (message || 'Informe seu e-mail para receber um link seguro de confirmação e ativar sua banca.')}
                       </p>
                     </div>
                   </div>
 
                   <div className="space-y-3">
-                    <label className="block text-xs font-serif italic text-dex-navy-950">
+                    <label className="block text-xs font-serif italic text-dex-navy-950 dark:text-[#C2D6DC]">
                       Endereço de e-mail cadastrado
                     </label>
                     <div className="relative">
@@ -348,9 +448,9 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
                   </div>
 
                   {resendSuccess && (
-                    <div className="p-3 bg-emerald-100/70 border border-emerald-300/80 rounded-xl text-emerald-800 text-xs flex items-center gap-2">
+                    <div className="p-3 bg-emerald-100/70 dark:bg-emerald-950/40 border border-emerald-300/80 dark:border-emerald-700 rounded-xl text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 shrink-0" />
-                      <span>E-mail de confirmação reenviado! Verifique também a pasta de spam.</span>
+                      <span>E-mail de confirmação reenviado! Verifique sua caixa de entrada e a pasta de spam.</span>
                     </div>
                   )}
 
@@ -434,4 +534,3 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
     </div>
   );
 };
-

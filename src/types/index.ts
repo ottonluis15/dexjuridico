@@ -26,8 +26,12 @@ export interface User {
   passwordHash?: string; // Hash seguro com salt da senha
   salt?: string; // Salt criptográfico
   subscriptionPlan?: string; // Plano do escritório ou autônomo (TRIAL, ESSENTIAL, PROFESSIONAL, OFFICE)
-  subscriptionStatus?: 'ACTIVE' | 'TRIAL' | 'CANCELED' | 'EXPIRED'; // Status da assinatura
+  subscriptionStatus?: 'ACTIVE' | 'TRIAL' | 'PENDING_PAYMENT' | 'OVERDUE' | 'CANCELED' | 'EXPIRED'; // Status da assinatura
   subscriptionPeriod?: 'MONTHLY' | 'YEARLY'; // Faturamento mensal ou anual
+  stripeCustomerId?: string; // ID do cliente no gateway Stripe
+  stripeSubscriptionId?: string; // ID da assinatura recorrente no Stripe
+  stripePriceId?: string; // ID do preço/plano no Stripe
+  stripeCurrentPeriodEnd?: string; // Fim do período atual contratado
 }
 
 export interface SubscriptionRecord {

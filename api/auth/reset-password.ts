@@ -1,9 +1,10 @@
 // Vercel Serverless Function: POST /api/auth/reset-password
-// Redefinição segura de senha com invalidação de token e aviso por e-mail
+// Redefinição segura de senha com validação de token, atualização em dex_users e alerta por e-mail
 // 100% autônomo (zero dependências relativas para evitar falhas no Vercel)
 
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
+import { createClient } from '@supabase/supabase-js';
 
 function getEmailCredentials() {
   const rawUser = 
@@ -40,12 +41,13 @@ async function sendSecurityAlertEmail(to: string) {
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
+<head><meta charset="utf-8"></head>
 <body style="font-family: Georgia, serif; padding: 24px; background-color: #F9ECE2;">
-  <div style="max-width: 500px; margin: 0 auto; background: white; padding: 32px; border-radius: 16px; border: 1px solid #EAE0DA;">
+  <div style="max-width: 500px; margin: 0 auto; background: white; padding: 32px; border-radius: 16px; border: 1px solid #EAE0DA; box-shadow: 0 4px 12px rgba(15,39,51,0.06);">
     <h2 style="color: #0F2733; margin-top: 0;">⚖️ Dex Jurídico — Alerta de Segurança</h2>
     <p style="color: #35474B; font-size: 15px; line-height: 1.5;">Confirmamos que a senha de acesso à sua conta no Dex foi alterada com sucesso.</p>
-    <p style="color: #35474B; font-size: 14px;">Se você reconhece esta alteração, nenhuma outra ação é necessária.</p>
-    <p style="color: #8F8A87; font-size: 12px; margin-top: 24px; border-top: 1px solid #EAE0DA; padding-top: 12px;">Se você NÃO solicitou esta alteração, entre em contato imediatamente com o suporte ou redefina sua senha.</p>
+    <p style="color: #35474B; font-size: 14px;">Se você realizou esta alteração, nenhuma outra ação é necessária.</p>
+    <p style="color: #8F8A87; font-size: 12px; margin-top: 24px; border-top: 1px solid #EAE0DA; padding-top: 12px;">Se você NÃO solicitou esta alteração, entre em contato imediatamente com o suporte técnico para bloquear o acesso não autorizado.</p>
   </div>
 </body>
 </html>`;
@@ -66,28 +68,80 @@ async function sendSecurityAlertEmail(to: string) {
       html,
       text: 'Confirmamos que a senha da sua conta no Dex Jurídico foi alterada com sucesso.'
     });
-  } catch (e) {
-    console.warn('[Reset Password Alert] Erro ao enviar aviso por e-mail:', e);
+  } catch (e: any) {
+    console.warn('[Reset Password Alert] Erro ao enviar aviso por e-mail:', e?.message);
   }
 }
 
+function validateServerPassword(password: string): { isValid: boolean; error?: string } {
+  if (typeof password !== 'string' || password.length < 8) {
+    return { isValid: false, error: 'A senha deve conter no mínimo 8 caracteres.' };
+  }
+  if (!/[A-Z]/.test(password)) {
+    return { isValid: false, error: 'A senha deve conter pelo menos uma letra maiúscula (A-Z).' };
+  }
+  if (!/[a-z]/.test(password)) {
+    return { isValid: false, error: 'A senha deve conter pelo menos uma letra minúscula (a-z).' };
+  }
+  if (!/[0-9]/.test(password)) {
+    return { isValid: false, error: 'A senha deve conter pelo menos um número (0-9).' };
+  }
+  if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
+    return { isValid: false, error: 'A senha deve conter pelo menos um caractere especial (!@#$%^&*...).' };
+  }
+  return { isValid: true };
+}
+
 export default async function handler(req: any, res: any) {
+  // CORS
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 200;
+    return res.end();
+  }
+
   if (req.method !== 'POST') {
     res.statusCode = 405;
-    return res.end(JSON.stringify({ success: false, error: 'Método não permitido.' }));
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    return res.end(JSON.stringify({ success: false, error: 'Método não permitido. Utilize POST.' }));
   }
 
   try {
-    const { token, newPassword, email } = req.body || {};
+    let body = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch {
+        res.statusCode = 400;
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        return res.end(JSON.stringify({ success: false, error: 'JSON inválido no corpo da requisição.' }));
+      }
+    }
+
+    const { token, newPassword, email } = body || {};
 
     if (!token || typeof token !== 'string') {
       res.statusCode = 400;
-      return res.end(JSON.stringify({ success: false, error: 'Token de redefinição não fornecido.' }));
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      return res.end(JSON.stringify({ success: false, code: 'INVALID_TOKEN', error: 'Token de redefinição não fornecido.' }));
     }
 
-    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
+    const pwdValidation = validateServerPassword(newPassword);
+    if (!pwdValidation.isValid) {
       res.statusCode = 400;
-      return res.end(JSON.stringify({ success: false, error: 'A nova senha deve conter no mínimo 6 caracteres.' }));
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      return res.end(JSON.stringify({ 
+        success: false, 
+        code: 'WEAK_PASSWORD', 
+        error: pwdValidation.error 
+      }));
     }
 
     const clientEmail = (email || '').trim().toLowerCase();
@@ -96,64 +150,107 @@ export default async function handler(req: any, res: any) {
     const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
-    let targetEmail = '';
-
     // Gera novo salt e hash criptográfico compatível com Dex (SHA-256(salt + password))
     const newSalt = crypto.randomBytes(16).toString('hex');
     const newPasswordHash = crypto.createHash('sha256').update(newSalt + newPassword).digest('hex');
 
+    let targetEmail = clientEmail;
+
     if (supabaseUrl && supabaseKey) {
       try {
-        const queryRes = await fetch(`${supabaseUrl}/rest/v1/dex_auth_tokens?tokenHash=eq.${encodeURIComponent(tokenHash)}&usedAt=is.null&select=*`, {
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`
-          }
-        });
+        const supabase = createClient(supabaseUrl, supabaseKey);
 
-        if (queryRes.ok) {
-          const list: any = await queryRes.json();
-          if (Array.isArray(list) && list.length > 0) {
-            const record = list[0];
-            targetEmail = record.email;
+        const { data: tokens, error: tokenErr } = await supabase
+          .from('dex_auth_tokens')
+          .select('*')
+          .eq('tokenHash', tokenHash)
+          .order('created_at', { ascending: false });
 
-            // Invalida o token
-            await fetch(`${supabaseUrl}/rest/v1/dex_auth_tokens?id=eq.${encodeURIComponent(record.id)}`, {
-              method: 'PATCH',
-              headers: {
-                'apikey': supabaseKey,
-                'Authorization': `Bearer ${supabaseKey}`,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=minimal'
-              },
-              body: JSON.stringify({ usedAt: new Date().toISOString() })
-            });
-
-            // Atualiza senha no Supabase
-            await fetch(`${supabaseUrl}/rest/v1/dex_users?email=eq.${encodeURIComponent(targetEmail)}`, {
-              method: 'PATCH',
-              headers: {
-                'apikey': supabaseKey,
-                'Authorization': `Bearer ${supabaseKey}`,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=minimal'
-              },
-              body: JSON.stringify({
-                salt: newSalt,
-                passwordHash: newPasswordHash
-              })
-            });
-          }
+        if (tokenErr) {
+          console.error('[API Reset Password] Erro ao buscar token:', tokenErr.message);
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          return res.end(JSON.stringify({ success: false, error: 'Erro no banco de dados ao verificar o token.' }));
         }
-      } catch (e) {
-        console.warn('[API Reset Password] Erro ao sincronizar com Supabase:', e);
+
+        if (!tokens || tokens.length === 0) {
+          res.statusCode = 400;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          return res.end(JSON.stringify({ 
+            success: false, 
+            code: 'INVALID_TOKEN', 
+            error: 'Link de redefinição inválido ou inexistente.' 
+          }));
+        }
+
+        const record = tokens[0];
+        const now = new Date();
+
+        if (record.usedAt) {
+          res.statusCode = 410;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          return res.end(JSON.stringify({ 
+            success: false, 
+            code: 'ALREADY_USED', 
+            error: 'Este link de redefinição de senha já foi utilizado anteriormente.' 
+          }));
+        }
+
+        if (new Date(record.expiresAt) < now) {
+          res.statusCode = 410;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          return res.end(JSON.stringify({ 
+            success: false, 
+            code: 'EXPIRED_TOKEN', 
+            error: 'Este link de redefinição expirou (validade de 24 horas). Solicite um novo link.' 
+          }));
+        }
+
+        targetEmail = (record.email || clientEmail).trim().toLowerCase();
+        const targetUserId = record.userId;
+
+        // 1. Marca o token como consumido
+        await supabase
+          .from('dex_auth_tokens')
+          .update({ usedAt: now.toISOString() })
+          .eq('id', record.id);
+
+        // 2. Atualiza a senha e confirma o e-mail em dex_users por email E por id
+        const userUpdates = {
+          salt: newSalt,
+          passwordHash: newPasswordHash,
+          isEmailConfirmed: true,
+          status: 'ACTIVE'
+        };
+
+        if (targetEmail) {
+          await supabase
+            .from('dex_users')
+            .update(userUpdates)
+            .eq('email', targetEmail);
+        }
+
+        if (targetUserId) {
+          await supabase
+            .from('dex_users')
+            .update(userUpdates)
+            .eq('id', targetUserId);
+        }
+
+        console.log(`[API Reset Password] Senha redefinida no Supabase com sucesso para: ${targetEmail}`);
+      } catch (sbErr: any) {
+        console.error('[API Reset Password] Exceção Supabase:', sbErr?.message);
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        return res.end(JSON.stringify({ 
+          success: false, 
+          error: 'Falha ao atualizar nova senha no banco: ' + (sbErr?.message || 'Erro') 
+        }));
       }
     }
 
-    const finalEmail = targetEmail || clientEmail;
-
-    if (finalEmail) {
-      sendSecurityAlertEmail(finalEmail).catch(console.warn);
+    if (targetEmail) {
+      sendSecurityAlertEmail(targetEmail).catch(console.warn);
     }
 
     res.statusCode = 200;
@@ -161,7 +258,7 @@ export default async function handler(req: any, res: any) {
     return res.end(JSON.stringify({
       success: true,
       message: 'Sua senha foi redefinida com sucesso! Você já pode fazer login com sua nova credencial.',
-      email: finalEmail || undefined,
+      email: targetEmail,
       newSalt,
       newPasswordHash
     }));

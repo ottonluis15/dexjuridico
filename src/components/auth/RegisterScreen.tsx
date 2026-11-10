@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { 
   ArrowLeft,
+  ArrowRight,
   Building2,
   UserCheck,
   Check,
   CheckCircle2,
+  CreditCard,
   Sun,
   Moon
 } from 'lucide-react';
@@ -14,6 +16,9 @@ import { useTheme } from '../../context/ThemeContext';
 import { DexLogo } from '../common/DexLogo';
 import { AuthSwitchLink } from '../common/AuthSwitchLink';
 import { PasswordInput } from '../common/PasswordInput';
+import { PasswordRequirements } from '../common/PasswordRequirements';
+import { validatePassword } from '../../utils/passwordPolicy';
+import { DEX_PLANS, PlanId, SubscriptionPeriod, getPlanById } from '../../config/plans';
 
 interface RegisterScreenProps {
   onNavigateToLogin: () => void;
@@ -36,6 +41,22 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   // Modalidade de Advogado (se for LAWYER)
   const [lawyerAffiliation, setLawyerAffiliation] = useState<'INDEPENDENT' | 'LINKED'>('INDEPENDENT');
   const [officeCodeOrEmail, setOfficeCodeOrEmail] = useState('');
+
+  // Passo do assistente de cadastro (Passo 1: Escolha do Plano, Passo 2: Dados e Segurança)
+  const [currentStep, setCurrentStep] = useState<1 | 2>(1);
+
+  // Período de faturamento e Plano selecionado
+  const [billingPeriod, setBillingPeriod] = useState<SubscriptionPeriod>('MONTHLY');
+  const [selectedPlanId, setSelectedPlanId] = useState<PlanId>(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search).get('plano')?.toLowerCase() || '';
+      if (p.includes('essencial') || p.includes('essential')) return 'ESSENTIAL';
+      if (p.includes('profissional') || p.includes('professional')) return 'PROFESSIONAL';
+      if (p.includes('escritorio') || p.includes('office')) return 'OFFICE';
+      if (p.includes('gratis') || p.includes('trial')) return 'TRIAL';
+    }
+    return initialPlan.includes('Individual') || initialPlan.includes('Essencial') ? 'ESSENTIAL' : 'PROFESSIONAL';
+  });
 
   // Dados do Escritório
   const [firmName, setFirmName] = useState('');
@@ -106,8 +127,9 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
       return;
     }
 
-    if (password.length < 6) {
-      setError('A senha deve conter no mínimo 6 caracteres.');
+    const pwdValidation = validatePassword(password);
+    if (!pwdValidation.isValid) {
+      setError(pwdValidation.error || 'A senha não atende aos requisitos forenses de segurança.');
       return;
     }
 
@@ -130,7 +152,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
         cnpj: accountType === 'OFFICE' ? cnpj.trim() : undefined,
         address: address.trim() || undefined,
         primaryArea: primaryArea.trim() || undefined,
-        plan: accountType === 'OFFICE' ? initialPlan : 'Advogado Individual',
+        plan: accountType === 'LAWYER' && lawyerAffiliation === 'LINKED' ? 'OFFICE' : selectedPlanId,
         isIndependent: accountType === 'LAWYER' && lawyerAffiliation === 'INDEPENDENT',
         officeCodeOrEmail: accountType === 'LAWYER' && lawyerAffiliation === 'LINKED' ? officeCodeOrEmail.trim() : undefined
       });
@@ -325,7 +347,9 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                     Enviamos um link de confirmação para o endereço <strong className="text-dex-navy-950">{registrationCompletedEmail}</strong>.
                   </p>
                   <p className="text-xs text-dex-support italic max-w-sm mx-auto">
-                    Por segurança institucional, sua conta ficará pendente de ativação até a confirmação do e-mail (válido por 24 horas).
+                    {selectedPlanId !== 'TRIAL' 
+                      ? 'Por segurança institucional, sua conta ficará pendente de ativação até a confirmação do e-mail. Em seguida, você terá acesso à finalização segura pelo Stripe.' 
+                      : 'Por segurança institucional, sua conta de avaliação ficará pendente de ativação até a confirmação do e-mail (válido por 24 horas).'}
                   </p>
                 </div>
 
@@ -339,7 +363,10 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setRegistrationCompletedEmail(null)}
+                    onClick={() => {
+                      setRegistrationCompletedEmail(null);
+                      setCurrentStep(1);
+                    }}
                     className="text-xs text-dex-terracotta hover:underline font-semibold cursor-pointer italic"
                   >
                     Voltar ao formulário
@@ -348,13 +375,206 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               </div>
             ) : (
               <>
+                {/* Indicador de Progresso do Assistente de Cadastro */}
+                <div className="flex items-center justify-between pb-3 mb-5 border-b border-[#35474B]/20 dark:border-white/10">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-dex-slate-dark dark:bg-[#4A808E] text-white text-xs font-bold flex items-center justify-center shadow-xs">
+                      {currentStep}
+                    </span>
+                    <span className="text-xs sm:text-sm font-semibold text-dex-navy-950 dark:text-[#F9ECE2]">
+                      {currentStep === 1 ? 'Passo 1 de 2: Escolha o Plano da sua Advocacia' : 'Passo 2 de 2: Dados e Credenciais'}
+                    </span>
+                  </div>
+                  {currentStep === 2 && (
+                    <button
+                      type="button"
+                      onClick={() => setCurrentStep(1)}
+                      className="text-xs text-dex-terracotta dark:text-dex-coral-light hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Alterar plano</span>
+                    </button>
+                  )}
+                </div>
+
                 {error && (
                   <div className="mb-4 p-3.5 rounded-xl bg-dex-coral/20 border border-dex-coral/60 text-dex-navy-950 text-xs font-semibold">
                     {error}
                   </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-5">
+                {/* PASSO 1: ESCOLHA DO PLANO */}
+                {currentStep === 1 && (
+                  <div className="space-y-5 animate-fadeIn">
+                    {accountType === 'LAWYER' && lawyerAffiliation === 'LINKED' ? (
+                      <div className="p-4 rounded-2xl bg-white/70 dark:bg-[#0F2733]/70 border border-[#D5B093]/70 dark:border-[#214154] text-center space-y-3">
+                        <UserCheck className="w-8 h-8 text-[#4A808E] mx-auto" />
+                        <h4 className="text-base font-bold text-dex-navy-950 dark:text-white">
+                          Vínculo a Escritório Existente
+                        </h4>
+                        <p className="text-xs text-dex-support dark:text-[#A6C5CD] max-w-md mx-auto leading-relaxed">
+                          Como advogado associado, seu acesso e faturamento são cobertos integralmente pelo escritório titular. Você não precisa selecionar nenhum plano nem informar cartão de crédito.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setCurrentStep(2)}
+                          className="px-6 py-2.5 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-xs font-semibold rounded-xl shadow-md transition-all cursor-pointer"
+                        >
+                          Avançar para dados cadastrais →
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Seletor Ciclo de Cobrança: Mensal vs Anual */}
+                        <div className="flex items-center justify-between bg-white/60 dark:bg-[#0F2733]/60 p-2 rounded-2xl border border-[#D5B093]/60 dark:border-[#214154]">
+                          <span className="text-xs font-medium text-dex-navy-950/80 dark:text-[#A6C5CD] pl-2">
+                            Ciclo de Faturamento:
+                          </span>
+                          <div className="inline-flex items-center bg-[#E5D7CC] dark:bg-[#1A3342] p-1 rounded-xl">
+                            <button
+                              type="button"
+                              onClick={() => setBillingPeriod('MONTHLY')}
+                              className={`px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                                billingPeriod === 'MONTHLY'
+                                  ? 'bg-dex-slate-dark text-white font-semibold shadow-xs'
+                                  : 'text-dex-navy-950/70 dark:text-white/70 hover:text-dex-navy-950'
+                              }`}
+                            >
+                              Mensal
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setBillingPeriod('YEARLY')}
+                              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                                billingPeriod === 'YEARLY'
+                                  ? 'bg-dex-slate-dark text-white font-semibold shadow-xs'
+                                  : 'text-dex-navy-950/70 dark:text-white/70 hover:text-dex-navy-950'
+                              }`}
+                            >
+                              <span>Anual</span>
+                              <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.5 rounded-full font-bold">
+                                -20%
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Grade Compacta de Cards de Planos */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-1">
+                          {(['TRIAL', 'ESSENTIAL', 'PROFESSIONAL', 'OFFICE'] as PlanId[]).map((pid) => {
+                            const p = DEX_PLANS[pid];
+                            const isSelected = selectedPlanId === pid;
+                            const price = billingPeriod === 'YEARLY' ? p.yearlyPricePerMonth : p.monthlyPrice;
+
+                            return (
+                              <div
+                                key={pid}
+                                onClick={() => setSelectedPlanId(pid)}
+                                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between text-left relative ${
+                                  isSelected
+                                    ? 'bg-white dark:bg-[#1A3342] border-dex-slate-dark dark:border-[#4A808E] ring-2 ring-dex-slate-dark/30 shadow-md'
+                                    : 'bg-white/50 dark:bg-[#0F2733]/50 border-[#D5B093]/60 dark:border-[#214154] hover:bg-white/80 dark:hover:bg-[#162B37]'
+                                }`}
+                              >
+                                {p.badge && (
+                                  <span className="absolute top-2.5 right-2.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-dex-peach dark:bg-[#214154] text-dex-navy-950 dark:text-[#A6C5CD] border border-black/5">
+                                    {p.badge}
+                                  </span>
+                                )}
+
+                                <div>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${isSelected ? 'border-dex-slate-dark dark:border-[#4A808E] bg-dex-slate-dark dark:bg-[#4A808E]' : 'border-gray-400'}`}>
+                                      {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                    </div>
+                                    <h5 className="text-sm font-bold text-dex-navy-950 dark:text-white">
+                                      {p.name}
+                                    </h5>
+                                  </div>
+
+                                  <div className="my-1.5">
+                                    {price === 0 ? (
+                                      <span className="text-lg font-bold text-dex-navy-950 dark:text-white">Grátis</span>
+                                    ) : (
+                                      <div className="flex items-baseline gap-1">
+                                        <span className="text-lg font-bold text-dex-navy-950 dark:text-white">R$ {price}</span>
+                                        <span className="text-[10px] text-dex-support dark:text-[#A6C5CD]">/mês</span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <ul className="text-[11px] text-dex-support dark:text-[#A6C5CD] space-y-1 mb-2">
+                                    <li className="flex items-center gap-1.5">
+                                      <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+                                      <span>Até {p.limits.maxActiveCases} processos ativos</span>
+                                    </li>
+                                    <li className="flex items-center gap-1.5">
+                                      <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+                                      <span>Até {p.limits.maxClients} clientes na carteira</span>
+                                    </li>
+                                    <li className="flex items-center gap-1.5">
+                                      <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+                                      <span>{p.limits.maxLawyers === 1 ? '1 Acesso profissional' : `Até ${p.limits.maxLawyers} advogados`}</span>
+                                    </li>
+                                  </ul>
+                                </div>
+
+                                <div className="pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[11px]">
+                                  <span className={`font-semibold ${isSelected ? 'text-dex-slate-dark dark:text-[#82B3C0]' : 'text-dex-support/70'}`}>
+                                    {isSelected ? '✓ Selecionado' : 'Clique para escolher'}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Botão para Avançar para Dados Cadastrais */}
+                        <div className="pt-2 text-center space-y-3">
+                          <button
+                            type="button"
+                            onClick={() => setCurrentStep(2)}
+                            className="w-full sm:w-auto min-w-[240px] px-8 py-3 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-sm font-semibold rounded-xl shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center gap-2 mx-auto"
+                          >
+                            <span>Continuar para Dados Cadastrais</span>
+                            <ArrowRight className="w-4 h-4" />
+                          </button>
+
+                          <AuthSwitchLink
+                            prompt="Já tem conta?"
+                            actionLabel="Fazer login"
+                            onAction={onNavigateToLogin}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* PASSO 2: FORMULÁRIO DE DADOS CADASTRAIS & SEGURANÇA */}
+                {currentStep === 2 && (
+                  <form onSubmit={handleSubmit} className="space-y-5 animate-fadeIn">
+                    {/* Chip de Resumo do Plano Selecionado */}
+                    {!(accountType === 'LAWYER' && lawyerAffiliation === 'LINKED') && (
+                      <div className="p-3 bg-white/70 dark:bg-[#0F2733]/70 rounded-xl border border-[#D5B093]/70 dark:border-[#214154] flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="w-4 h-4 text-[#4A808E]" />
+                          <span className="font-semibold text-dex-navy-950 dark:text-white">
+                            Plano: {DEX_PLANS[selectedPlanId]?.name}
+                          </span>
+                          <span className="text-dex-support dark:text-[#A6C5CD]">
+                            ({billingPeriod === 'YEARLY' ? 'Anual com -20%' : 'Mensal'})
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setCurrentStep(1)}
+                          className="text-dex-terracotta dark:text-dex-coral-light hover:underline font-semibold cursor-pointer"
+                        >
+                          Trocar
+                        </button>
+                      </div>
+                    )}
               {/* DADOS DO ESCRITÓRIO OU TIPO DE VÍNCULO */}
               {accountType === 'OFFICE' ? (
                 <div className="space-y-4">
@@ -553,7 +773,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Mínimo 6 dígitos"
+                    placeholder="Mínimo 8 caracteres"
                     autoComplete="new-password"
                   />
                 </div>
@@ -566,11 +786,20 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Repita a senha"
+                    placeholder="Repita a nova senha"
                     autoComplete="new-password"
                   />
                 </div>
               </div>
+
+              {/* Checklist Forense de Senha em Tempo Real (Tarefa 2) */}
+              {(password.length > 0 || confirmPassword.length > 0) && (
+                <PasswordRequirements
+                  password={password}
+                  confirmPassword={confirmPassword}
+                  showMatchStatus={true}
+                />
+              )}
 
               {/* BOTÃO CRIAR ESCRITÓRIO (Slate Escuro - Anexo 3) */}
               <div className="pt-3 text-center space-y-3">
@@ -590,6 +819,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                 />
               </div>
             </form>
+            )}
             </>
             )}
           </div>

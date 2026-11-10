@@ -15,6 +15,8 @@ import {
 import { DexLogo } from '../common/DexLogo';
 import { AuthSwitchLink } from '../common/AuthSwitchLink';
 import { PasswordInput } from '../common/PasswordInput';
+import { PasswordRequirements } from '../common/PasswordRequirements';
+import { validatePassword } from '../../utils/passwordPolicy';
 import { storageService } from '../../services/storageService';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -38,22 +40,16 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Verificações em tempo real dos requisitos de segurança forense
-  const hasMinLength = newPassword.length >= 8;
-  const hasUppercase = /[A-Z]/.test(newPassword);
-  const hasLowercase = /[a-z]/.test(newPassword);
-  const hasNumber = /[0-9]/.test(newPassword);
-  const hasSpecial = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(newPassword);
-  const passwordsMatch = newPassword.length > 0 && newPassword === confirmPassword;
-
-  const isPasswordStrong = hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecial;
+  const pwdValidation = validatePassword(newPassword);
+  const passwordsMatch = newPassword.length > 0 && confirmPassword.length > 0 && newPassword === confirmPassword;
+  const isPasswordStrong = pwdValidation.isValid;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
     if (!isPasswordStrong) {
-      setError('A nova senha precisa atender a todos os requisitos de segurança listados abaixo.');
+      setError(pwdValidation.error || 'A nova senha precisa atender a todos os requisitos de segurança listados abaixo.');
       return;
     }
 
@@ -300,39 +296,12 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
                     />
                   </div>
 
-                  {/* INDICADOR VISUAL DE REQUISITOS DE SENHA */}
-                  <div className="p-3.5 bg-[#FAF0E6] rounded-xl border border-[#D5B093]/70 space-y-2">
-                    <p className="text-[11px] font-bold text-dex-navy-950 font-serif flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-dex-slate-dark" />
-                      <span>Requisitos da Senha Forense:</span>
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px]">
-                      <div className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-700 font-semibold' : 'text-dex-support'}`}>
-                        {hasMinLength ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <span className="w-3.5 h-3.5 rounded-full border border-dex-support/60 inline-block shrink-0" />}
-                        <span>No mínimo 8 caracteres</span>
-                      </div>
-                      <div className={`flex items-center gap-1.5 ${hasUppercase ? 'text-emerald-700 font-semibold' : 'text-dex-support'}`}>
-                        {hasUppercase ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <span className="w-3.5 h-3.5 rounded-full border border-dex-support/60 inline-block shrink-0" />}
-                        <span>Letra maiúscula (A-Z)</span>
-                      </div>
-                      <div className={`flex items-center gap-1.5 ${hasLowercase ? 'text-emerald-700 font-semibold' : 'text-dex-support'}`}>
-                        {hasLowercase ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <span className="w-3.5 h-3.5 rounded-full border border-dex-support/60 inline-block shrink-0" />}
-                        <span>Letra minúscula (a-z)</span>
-                      </div>
-                      <div className={`flex items-center gap-1.5 ${hasNumber ? 'text-emerald-700 font-semibold' : 'text-dex-support'}`}>
-                        {hasNumber ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <span className="w-3.5 h-3.5 rounded-full border border-dex-support/60 inline-block shrink-0" />}
-                        <span>Pelo menos 1 número (0-9)</span>
-                      </div>
-                      <div className={`flex items-center gap-1.5 ${hasSpecial ? 'text-emerald-700 font-semibold' : 'text-dex-support'}`}>
-                        {hasSpecial ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <span className="w-3.5 h-3.5 rounded-full border border-dex-support/60 inline-block shrink-0" />}
-                        <span>Caractere especial (!@#$...)</span>
-                      </div>
-                      <div className={`flex items-center gap-1.5 ${passwordsMatch ? 'text-emerald-700 font-semibold' : 'text-dex-support'}`}>
-                        {passwordsMatch ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <span className="w-3.5 h-3.5 rounded-full border border-dex-support/60 inline-block shrink-0" />}
-                        <span>Senhas coincidem</span>
-                      </div>
-                    </div>
-                  </div>
+                  {/* INDICADOR VISUAL DE REQUISITOS DE SENHA (Tarefa 2) */}
+                  <PasswordRequirements
+                    password={newPassword}
+                    confirmPassword={confirmPassword}
+                    showMatchStatus={true}
+                  />
 
                   <div className="pt-2 flex flex-col sm:flex-row items-center gap-4">
                     <button

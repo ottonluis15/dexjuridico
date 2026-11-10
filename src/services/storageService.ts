@@ -25,6 +25,7 @@ import {
   PRIMARY_OFFICE_ID 
 } from '../mock/initialData';
 import { cryptoService } from './cryptoService';
+import { supabaseService } from './supabaseService';
 
 const STORAGE_KEYS = {
   USERS: 'dex_users',
@@ -308,6 +309,10 @@ export const storageService = {
         currentUser.status = 'ACTIVE';
         this.saveCurrentUser(currentUser);
       }
+
+      // Sincroniza ativação no Supabase se configurado
+      supabaseService.updateUserEmailConfirmation(query).catch(console.warn);
+
       return true;
     }
     return false;
@@ -435,6 +440,10 @@ export const storageService = {
         currentUser.status = 'ACTIVE';
         this.saveCurrentUser(currentUser);
       }
+
+      // Sincroniza nova senha no Supabase se configurado
+      supabaseService.updateUserPassword(query, salt, passwordHash).catch(console.warn);
+
       return true;
     }
     return false;
@@ -488,13 +497,6 @@ export const storageService = {
     const found = users.find(u => (u.email || '').trim().toLowerCase() === query);
     if (found && !found.deletedAt && found.status !== 'DELETED') return found;
 
-    // Contingência direta nos usuários iniciais caso não esteja no storage (e não tenha sido deletado)
-    const fallback = INITIAL_USERS.find(u => (u.email || '').trim().toLowerCase() === query);
-    if (fallback && !deletedEmails.includes(query)) {
-      const merged = [...users, fallback];
-      this.saveUsers(merged);
-      return fallback;
-    }
     return undefined;
   },
 
@@ -1346,6 +1348,7 @@ export const storageService = {
 
     const isLinkedLawyer = user.role === 'LAWYER' && !user.isIndependent;
     const isIndependent = user.isIndependent || !user.officeId;
+    const isSoleOfficeOwner = user.role === 'ADMIN';
 
     if (isLinkedLawyer) {
       // 1. Dados institucionais pertencem ao escritório: reatribui processos e prazos para o sócio titular
@@ -1383,34 +1386,38 @@ export const storageService = {
       // 3. Remove vínculo em dex_lawyers
       const lawyers = this.getLawyers().filter(l => l.userId !== user.id && l.email.toLowerCase() !== user.email.toLowerCase());
       this.saveLawyers(lawyers);
-    } else if (isIndependent) {
-      // Advogado autônomo: expurga seus dados individuais
-      const cases = this.getCases().filter(c => c.lawyerId !== user.id);
+    } else if (isIndependent || isSoleOfficeOwner) {
+      // Advogado autônomo ou sócio único: expurga seus dados
+      const targetOfficeId = user.officeId;
+
+      const cases = this.getCases().filter(c => c.lawyerId !== user.id && (!targetOfficeId || c.officeId !== targetOfficeId));
       this.saveCases(cases);
 
-      const deadlines = this.getDeadlines().filter(d => d.lawyerId !== user.id);
+      const deadlines = this.getDeadlines().filter(d => d.lawyerId !== user.id && (!targetOfficeId || d.officeId !== targetOfficeId));
       this.saveDeadlines(deadlines);
 
-      const clients = this.getClients().filter(cl => cl.linkedLawyerId !== user.id);
+      const clients = this.getClients().filter(cl => cl.linkedLawyerId !== user.id && (!targetOfficeId || cl.officeId !== targetOfficeId));
       this.saveClients(clients);
 
-      const finances = this.getFinancial().filter(f => f.lawyerId !== user.id);
+      const finances = this.getFinancial().filter(f => f.lawyerId !== user.id && (!targetOfficeId || f.officeId !== targetOfficeId));
       this.saveFinancial(finances);
 
-      const docs = this.getDocuments().filter(doc => doc.uploadedByLawyerId !== user.id);
+      const docs = this.getDocuments().filter(doc => doc.uploadedByLawyerId !== user.id && (!targetOfficeId || doc.officeId !== targetOfficeId));
       this.saveDocuments(docs);
 
-      const templates = this.getTemplates().filter(t => t.uploadedByUserId !== user.id);
+      const templates = this.getTemplates().filter(t => t.uploadedByUserId !== user.id && (!targetOfficeId || t.officeId !== targetOfficeId));
       this.saveTemplates(templates);
 
-      const lawyers = this.getLawyers().filter(l => l.userId !== user.id && l.email.toLowerCase() !== user.email.toLowerCase());
+      const posts = this.getTeamPosts().filter(p => p.authorId !== user.id && (!targetOfficeId || p.officeId !== targetOfficeId));
+      this.saveTeamPosts(posts);
+
+      const lawyers = this.getLawyers().filter(l => l.userId !== user.id && (!targetOfficeId || l.officeId !== targetOfficeId));
       this.saveLawyers(lawyers);
     }
 
-    // 4. Remove a conta do usuário de dex_users e registra e-mail como excluído (LGPD)
+    // 4. Remove a conta do usuário de dex_users
     const remainingUsers = users.filter(u => u.id !== userId && u.email.toLowerCase() !== user.email.toLowerCase());
     this.saveUsers(remainingUsers);
-    this.addDeletedEmail(user.email);
 
     // Remove tokens de autenticação/recuperação pendentes
     const tokens = this.getAuthTokens().filter(t => t.userId !== userId && t.email.toLowerCase() !== user.email.toLowerCase());
@@ -1429,7 +1436,7 @@ export const storageService = {
       userRole: 'ADMIN',
       action: 'EXCLUSAO_CONTA',
       entity: `Conta: ${user.name}`,
-      details: `Conta pessoal do usuário ${user.name} (${user.email}) excluída em conformidade com a LGPD.`,
+      details: `Conta pessoal do usuário ${user.name} (${user.email}) excluída em conformidade com a LGPD. E-mail liberado para novos cadastros.`,
       ipAddress: '187.54.12.90',
       officeId: user.officeId
     });
@@ -1442,21 +1449,26 @@ export const storageService = {
       return { success: false, error: 'O escritório de demonstração institucional não pode ser excluído.' };
     }
 
-    // 1. Desvincular advogados integrantes, convertendo-os em advogados autônomos
-    const users = this.getUsers().map(u => {
-      if (u.officeId === officeId) {
-        return {
-          ...u,
-          isIndependent: true,
-          officeId: undefined,
-          officeName: undefined,
-          officeCode: undefined,
-          role: 'LAWYER' as const
-        };
-      }
-      return u;
-    });
-    this.saveUsers(users);
+    const currentUsers = this.getUsers();
+    const officeOwner = currentUsers.find(u => u.officeId === officeId && u.role === 'ADMIN');
+
+    // 1. Desvincular advogados integrantes (exceto o sócio titular que está excluindo o escritório), convertendo-os em advogados autônomos
+    const updatedUsers = currentUsers
+      .filter(u => !(u.officeId === officeId && u.role === 'ADMIN')) // Remove a conta do titular
+      .map(u => {
+        if (u.officeId === officeId) {
+          return {
+            ...u,
+            isIndependent: true,
+            officeId: undefined,
+            officeName: undefined,
+            officeCode: undefined,
+            role: 'LAWYER' as const
+          };
+        }
+        return u;
+      });
+    this.saveUsers(updatedUsers);
 
     // 2. Apagar dados vinculados ao escritório
     const cases = this.getCases().filter(c => c.officeId !== officeId);
@@ -1482,6 +1494,12 @@ export const storageService = {
 
     const lawyers = this.getLawyers().filter(l => l.officeId !== officeId);
     this.saveLawyers(lawyers);
+
+    // Se o titular estiver logado, limpa sessão
+    const current = this.getCurrentUser();
+    if (current && (current.officeId === officeId || (officeOwner && current.id === officeOwner.id))) {
+      this.saveCurrentUser(null);
+    }
 
     // 3. Auditoria Forense
     this.addAuditLog({

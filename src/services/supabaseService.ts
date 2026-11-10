@@ -113,6 +113,56 @@ export const supabaseService = {
   },
 
   /**
+   * Confirma e ativa o e-mail de um usuário no Supabase
+   */
+  async updateUserEmailConfirmation(emailOrUserId: string): Promise<boolean> {
+    const client = getSupabaseClient();
+    if (!client) return false;
+
+    try {
+      const clean = emailOrUserId.trim().toLowerCase();
+      await client
+        .from('dex_users')
+        .update({ isEmailConfirmed: true, status: 'ACTIVE' })
+        .eq('email', clean);
+
+      await client
+        .from('dex_users')
+        .update({ isEmailConfirmed: true, status: 'ACTIVE' })
+        .eq('id', emailOrUserId);
+
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * Atualiza a senha (salt e passwordHash) no Supabase
+   */
+  async updateUserPassword(email: string, salt: string, passwordHash: string): Promise<boolean> {
+    const client = getSupabaseClient();
+    if (!client) return false;
+
+    try {
+      const clean = email.trim().toLowerCase();
+      await client
+        .from('dex_users')
+        .update({ 
+          salt, 
+          passwordHash, 
+          isEmailConfirmed: true, 
+          status: 'ACTIVE' 
+        })
+        .eq('email', clean);
+
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  /**
    * Remove usuário e registros associados no Supabase (LGPD / Exclusão de Conta)
    */
   async deleteUser(userId: string, email?: string): Promise<boolean> {
@@ -121,22 +171,37 @@ export const supabaseService = {
 
     try {
       const cleanEmail = email?.trim().toLowerCase();
-      // 1. Exclui da tabela de usuários por ID e/ou e-mail
-      await client.from('dex_users').delete().eq('id', userId);
-      if (cleanEmail) {
-        await client.from('dex_users').delete().eq('email', cleanEmail);
-      }
 
-      // 2. Exclui de dex_lawyers
+      // 1. Exclui registros operacionais pessoais (casos, prazos, clientes, finanças, docs, modelos)
+      await client.from('dex_cases').delete().eq('lawyerId', userId);
+      await client.from('dex_deadlines').delete().eq('lawyerId', userId);
+      await client.from('dex_clients').delete().eq('linkedLawyerId', userId);
+      await client.from('dex_financial').delete().eq('lawyerId', userId);
+      await client.from('dex_documents').delete().eq('uploadedByLawyerId', userId);
+      await client.from('dex_templates').delete().eq('uploadedByUserId', userId);
+
+      // 2. Anonimiza autoria de posts no mural da equipe e remove curtidas
+      await client.from('dex_team_posts').update({ 
+        authorName: 'Advogado Removido', 
+        authorRole: 'Ex-integrante' 
+      }).eq('authorId', userId);
+      await client.from('dex_team_post_likes').delete().eq('userId', userId);
+
+      // 3. Exclui da tabela de advogados e tokens
       await client.from('dex_lawyers').delete().eq('userId', userId);
       if (cleanEmail) {
         await client.from('dex_lawyers').delete().eq('email', cleanEmail);
       }
 
-      // 3. Exclui tokens de verificação/redefinição pendentes
       await client.from('dex_auth_tokens').delete().eq('userId', userId);
       if (cleanEmail) {
         await client.from('dex_auth_tokens').delete().eq('email', cleanEmail);
+      }
+
+      // 4. Exclui da tabela de usuários por ID e/ou e-mail (liberando a chave UNIQUE)
+      await client.from('dex_users').delete().eq('id', userId);
+      if (cleanEmail) {
+        await client.from('dex_users').delete().eq('email', cleanEmail);
       }
 
       return true;
@@ -149,7 +214,7 @@ export const supabaseService = {
   /**
    * Encerra escritório no Supabase (LGPD)
    */
-  async deleteOffice(officeId: string): Promise<boolean> {
+  async deleteOffice(officeId: string, ownerEmail?: string): Promise<boolean> {
     const client = getSupabaseClient();
     if (!client) return false;
 
@@ -182,6 +247,14 @@ export const supabaseService = {
       await client.from('dex_documents').delete().eq('officeId', officeId);
       await client.from('dex_templates').delete().eq('officeId', officeId);
       await client.from('dex_team_posts').delete().eq('officeId', officeId);
+
+      // 3. Se e-mail do titular foi informado, remove sua conta de dex_users
+      if (ownerEmail) {
+        const cleanEmail = ownerEmail.trim().toLowerCase();
+        await client.from('dex_lawyers').delete().eq('email', cleanEmail);
+        await client.from('dex_auth_tokens').delete().eq('email', cleanEmail);
+        await client.from('dex_users').delete().eq('email', cleanEmail);
+      }
 
       return true;
     } catch (err) {

@@ -51,6 +51,29 @@ export const PlansView: React.FC = () => {
   const isDemo = !!currentUser?.isDemo;
   const canModifySubscription = !isAssociateLawyer && !isDemo;
 
+  const handleOpenBillingPortal = async () => {
+    try {
+      const res = await fetch('/api/payment/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId: currentUser?.stripeCustomerId,
+          returnUrl: window.location.href
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+          return;
+        }
+      }
+      showToast('Portal de faturamento disponível para gerenciar cartões e faturas.', 'info');
+    } catch {
+      showToast('Erro ao redirecionar para o portal de faturamento.', 'error');
+    }
+  };
+
   // Iniciar fluxo de checkout
   const handleOpenCheckout = (plan: PlanDefinition) => {
     if (!canModifySubscription) {
@@ -208,12 +231,23 @@ export const PlansView: React.FC = () => {
               {currentUser?.subscriptionPeriod === 'YEARLY' ? 'Faturamento Anual' : 'Faturamento Mensal'}
             </div>
             {currentStatus === 'ACTIVE' && canModifySubscription && (
-              <button
-                onClick={() => setIsCancelModalOpen(true)}
-                className="text-xs text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 underline mt-1 cursor-pointer"
-              >
-                Cancelar assinatura
-              </button>
+              <div className="flex flex-col sm:flex-row gap-2.5 mt-2">
+                <button
+                  type="button"
+                  onClick={handleOpenBillingPortal}
+                  className="text-xs text-dex-slate-dark dark:text-[#A6C5CD] hover:text-dex-navy-950 dark:hover:text-white underline cursor-pointer flex items-center gap-1 font-medium"
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>Forma de pagamento & Faturas</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsCancelModalOpen(true)}
+                  className="text-xs text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 underline cursor-pointer"
+                >
+                  Cancelar assinatura
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -501,24 +535,28 @@ export const PlansView: React.FC = () => {
               </button>
             </div>
 
-            {/* Aviso Obrigatório de Demonstração */}
-            <div className="px-6 pt-4">
-              <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-xl flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200">
-                <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="block font-bold">Ambiente de demonstração: nenhuma cobrança será realizada.</strong>
-                  Não insira dados reais de cartão de crédito. Utilize os valores simulados preenchidos automaticamente.
+            {/* Aviso Obrigatório de Demonstração (apenas para conta demo) */}
+            {isDemo && (
+              <div className="px-6 pt-4">
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-xl flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200">
+                  <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="block font-bold">Ambiente de demonstração: nenhuma cobrança será realizada.</strong>
+                    Não insira dados reais de cartão de crédito. Utilize os valores simulados preenchidos automaticamente.
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* Aviso de Downgrade se houver excesso */}
-              {downgradeWarning && (
-                <div className="mt-3 p-3 bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-800 rounded-xl flex items-start gap-2.5 text-xs text-red-900 dark:text-red-200">
+            {/* Aviso de Downgrade se houver excesso */}
+            {downgradeWarning && (
+              <div className="px-6 pt-3">
+                <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-800 rounded-xl flex items-start gap-2.5 text-xs text-red-900 dark:text-red-200">
                   <AlertCircle className="w-4 h-4 text-red-700 dark:text-red-400 shrink-0 mt-0.5" />
                   <div>{downgradeWarning}</div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Formulário de Pagamento Simulado */}
             <form onSubmit={handleConfirmSubscription} className="p-6 space-y-4">

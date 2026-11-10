@@ -714,32 +714,40 @@ export const SettingsView: React.FC = () => {
             </div>
           </form>
 
-          {/* Zona de Perigo do Escritório */}
+          {/* ZONA DE PERIGO: ENCERRAMENTO DO ESCRITÓRIO (Tarefa 1) */}
           {!currentUser?.isIndependent && currentUser?.officeId && (
-            <div className="bg-red-500/5 dark:bg-red-950/20 border-2 border-red-500/40 dark:border-red-500/60 rounded-[24px] p-6 sm:p-8 shadow-xl font-serif">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                <div className="space-y-1.5 max-w-xl">
-                  <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-bold text-sm uppercase tracking-wider">
-                    <ShieldAlert className="w-5 h-5 shrink-0" />
-                    <span>Zona de Perigo • Encerramento do Escritório</span>
-                  </div>
-                  <h4 className="text-lg font-serif font-bold text-white">
-                    Encerrar escritório definitivamente
-                  </h4>
-                  <p className="text-xs text-[#A6C5CD] leading-relaxed">
-                    Esta ação apagará todos os dados institucionais associados a <strong>{currentUser.officeName || 'este escritório'}</strong> (processos, finanças, modelos, documentos e publicações do mural). Os advogados integrantes serão preservados e desvinculados como autônomos.
-                  </p>
-                </div>
+            <div className="pt-8 mt-8 border-t border-dex-navy-950/10 dark:border-white/10 space-y-4 font-serif">
+              <div className="flex items-center gap-2 text-dex-terracotta dark:text-rose-400">
+                <AlertTriangle className="w-4 h-4 stroke-[1.75]" />
+                <h3 className="text-sm font-bold uppercase tracking-wider">
+                  Zona de perigo
+                </h3>
+              </div>
+              <p className="text-xs text-dex-support dark:text-[#A6C5CD] italic -mt-2">
+                Ações irreversíveis que dissolvem a banca jurídica, liberam credenciais e tratam dados em custódia legal.
+              </p>
 
-                <div className="shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setShowDeleteOfficeModal(true)}
-                    className="min-h-[44px] px-6 py-2.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-semibold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    <span>Encerrar Escritório</span>
-                  </button>
+              <div className="bg-rose-500/5 dark:bg-rose-950/20 border border-rose-300/60 dark:border-rose-900/50 rounded-2xl p-5 sm:p-6 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 sm:gap-6">
+                  <div className="space-y-1.5 max-w-xl">
+                    <h4 className="text-base font-serif font-bold text-dex-navy-950 dark:text-white">
+                      Encerrar escritório definitivamente
+                    </h4>
+                    <p className="text-xs text-dex-support dark:text-[#A6C5CD] leading-relaxed">
+                      Esta ação apagará todos os dados corporativos associados a <strong>{currentUser.officeName || 'este escritório'}</strong> (processos, finanças, modelos, documentos e publicações do mural). Os advogados integrantes serão preservados e convertidos em autônomos.
+                    </p>
+                  </div>
+
+                  <div className="shrink-0 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteOfficeModal(true)}
+                      className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 rounded-xl border border-rose-600/70 dark:border-rose-400/70 text-rose-700 dark:text-rose-300 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white active:bg-rose-700 font-semibold text-xs transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 motion-reduce:transition-none cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <Trash2 className="w-4 h-4 shrink-0" />
+                      <span>Excluir escritório</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

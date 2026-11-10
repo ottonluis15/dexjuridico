@@ -1,9 +1,10 @@
 // Vercel Serverless Function: POST /api/auth/send-verification
-// Envia e-mail de confirmação de cadastro ou reenvio de confirmação
+// Envia e-mail de confirmação de cadastro ou reenvio de ativação com token criptográfico seguro
 // 100% autônomo (zero dependências relativas para evitar falhas no Vercel)
 
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
+import { createClient } from '@supabase/supabase-js';
 
 function getEmailCredentials() {
   const rawUser = 
@@ -141,21 +142,49 @@ async function sendVerificationEmail(to: string, confirmUrl: string, name?: stri
 }
 
 export default async function handler(req: any, res: any) {
+  // CORS
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 200;
+    return res.end();
+  }
+
   if (req.method !== 'POST') {
     res.statusCode = 405;
-    return res.end(JSON.stringify({ success: false, error: 'Método não permitido.' }));
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    return res.end(JSON.stringify({ success: false, error: 'Método não permitido. Utilize POST.' }));
   }
 
   try {
-    const { email, name, userId, origin } = req.body || {};
+    let body = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch {
+        res.statusCode = 400;
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        return res.end(JSON.stringify({ success: false, error: 'JSON inválido no corpo da requisição.' }));
+      }
+    }
+
+    const { email, name, userId, origin } = body || {};
 
     if (!email || typeof email !== 'string') {
       res.statusCode = 400;
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
       return res.end(JSON.stringify({ success: false, error: 'E-mail não informado.' }));
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const effectiveUserId = userId || `usr_${cleanEmail}`;
+    let effectiveUserId = userId || `usr_${cleanEmail}`;
+    let effectiveName = name || '';
 
     // Cria token seguro de uso único (válido por 24 horas)
     const rawToken = crypto.randomBytes(32).toString('hex');
@@ -168,28 +197,34 @@ export default async function handler(req: any, res: any) {
 
     if (supabaseUrl && supabaseKey) {
       try {
-        // Invalida tokens anteriores
-        await fetch(`${supabaseUrl}/rest/v1/dex_auth_tokens?userId=eq.${encodeURIComponent(effectiveUserId)}&type=eq.EMAIL_VERIFICATION&usedAt=is.null`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify({ usedAt: now.toISOString() })
-        });
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        // Se o userId não veio ou é provisório, tenta achar o usuário real em dex_users
+        if (!userId) {
+          const { data: userRecords } = await supabase
+            .from('dex_users')
+            .select('id, name')
+            .eq('email', cleanEmail)
+            .limit(1);
+
+          if (userRecords && userRecords.length > 0) {
+            effectiveUserId = userRecords[0].id;
+            if (!effectiveName) effectiveName = userRecords[0].name;
+          }
+        }
+
+        // Invalida tokens anteriores não usados para este e-mail
+        await supabase
+          .from('dex_auth_tokens')
+          .update({ usedAt: now.toISOString() })
+          .eq('email', cleanEmail)
+          .eq('type', 'EMAIL_VERIFICATION')
+          .is('usedAt', null);
 
         // Insere o novo token
-        await fetch(`${supabaseUrl}/rest/v1/dex_auth_tokens`, {
-          method: 'POST',
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify({
+        await supabase
+          .from('dex_auth_tokens')
+          .insert([{
             id: `tok_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
             userId: effectiveUserId,
             email: cleanEmail,
@@ -197,23 +232,24 @@ export default async function handler(req: any, res: any) {
             type: 'EMAIL_VERIFICATION',
             expiresAt,
             usedAt: null,
-            metadata: { name: name || 'Usuário' },
-            createdAt: now.toISOString()
-          })
-        });
-      } catch (e) {
-        console.warn('[API Send Verification] Erro ao sincronizar token no Supabase:', e);
+            metadata: { name: effectiveName || 'Usuário' },
+            created_at: now.toISOString()
+          }]);
+
+        console.log(`[Send Verification] Token gerado no Supabase para ${cleanEmail}`);
+      } catch (e: any) {
+        console.warn('[API Send Verification] Erro ao sincronizar token no Supabase:', e?.message);
       }
     }
 
-    // Constrói a URL de confirmação
+    // Constrói a URL de confirmação com rota dedicada /confirmar-email
     const host = req?.headers?.host || req?.headers?.['x-forwarded-host'];
     const proto = req?.headers?.['x-forwarded-proto'] || 'https';
     const baseUrl = origin || process.env.APP_URL || (host ? `${proto}://${host}` : 'https://dexjuridico.adv.br');
-    const confirmUrl = `${baseUrl}?verify_token=${rawToken}&email=${encodeURIComponent(cleanEmail)}`;
+    const confirmUrl = `${baseUrl.replace(/\/+$/, '')}/confirmar-email?verify_token=${rawToken}&email=${encodeURIComponent(cleanEmail)}`;
 
-    // Dispara o e-mail
-    const emailResult = await sendVerificationEmail(cleanEmail, confirmUrl, name);
+    // Dispara o e-mail via Nodemailer
+    const emailResult = await sendVerificationEmail(cleanEmail, confirmUrl, effectiveName);
 
     res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json; charset=utf-8');

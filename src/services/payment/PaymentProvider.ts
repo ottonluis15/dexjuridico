@@ -109,36 +109,83 @@ export class MockPaymentProvider implements PaymentProvider {
   }
 }
 
-/**
- * =========================================================================================
- * GUIA DE INTEGRAÇÃO DE NOVOS GATEWAYS (STRIPE / MERCADO PAGO):
- * =========================================================================================
- * 
- * Para plugar um gateway real sem alterar o restante da aplicação:
- * 
- * 1. IMPLEMENTAR STRIPE:
- *    export class StripePaymentProvider implements PaymentProvider {
- *      private stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2023-10-16' });
- * 
- *      async createSubscription(input: PaymentIntentInput): Promise<PaymentResult> {
- *        // 1. Criar ou buscar customer no Stripe pelo email do usuário
- *        // 2. Criar Checkout Session ou Subscription direta com o price_id correspondente ao plano
- *        // 3. Retornar os dados formatados na interface PaymentResult
- *      }
- *      ...
- *    }
- * 
- * 2. IMPLEMENTAR MERCADO PAGO:
- *    export class MercadoPagoPaymentProvider implements PaymentProvider {
- *      private mp = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! });
- *      ...
- *    }
- * 
- * 3. BASTA ALTERAR A INSTÂNCIA ABAIXO:
- *    export const activePaymentProvider: PaymentProvider = 
- *      process.env.VITE_PAYMENT_GATEWAY === 'stripe' ? new StripePaymentProvider() : new MockPaymentProvider();
- * =========================================================================================
- */
+export class StripePaymentProvider implements PaymentProvider {
+  getProviderName(): string {
+    return 'Stripe Checkout & Billing';
+  }
 
-export const activePaymentProvider: PaymentProvider = new MockPaymentProvider();
+  async createSubscription(input: PaymentIntentInput): Promise<PaymentResult> {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const res = await fetch('/api/payment/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        planId: input.planId,
+        period: input.period,
+        userId: input.user.id,
+        userEmail: input.user.email,
+        userName: input.user.name,
+        officeId: input.user.officeId,
+        origin
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Falha ao conectar com o gateway de pagamento Stripe.');
+    }
+
+    const data = await res.json();
+    if (data.url && typeof window !== 'undefined') {
+      window.location.href = data.url;
+    }
+
+    const now = new Date();
+    const endDate = new Date(now);
+    if (input.period === 'YEARLY') {
+      endDate.setFullYear(endDate.getFullYear() + 1);
+    } else {
+      endDate.setDate(endDate.getDate() + 30);
+    }
+
+    return {
+      success: true,
+      transactionId: data.sessionId || `stripe_ses_${Date.now()}`,
+      provider: 'STRIPE',
+      message: 'Redirecionando para o Stripe Checkout seguro...',
+      subscription: {
+        planId: input.planId,
+        period: input.period,
+        status: 'ACTIVE',
+        startDate: now.toISOString(),
+        endDate: endDate.toISOString(),
+        amount: input.amount
+      }
+    };
+  }
+
+  async cancelSubscription(userIdOrOfficeId: string): Promise<CancelSubscriptionResult> {
+    const res = await fetch('/api/payment/portal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        returnUrl: typeof window !== 'undefined' ? window.location.href : 'https://dexjuridico.vercel.app/planos'
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.url && typeof window !== 'undefined') {
+        window.location.href = data.url;
+      }
+    }
+    return {
+      success: true,
+      message: 'Redirecionando para o portal de faturamento seguro...',
+      canceledAt: new Date().toISOString()
+    };
+  }
+}
+
+export const activePaymentProvider: PaymentProvider = new StripePaymentProvider();
+export const mockPaymentProvider: PaymentProvider = new MockPaymentProvider();
 

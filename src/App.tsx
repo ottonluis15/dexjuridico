@@ -24,6 +24,7 @@ import { NotificationsView } from './components/notifications/NotificationsView'
 import { SettingsView } from './components/settings/SettingsView';
 import { UserProfileView } from './components/profile/UserProfileView';
 import { PlansView } from './components/plans/PlansView';
+import { PaymentReturnScreen } from './components/plans/PaymentReturnScreen';
 import { CaseModal } from './components/cases/CaseModal';
 import { DeadlineModal } from './components/deadlines/DeadlineModal';
 import { ClientModal } from './components/clients/ClientModal';
@@ -244,6 +245,23 @@ export const App: React.FC = () => {
         token={resetToken || ''}
         email={paramEmail}
         onNavigateToLogin={() => navigate('/login')}
+        onNavigateToLanding={() => navigate('/')}
+      />
+    );
+  }
+
+  // ROTA: Retorno de Pagamento Stripe (/pagamento-sucesso, /pagamento-pendente, /pagamento-falha)
+  if (cleanPath === '/pagamento-sucesso' || cleanPath === '/pagamento-pendente' || cleanPath === '/pagamento-falha') {
+    const statusMap = {
+      '/pagamento-sucesso': 'SUCCESS' as const,
+      '/pagamento-pendente': 'PENDING' as const,
+      '/pagamento-falha': 'CANCELED' as const,
+    };
+    return (
+      <PaymentReturnScreen
+        status={statusMap[cleanPath as keyof typeof statusMap] || 'SUCCESS'}
+        onNavigateToApp={() => navigate('/app')}
+        onNavigateToPlans={() => navigate('/planos')}
         onNavigateToLanding={() => navigate('/')}
       />
     );

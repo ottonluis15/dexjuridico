@@ -118,7 +118,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
     >
       <div
         ref={modalRef}
-        className="w-full max-w-lg bg-dex-cream dark:bg-[#0F2733] border-2 border-red-500/60 dark:border-red-500/80 rounded-[28px] p-6 sm:p-8 shadow-2xl relative font-serif text-dex-navy-950 dark:text-[#F9ECE2] max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-lg bg-dex-peach dark:bg-[#162B37] border border-rose-300/80 dark:border-rose-900/70 rounded-[28px] p-6 sm:p-8 shadow-2xl relative font-serif text-dex-navy-950 dark:text-[#F9ECE2] max-h-[90vh] overflow-y-auto transition-colors"
       >
         {/* Botão de Fechar */}
         <button
@@ -133,13 +133,13 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
 
         {/* Cabeçalho de Alerta Destrutivo */}
         <div className="flex items-start gap-4 mb-5">
-          <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/50 border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
-            <ShieldAlert className="w-6 h-6 stroke-[2]" />
+          <div className="w-11 h-11 rounded-2xl bg-rose-500/10 dark:bg-rose-950/40 border border-rose-300/70 dark:border-rose-800/70 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-5 h-5 stroke-[1.75]" />
           </div>
           <div>
             <h3
               id="delete-modal-title"
-              className="text-xl sm:text-2xl font-display font-bold text-red-600 dark:text-red-400 leading-tight"
+              className="text-xl sm:text-2xl font-display font-bold text-rose-600 dark:text-rose-400 leading-tight"
             >
               {title}
             </h3>
@@ -152,11 +152,31 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
         </div>
 
         {/* Mensagem Descritiva dos Dados Afetados */}
-        <div className="bg-red-50/80 dark:bg-red-950/30 border border-red-200 dark:border-red-900/60 rounded-xl p-4 mb-5 text-xs text-dex-navy-950 dark:text-[#F9ECE2] space-y-2 leading-relaxed">
+        <div className="bg-rose-500/5 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 rounded-2xl p-4 mb-5 text-xs text-dex-navy-950 dark:text-[#F9ECE2] space-y-3 leading-relaxed">
           {typeof description === 'string' ? <p>{description}</p> : description}
-          <div className="pt-2 border-t border-red-200/60 dark:border-red-900/40 flex items-center gap-2 text-red-700 dark:text-red-400 font-bold text-[11px] uppercase tracking-wider">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span>Atenção: Esta ação é definitiva e irreversível</span>
+          
+          <ul className="space-y-1.5 pt-2 border-t border-rose-200/60 dark:border-rose-900/40 text-[11px] text-dex-support dark:text-[#A6C5CD]">
+            <li className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+              <span>Sessões e credenciais de login serão encerradas imediatamente.</span>
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+              <span>Dados pessoais e registros operacionais serão expurgados ou anonimizados.</span>
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+              <span>Assinaturas ativas no Stripe serão canceladas sem novas cobranças.</span>
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+              <span>Seu endereço de e-mail será liberado para novos cadastros.</span>
+            </li>
+          </ul>
+
+          <div className="pt-2 border-t border-rose-200/60 dark:border-rose-900/40 flex items-center gap-2 text-rose-700 dark:text-rose-400 font-bold text-[11px] uppercase tracking-wider">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            <span>Ação definitiva: os dados excluídos não poderão ser recuperados</span>
           </div>
         </div>
 
@@ -165,9 +185,9 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
           <div
             role="alert"
             aria-live="assertive"
-            className="mb-4 p-3.5 bg-red-100 dark:bg-red-900/50 border border-red-300 dark:border-red-700 rounded-xl text-red-800 dark:text-red-200 text-xs flex items-center gap-2 font-sans"
+            className="mb-4 p-3.5 bg-rose-100 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 rounded-xl text-rose-800 dark:text-rose-200 text-xs flex items-center gap-2 font-sans"
           >
-            <AlertTriangle className="w-4 h-4 shrink-0 text-red-600" />
+            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
             <span>{error}</span>
           </div>
         )}
@@ -178,7 +198,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
             <label className="block text-xs font-serif italic text-dex-navy-950 dark:text-[#F9ECE2]">
               {keywordLabel || (
                 <span>
-                  Para confirmar, digite exatamente <strong className="font-mono text-red-600 dark:text-red-400">{keywordRequired}</strong>:
+                  Para autorizar, digite exatamente a palavra <strong className="font-mono text-rose-600 dark:text-rose-400">{keywordRequired}</strong>:
                 </span>
               )}
             </label>
@@ -188,7 +208,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
               value={confirmationInput}
               onChange={(e) => setConfirmationInput(e.target.value)}
               placeholder={keywordRequired}
-              className="w-full px-4 py-2.5 rounded-xl bg-dex-input dark:bg-[#162B37] text-dex-navy-950 dark:text-[#F9ECE2] text-xs sm:text-sm font-mono border border-transparent dark:border-[#214154] focus:outline-none focus:ring-2 focus:ring-red-500 transition-all"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input dark:bg-[#0F2733] text-dex-navy-950 dark:text-[#F9ECE2] text-xs sm:text-sm font-mono border border-transparent dark:border-[#214154] focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all"
             />
           </div>
 
@@ -214,7 +234,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 rounded-xl border border-dex-border dark:border-[#214154] text-dex-navy-950 dark:text-[#F9ECE2] text-xs font-semibold hover:bg-dex-peach/50 dark:hover:bg-[#162B37] transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-dex-coral"
+              className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 rounded-xl border-2 border-dex-navy-950/20 dark:border-white/20 bg-white/50 dark:bg-transparent text-dex-navy-950 dark:text-[#F9ECE2] text-xs font-bold hover:bg-white dark:hover:bg-white/10 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-dex-coral"
             >
               Cancelar
             </button>
@@ -222,7 +242,11 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
             <button
               type="submit"
               disabled={!isFormValid}
-              className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-semibold shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+              className={`w-full sm:w-auto min-h-[44px] px-6 py-2.5 rounded-xl text-xs font-semibold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 disabled:opacity-40 disabled:cursor-not-allowed ${
+                isFormValid 
+                  ? 'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white' 
+                  : 'border border-rose-400/50 text-rose-600 dark:text-rose-400 bg-transparent'
+              }`}
             >
               {isSubmitting ? (
                 <>
@@ -232,7 +256,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
               ) : (
                 <>
                   <Trash2 className="w-4 h-4" />
-                  <span>{isOffice ? 'Excluir Escritório Definitivamente' : 'Excluir Minha Conta Definitivamente'}</span>
+                  <span>{isOffice ? 'Excluir Escritório' : 'Excluir Minha Conta'}</span>
                 </>
               )}
             </button>

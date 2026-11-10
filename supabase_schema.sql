@@ -37,6 +37,16 @@ ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "pendingEmail" TEXT;
 ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "subscriptionPlan" TEXT DEFAULT 'OFFICE';
 ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "subscriptionStatus" TEXT DEFAULT 'ACTIVE';
 ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "subscriptionPeriod" TEXT DEFAULT 'MONTHLY';
+ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "stripeCustomerId" TEXT;
+ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "stripeSubscriptionId" TEXT;
+ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "stripePriceId" TEXT;
+ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "stripeCurrentPeriodEnd" TIMESTAMPTZ;
+ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMPTZ;
+
+-- Migração para liberação imediata de e-mail após exclusão LGPD
+-- Permite que um usuário que excluiu sua conta crie uma nova conta com o mesmo e-mail sem violação de unicidade
+ALTER TABLE public.dex_users DROP CONSTRAINT IF EXISTS dex_users_email_key;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_dex_users_active_email ON public.dex_users (lower(trim(email))) WHERE ("deletedAt" IS NULL);
 
 -- Migração de segurança: marcar todas as contas existentes como confirmadas
 UPDATE public.dex_users 

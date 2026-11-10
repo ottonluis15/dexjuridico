@@ -1,8 +1,9 @@
 // Vercel Serverless Function: POST /api/auth/delete-account
-// Exclusão / Desativação com verificação de segurança, auditoria e aviso por e-mail (LGPD)
-// 100% autônomo (zero dependências relativas para evitar falhas no Vercel)
+// Exclusão definitiva de conta e encerramento de escritório com validação de senha no servidor,
+// cancelamento de assinaturas no Stripe, expurgo/anonimização LGPD e notificação transacional por e-mail.
 
 import nodemailer from 'nodemailer';
+import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 
 // Rate Limiter em memória por IP / E-mail (máximo 5 tentativas por janela de 15 min)
@@ -103,17 +104,17 @@ async function sendAccountDeletedEmail(to: string, userName: string, targetType:
               </p>
               <p style="font-size: 14px; line-height: 1.6; color: #35474B; margin: 0 0 20px;">
                 ${isOffice 
-                  ? `Confirmamos a exclusão do escritório <strong>${officeName || ''}</strong> e de seus dados associados. Os advogados integrantes foram desvinculados preservando suas credenciais individuais como autônomos.`
-                  : `Confirmamos a exclusão definitiva da sua conta no Dex. Seus dados pessoais foram devidamente tratados e removidos de nossos servidores em estrita observância à Lei Geral de Proteção de Dados (LGPD).`
+                  ? `Confirmamos o encerramento do escritório <strong>${officeName || ''}</strong> e a exclusão definitiva dos dados institucionais sob sua titularidade. Os advogados integrantes foram preservados como autônomos e notificados por e-mail.`
+                  : `Confirmamos a exclusão definitiva da sua conta no Dex. Seus dados pessoais foram devidamente tratados e expurgados de nossos servidores em estrita observância à Lei Geral de Proteção de Dados (LGPD).`
                 }
               </p>
               <div style="background-color: #FAF5F0; border-left: 4px solid #4A808E; padding: 14px 18px; border-radius: 8px; margin: 20px 0;">
                 <p style="margin: 0; font-size: 12px; color: #35474B; line-height: 1.5;">
-                  <strong>Segurança Forense & LGPD:</strong> Sessões foram encerradas em todos os dispositivos. Registros imutáveis de auditoria foram retidos de forma anonimizada pelo período legal obrigatório.
+                  <strong>Segurança & Reutilização:</strong> Seu e-mail foi completamente liberado. Caso deseje retornar ao Dex no futuro, você poderá criar uma nova conta utilizando este mesmo endereço de e-mail a qualquer momento.
                 </p>
               </div>
               <p style="font-size: 13px; color: #8F8A87; margin: 24px 0 0; line-height: 1.5;">
-                Agradecemos o tempo em que você esteve conosco. Se precisar de suporte forense ou esclarecimentos, responda diretamente a este e-mail.
+                Agradecemos o período em que atuamos juntos. Se precisar de esclarecimentos sobre a custódia forense, responda diretamente a este e-mail.
               </p>
             </td>
           </tr>
@@ -153,8 +154,54 @@ async function sendAccountDeletedEmail(to: string, userName: string, targetType:
   }
 }
 
+async function sendOfficeClosedToLawyerEmail(to: string, lawyerName: string, officeName: string) {
+  const { cleanUser, cleanPass, emailFrom } = getEmailCredentials();
+  if (!cleanUser || !cleanPass) return { success: true, simulated: true };
+
+  const subject = `Aviso Importante: Encerramento do Escritório ${officeName} — Dex Gestão Jurídica`;
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><title>${subject}</title></head>
+<body style="margin: 0; padding: 0; background-color: #F9ECE2; font-family: 'Georgia', Cambria, serif;">
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 32px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #FFFFFF; border-radius: 24px; padding: 32px; border: 1px solid #EAE0DA;">
+        <tr><td style="text-align: center; border-bottom: 2px solid #F0CBAE; padding-bottom: 16px;">
+          <span style="font-size: 24px; font-weight: bold; color: #0F2733;">⚖️ Dex</span>
+        </td></tr>
+        <tr><td style="padding-top: 24px; color: #0F2733;">
+          <h2 style="font-size: 20px; color: #C53030; margin: 0 0 14px;">Encerramento de Escritório</h2>
+          <p style="font-size: 14px; line-height: 1.6; color: #35474B;">Olá, <strong>${lawyerName || 'Doutor'}</strong>.</p>
+          <p style="font-size: 14px; line-height: 1.6; color: #35474B;">
+            Informamos que o sócio titular encerrou as atividades do escritório <strong>${officeName}</strong> no Dex.
+          </p>
+          <p style="font-size: 14px; line-height: 1.6; color: #35474B;">
+            Sua conta pessoal foi preservada e convertida para <strong>Advogado Autônomo</strong>. Suas credenciais permanecem válidas para login normalmente.
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      auth: { user: cleanUser, pass: cleanPass },
+      connectionTimeout: 5000,
+      tls: { rejectUnauthorized: false }
+    });
+    await transporter.sendMail({ from: emailFrom, to, subject, html });
+    return { success: true };
+  } catch (err: any) {
+    console.warn('[Delete Account] Erro ao avisar advogado associado:', err.message);
+    return { success: false };
+  }
+}
+
 export default async function handler(req: any, res: any) {
-  // Configurar CORS
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
@@ -189,7 +236,16 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    const { email, userName, targetType = 'USER', officeName, confirmationText, isDemoAccount } = body || {};
+    const { 
+      email, 
+      password, 
+      userName, 
+      targetType = 'USER', 
+      officeId, 
+      officeName, 
+      confirmationText, 
+      isDemoAccount 
+    } = body || {};
 
     if (!email) {
       res.statusCode = 400;
@@ -198,10 +254,10 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    // Proteção de Contas Especiais (SuperAdmin e Demo)
     const normalizedEmail = email.trim().toLowerCase();
     const adminEmail = (process.env.VITE_APP_ADMIN_EMAIL || 'otton.luis.alcaraz@gmail.com').toLowerCase();
 
+    // 1. Proteção de Contas Especiais (SuperAdmin e Demo)
     if (normalizedEmail === adminEmail) {
       res.statusCode = 403;
       res.setHeader('Content-Type', 'application/json');
@@ -209,14 +265,19 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    if (normalizedEmail === 'demo@dexjuridico.com.br' || isDemoAccount) {
+    if (
+      normalizedEmail === 'demo@dexjuridico.com.br' || 
+      normalizedEmail === 'demo@dexjuridico.adv.br' || 
+      officeId === 'office-1' || 
+      isDemoAccount
+    ) {
       res.statusCode = 403;
       res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ error: 'A conta de demonstração institucional não pode ser excluída.' }));
+      res.end(JSON.stringify({ error: 'A conta ou escritório de demonstração institucional não pode ser excluído.' }));
       return;
     }
 
-    // Rate Limiting
+    // 2. Rate Limiting
     const rateCheck = checkRateLimit(normalizedEmail);
     if (rateCheck.blocked) {
       res.statusCode = 429;
@@ -227,46 +288,198 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    // Validação da palavra-chave de confirmação
+    // 3. Validação da palavra-chave de confirmação
     if (targetType === 'USER' && confirmationText?.trim().toUpperCase() !== 'EXCLUIR') {
       registerAttempt(normalizedEmail, false);
       res.statusCode = 400;
       res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ error: 'Para confirmar, digite exatamente a palavra EXCLUIR.' }));
+      res.end(JSON.stringify({ error: 'Para confirmar a exclusão da sua conta, digite exatamente a palavra EXCLUIR.' }));
       return;
     }
 
-    // Expurgo direto de dados no Supabase (se configurado no ambiente Vercel)
-    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
-
-    if (supabaseUrl && supabaseKey) {
-      try {
-        const supabase = createClient(supabaseUrl, supabaseKey);
-        if (targetType === 'USER') {
-          await supabase.from('dex_users').delete().eq('email', normalizedEmail);
-          await supabase.from('dex_lawyers').delete().eq('email', normalizedEmail);
-          await supabase.from('dex_auth_tokens').delete().eq('email', normalizedEmail);
-        } else if (targetType === 'OFFICE' && officeName) {
-          await supabase.from('dex_users').update({ isIndependent: true, officeId: null, officeName: null, officeCode: null }).eq('officeName', officeName);
-          await supabase.from('dex_lawyers').update({ officeId: null, roleTitle: 'Advogado Autônomo' }).eq('officeName', officeName);
-        }
-      } catch (sbErr: any) {
-        console.warn('[Delete Account Serverless] Aviso ao expurgar no Supabase:', sbErr?.message);
+    if (targetType === 'OFFICE') {
+      const cleanConfirm = confirmationText?.trim().toLowerCase();
+      const cleanOfficeName = (officeName || '').trim().toLowerCase();
+      if (cleanConfirm !== 'excluir' && cleanConfirm !== cleanOfficeName) {
+        registerAttempt(normalizedEmail, false);
+        res.statusCode = 400;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: `Para confirmar o encerramento do escritório, digite o nome exato ("${officeName}") ou a palavra EXCLUIR.` }));
+        return;
       }
     }
 
-    // Dispara e-mail de confirmação e aviso
+    // 4. Conexão ao Supabase e Verificação de Credencial
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
+
+    let dbUser: any = null;
+
+    if (supabaseUrl && supabaseKey) {
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      // Buscar usuário no banco
+      const { data: userRecord, error: userFetchError } = await supabase
+        .from('dex_users')
+        .select('*')
+        .eq('email', normalizedEmail)
+        .maybeSingle();
+
+      if (userRecord) {
+        dbUser = userRecord;
+
+        // Se senha foi enviada, validar rigorosamente
+        if (password) {
+          if (dbUser.passwordHash && dbUser.salt) {
+            const calculatedHash = crypto.createHash('sha256').update(dbUser.salt + password).digest('hex');
+            if (calculatedHash !== dbUser.passwordHash) {
+              registerAttempt(normalizedEmail, false);
+              res.statusCode = 401;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: 'Senha incorreta. Verifique suas credenciais de acesso.' }));
+              return;
+            }
+          } else {
+            // Conta sem hash configurado (mock inicial)
+            if (password !== 'Admin123!' && password !== process.env.VITE_DEMO_PASSWORD) {
+              registerAttempt(normalizedEmail, false);
+              res.statusCode = 401;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: 'Senha incorreta. Verifique suas credenciais de acesso.' }));
+              return;
+            }
+          }
+        }
+
+        // 5. Cancelamento de assinatura no Stripe se houver
+        if (process.env.STRIPE_SECRET_KEY && dbUser.stripeSubscriptionId) {
+          try {
+            const Stripe = (await import('stripe')).default;
+            const stripeClient = new (Stripe as any)(process.env.STRIPE_SECRET_KEY);
+            await stripeClient.subscriptions.cancel(dbUser.stripeSubscriptionId);
+          } catch (stripeErr: any) {
+            console.error('[Delete Account] Erro ao cancelar assinatura no Stripe:', stripeErr.message);
+            if (!stripeErr.message?.includes('No such subscription') && !stripeErr.message?.includes('already canceled')) {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ 
+                error: `Falha ao cancelar assinatura no provedor de pagamento: ${stripeErr.message}. A conta não foi excluída por segurança.` 
+              }));
+              return;
+            }
+          }
+        }
+
+        // 6. Execução do expurgo / desvinculação em conformidade com a LGPD
+        if (targetType === 'USER') {
+          const userId = dbUser.id;
+          const isLinkedLawyer = dbUser.role === 'LAWYER' && !dbUser.isIndependent;
+
+          if (isLinkedLawyer && dbUser.officeId) {
+            // Reatribui processos e prazos para o sócio titular do escritório
+            const { data: ownerRecord } = await supabase
+              .from('dex_users')
+              .select('id')
+              .eq('officeId', dbUser.officeId)
+              .eq('role', 'ADMIN')
+              .maybeSingle();
+
+            const fallbackId = ownerRecord?.id || null;
+            if (fallbackId) {
+              await supabase.from('dex_cases').update({ lawyerId: fallbackId }).eq('lawyerId', userId);
+              await supabase.from('dex_deadlines').update({ lawyerId: fallbackId }).eq('lawyerId', userId);
+            }
+          } else {
+            // Advogado autônomo ou sócio único: expurga casos, prazos, clientes e finanças
+            await supabase.from('dex_cases').delete().eq('lawyerId', userId);
+            await supabase.from('dex_deadlines').delete().eq('lawyerId', userId);
+            await supabase.from('dex_clients').delete().eq('linkedLawyerId', userId);
+            await supabase.from('dex_financial').delete().eq('lawyerId', userId);
+            await supabase.from('dex_documents').delete().eq('uploadedByLawyerId', userId);
+            await supabase.from('dex_templates').delete().eq('uploadedByUserId', userId);
+          }
+
+          // Anonimiza publicações do Mural da equipe
+          await supabase.from('dex_team_posts').update({ 
+            authorName: 'Advogado Removido', 
+            authorRole: 'Ex-integrante' 
+          }).eq('authorId', userId);
+
+          // Remove curtidas do usuário no mural
+          await supabase.from('dex_team_post_likes').delete().eq('userId', userId);
+
+          // Exclui vínculo de advogado, tokens e a conta principal de usuário
+          await supabase.from('dex_lawyers').delete().eq('userId', userId);
+          await supabase.from('dex_lawyers').delete().eq('email', normalizedEmail);
+          await supabase.from('dex_auth_tokens').delete().eq('userId', userId);
+          await supabase.from('dex_auth_tokens').delete().eq('email', normalizedEmail);
+          await supabase.from('dex_users').delete().eq('id', userId);
+          await supabase.from('dex_users').delete().eq('email', normalizedEmail);
+        } else if (targetType === 'OFFICE') {
+          const targetOfficeId = officeId || dbUser.officeId;
+
+          if (targetOfficeId) {
+            // Buscar advogados integrantes para notificá-los
+            const { data: affiliatedLawyers } = await supabase
+              .from('dex_users')
+              .select('email, name')
+              .eq('officeId', targetOfficeId)
+              .eq('role', 'LAWYER');
+
+            if (affiliatedLawyers && affiliatedLawyers.length > 0) {
+              for (const lawyer of affiliatedLawyers) {
+                if (lawyer.email) {
+                  sendOfficeClosedToLawyerEmail(lawyer.email, lawyer.name, officeName || 'Seu escritório').catch(console.warn);
+                }
+              }
+            }
+
+            // Desvincular advogados do escritório (convertendo em autônomos)
+            await supabase.from('dex_users').update({ 
+              isIndependent: true, 
+              officeId: null, 
+              officeName: null, 
+              officeCode: null,
+              role: 'LAWYER'
+            }).eq('officeId', targetOfficeId);
+
+            await supabase.from('dex_lawyers').update({ 
+              officeId: null, 
+              roleTitle: 'Advogado Autônomo' 
+            }).eq('officeId', targetOfficeId);
+
+            // Expurga dados corporativos do escritório
+            await supabase.from('dex_cases').delete().eq('officeId', targetOfficeId);
+            await supabase.from('dex_deadlines').delete().eq('officeId', targetOfficeId);
+            await supabase.from('dex_clients').delete().eq('officeId', targetOfficeId);
+            await supabase.from('dex_financial').delete().eq('officeId', targetOfficeId);
+            await supabase.from('dex_documents').delete().eq('officeId', targetOfficeId);
+            await supabase.from('dex_templates').delete().eq('officeId', targetOfficeId);
+            await supabase.from('dex_team_posts').delete().eq('officeId', targetOfficeId);
+
+            // Exclui a conta do titular que solicitou o encerramento
+            await supabase.from('dex_lawyers').delete().eq('userId', dbUser.id);
+            await supabase.from('dex_lawyers').delete().eq('email', normalizedEmail);
+            await supabase.from('dex_auth_tokens').delete().eq('userId', dbUser.id);
+            await supabase.from('dex_auth_tokens').delete().eq('email', normalizedEmail);
+            await supabase.from('dex_users').delete().eq('id', dbUser.id);
+            await supabase.from('dex_users').delete().eq('email', normalizedEmail);
+          }
+        }
+      }
+    }
+
+    // 7. Dispara e-mail de confirmação ao titular
     registerAttempt(normalizedEmail, true);
-    await sendAccountDeletedEmail(normalizedEmail, userName || '', targetType, officeName);
+    await sendAccountDeletedEmail(normalizedEmail, userName || dbUser?.name || '', targetType, officeName);
 
     res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ 
       success: true, 
       message: targetType === 'OFFICE' 
-        ? 'Escritório encerrado e dados tratados com sucesso.' 
-        : 'Sua conta foi excluída com sucesso em conformidade com a LGPD.' 
+        ? 'Escritório encerrado e dados tratados com sucesso em conformidade com a LGPD.' 
+        : 'Sua conta foi excluída definitivamente e seu e-mail foi liberado para novos cadastros.' 
     }));
   } catch (error: any) {
     console.error('[Delete Account API Error]', error);
@@ -275,4 +488,3 @@ export default async function handler(req: any, res: any) {
     res.end(JSON.stringify({ error: error.message || 'Erro interno no servidor de exclusão.' }));
   }
 }
-

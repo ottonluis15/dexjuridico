@@ -20,7 +20,9 @@ import { useData } from '../../context/DataContext';
 import { useTheme } from '../../context/ThemeContext';
 import { DecorativeBars } from '../common/DecorativeBars';
 import { PasswordInput } from '../common/PasswordInput';
+import { PasswordRequirements } from '../common/PasswordRequirements';
 import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
+import { validatePassword } from '../../utils/passwordPolicy';
 
 export const UserProfileView: React.FC = () => {
   const { currentUser, updateProfilePhoto, updateProfileData, requestEmailChange, changePassword, deleteMyAccount } = useAuth();
@@ -142,8 +144,9 @@ export const UserProfileView: React.FC = () => {
       showToast('Por favor, informe a senha atual.', 'error');
       return;
     }
-    if (newPassword.length < 8) {
-      showToast('A nova senha deve ter no mínimo 8 caracteres.', 'error');
+    const pwdValidation = validatePassword(newPassword);
+    if (!pwdValidation.isValid) {
+      showToast(pwdValidation.error || 'A nova senha deve atender aos requisitos forenses de segurança.', 'error');
       return;
     }
     if (newPassword !== confirmNewPassword) {
@@ -464,6 +467,15 @@ export const UserProfileView: React.FC = () => {
             </div>
           </div>
 
+          {/* Checklist Forense de Senha em Tempo Real (Tarefa 2) */}
+          {(newPassword.length > 0 || confirmNewPassword.length > 0) && (
+            <PasswordRequirements
+              password={newPassword}
+              confirmPassword={confirmNewPassword}
+              showMatchStatus={true}
+            />
+          )}
+
           <div className="pt-2 flex justify-end">
             <button
               type="submit"
@@ -477,43 +489,51 @@ export const UserProfileView: React.FC = () => {
         </form>
       </div>
 
-      {/* ZONA DE PERIGO: EXCLUSÃO DE CONTA (LGPD) */}
-      <div className="bg-red-500/5 dark:bg-red-950/20 border-2 border-red-500/40 dark:border-red-500/60 rounded-[24px] p-6 sm:p-8 shadow-xl relative overflow-hidden font-serif">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-          <div className="space-y-1.5 max-w-xl">
-            <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-bold text-sm uppercase tracking-wider">
-              <ShieldAlert className="w-5 h-5 shrink-0" />
-              <span>Zona de Perigo • Exclusão de Conta</span>
-            </div>
-            <h4 className="text-lg font-serif font-bold text-dex-navy-950 dark:text-white">
-              Excluir minha conta definitivamente
-            </h4>
-            <p className="text-xs text-dex-support dark:text-[#A6C5CD] leading-relaxed">
-              {currentUser?.role === 'ADMIN' && !currentUser.isIndependent ? (
-                <span>
-                  Como sócio administrador titular, a exclusão da sua conta pessoal exige a prévia transferência de titularidade ou a exclusão do escritório inteiro em Configurações.
-                </span>
-              ) : currentUser?.role === 'LAWYER' && !currentUser.isIndependent ? (
-                <span>
-                  Sua conta pessoal será permanentemente excluída e suas credenciais revogadas. Os processos e dados institucionais que você cadastrou permanecerão custodiados com o escritório.
-                </span>
-              ) : (
-                <span>
-                  Sua conta e todos os dados associados (clientes, processos, prazos e finanças) serão permanentemente expurgados em estrita observância à LGPD.
-                </span>
-              )}
-            </p>
-          </div>
+      {/* ZONA DE PERIGO: EXCLUSÃO DE CONTA (LGPD / Tarefa 1) */}
+      <div className="pt-8 mt-8 border-t border-dex-navy-950/10 dark:border-white/10 space-y-4 font-serif">
+        <div className="flex items-center gap-2 text-dex-terracotta dark:text-rose-400">
+          <AlertTriangle className="w-4 h-4 stroke-[1.75]" />
+          <h3 className="text-sm font-bold uppercase tracking-wider">
+            Zona de perigo
+          </h3>
+        </div>
+        <p className="text-xs text-dex-support dark:text-[#A6C5CD] italic -mt-2">
+          Ações destrutivas e irreversíveis que encerram credenciais de acesso e tratam registros sob custódia legal.
+        </p>
 
-          <div className="shrink-0">
-            <button
-              type="button"
-              onClick={() => setShowDeleteAccountModal(true)}
-              className="min-h-[44px] px-6 py-2.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-semibold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span>Excluir minha conta</span>
-            </button>
+        <div className="bg-rose-500/5 dark:bg-rose-950/20 border border-rose-300/60 dark:border-rose-900/50 rounded-2xl p-5 sm:p-6 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 sm:gap-6">
+            <div className="space-y-1.5 max-w-xl">
+              <h4 className="text-base font-serif font-bold text-dex-navy-950 dark:text-white">
+                Excluir minha conta
+              </h4>
+              <p className="text-xs text-dex-support dark:text-[#A6C5CD] leading-relaxed">
+                {currentUser?.role === 'ADMIN' && !currentUser.isIndependent ? (
+                  <span>
+                    Como sócio administrador titular, a exclusão da sua conta pessoal exige a prévia transferência de titularidade para outro sócio ou a exclusão do escritório inteiro em Configurações.
+                  </span>
+                ) : currentUser?.role === 'LAWYER' && !currentUser.isIndependent ? (
+                  <span>
+                    Sua conta pessoal será permanentemente excluída e suas credenciais revogadas. Os processos e clientes vinculados permanecerão preservados sob a custódia do escritório.
+                  </span>
+                ) : (
+                  <span>
+                    Sua conta e registros individuais serão definitivamente expurgados e seu e-mail liberado para novos cadastros em estrita observância à LGPD.
+                  </span>
+                )}
+              </p>
+            </div>
+
+            <div className="shrink-0 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => setShowDeleteAccountModal(true)}
+                className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 rounded-xl border border-rose-600/70 dark:border-rose-400/70 text-rose-700 dark:text-rose-300 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white active:bg-rose-700 font-semibold text-xs transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 motion-reduce:transition-none cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-4 h-4 shrink-0" />
+                <span>Excluir minha conta</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

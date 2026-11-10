@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { UserCheck, Camera, Trash2, UserPlus, Link2 } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { PasswordInput } from '../common/PasswordInput';
+import { PasswordRequirements } from '../common/PasswordRequirements';
+import { validatePassword } from '../../utils/passwordPolicy';
 import { Lawyer } from '../../types';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -363,16 +365,22 @@ export const LawyerModal: React.FC<LawyerModalProps> = ({
             </div>
 
             {!lawyerToEdit && (
-              <div className="md:col-span-2">
-                <label className="block text-xs font-serif italic text-[#C2D6DC] mb-1.5">
+              <div className="md:col-span-2 space-y-2">
+                <label className="block text-xs font-serif italic text-[#C2D6DC]">
                   Senha Provisória de Acesso
                 </label>
                 <PasswordInput
-                  placeholder="Deixe em branco para gerar aleatória"
+                  placeholder="Deixe em branco para senha padrão (Dex@2026)"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   autoComplete="new-password"
                 />
+                {password.length > 0 && (
+                  <PasswordRequirements
+                    password={password}
+                    showMatchStatus={false}
+                  />
+                )}
               </div>
             )}
 

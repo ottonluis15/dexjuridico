@@ -6,6 +6,7 @@ import { supabaseService } from '../services/supabaseService';
 import { isSupabaseConfigured } from '../services/supabaseClient';
 import { PlanId, SubscriptionPeriod, getPlanById } from '../config/plans';
 import { activePaymentProvider } from '../services/payment/PaymentProvider';
+import { validatePassword } from '../utils/passwordPolicy';
 
 export interface RegisterUserData {
   name: string;
@@ -224,11 +225,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
     }
 
-    // Validação de requisitos de senha
-    if (!userData.password || userData.password.length < 8) {
+    // Validação de requisitos forenses de senha (Tarefa 2)
+    const pwdValidation = validatePassword(userData.password);
+    if (!pwdValidation.isValid) {
       return { 
         success: false, 
-        error: 'A senha deve conter no mínimo 8 caracteres.' 
+        error: pwdValidation.error || 'A senha não atende aos requisitos de segurança.' 
       };
     }
 
@@ -451,8 +453,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: 'A inscrição OAB/UF é obrigatória.' };
     }
 
-    if (!lawyerData.password || lawyerData.password.length < 6) {
-      return { success: false, error: 'A senha de acesso do advogado deve conter no mínimo 6 caracteres.' };
+    const pwdValidation = validatePassword(lawyerData.password);
+    if (!pwdValidation.isValid) {
+      return { 
+        success: false, 
+        error: pwdValidation.error || 'A senha de acesso do advogado não atende aos requisitos de segurança.' 
+      };
     }
 
     // Validação de Limite do Plano para Advogados Vinculados (Item 4)
@@ -577,11 +583,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    if (!newPassword || newPassword.length < 8) {
-      return { success: false, error: 'A nova senha deve ter no mínimo 8 caracteres.' };
-    }
-    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
-      return { success: false, error: 'A nova senha deve conter letras maiúsculas, minúsculas e números.' };
+    const pwdValidation = validatePassword(newPassword);
+    if (!pwdValidation.isValid) {
+      return { 
+        success: false, 
+        error: pwdValidation.error || 'A nova senha não atende aos requisitos forenses de segurança.' 
+      };
     }
 
     const salt = cryptoService.generateSalt();
@@ -858,17 +865,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      await fetch('/api/auth/delete-account', {
+      const delRes = await fetch('/api/auth/delete-account', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: currentUser.email,
+          password,
           userName: currentUser.name,
           targetType: 'USER',
+          officeId: currentUser.officeId,
+          officeName: currentUser.officeName,
           confirmationText: confirmationKeyword,
           isDemoAccount: currentUser.id === 'user-1' || currentUser.email === 'demo@dexjuridico.com.br'
         })
       });
+
+      if (!delRes.ok) {
+        const errJson = await delRes.json().catch(() => ({}));
+        if (errJson?.error) {
+          return { success: false, error: errJson.error };
+        }
+      }
     } catch (e) {
       console.warn('[deleteMyAccount] Endpoint serverless falhou ou offline:', e);
     }
@@ -885,7 +902,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setAllUsers(prev => prev.filter(u => u.id !== currentUser.id && u.email.toLowerCase() !== currentUser.email.toLowerCase()));
 
-    sessionStorage.setItem('dex_account_deleted_msg', 'Sua conta foi excluída com sucesso em conformidade com a LGPD.');
+    sessionStorage.setItem('dex_account_deleted_msg', 'Sua conta foi excluída com sucesso em conformidade com a LGPD. Seu e-mail foi liberado para novos cadastros.');
     logout();
     return { success: true };
   };
@@ -923,25 +940,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      await fetch('/api/auth/delete-account', {
+      const delRes = await fetch('/api/auth/delete-account', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: currentUser.email,
+          password,
           userName: currentUser.name,
           targetType: 'OFFICE',
+          officeId: currentUser.officeId,
           officeName: currentUser.officeName,
           confirmationText: 'EXCLUIR',
           isDemoAccount: currentUser.officeId === 'office-1'
         })
       });
+
+      if (!delRes.ok) {
+        const errJson = await delRes.json().catch(() => ({}));
+        if (errJson?.error) {
+          return { success: false, error: errJson.error };
+        }
+      }
     } catch (e) {
       console.warn('[deleteMyOffice] Endpoint serverless falhou:', e);
     }
 
     // Expurgo no Supabase se configurado
     if (isSupabaseConfigured()) {
-      await supabaseService.deleteOffice(currentUser.officeId).catch(console.warn);
+      await supabaseService.deleteOffice(currentUser.officeId, currentUser.email).catch(console.warn);
     }
 
     const result = storageService.deleteOffice(currentUser.officeId);
@@ -949,7 +975,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return result;
     }
 
-    sessionStorage.setItem('dex_account_deleted_msg', 'O escritório foi encerrado e os dados foram tratados com sucesso.');
+    setAllUsers(prev => prev.filter(u => u.id !== currentUser.id && u.email.toLowerCase() !== currentUser.email.toLowerCase()));
+
+    sessionStorage.setItem('dex_account_deleted_msg', 'O escritório foi encerrado e os dados tratados em conformidade com a LGPD. Seu e-mail foi liberado para novos cadastros.');
     logout();
     return { success: true };
   };
