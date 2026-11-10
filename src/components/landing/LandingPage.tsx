@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Scale, 
   Sparkles, 
@@ -21,7 +21,9 @@ import {
   Layers,
   FolderKanban,
   Sun,
-  Moon
+  Moon,
+  Menu,
+  X
 } from 'lucide-react';
 import { DexLogo } from '../common/DexLogo';
 import { DecorativeBars, DecorativeDots } from '../common/DecorativeBars';
@@ -46,6 +48,45 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [activePreviewTab, setActivePreviewTab] = useState<'overview' | 'ai' | 'deadlines' | 'finance'>('ai');
   const [activeAiDemoIndex, setActiveAiDemoIndex] = useState(0);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const hamburgerBtnRef = useRef<HTMLButtonElement>(null);
+
+  // Mensagem flash pós-exclusão de conta / escritório
+  const [accountDeletedFlashMessage, setAccountDeletedFlashMessage] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem('dex_account_deleted_msg');
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    if (accountDeletedFlashMessage) {
+      try {
+        sessionStorage.removeItem('dex_account_deleted_msg');
+      } catch {}
+      const timer = setTimeout(() => {
+        setAccountDeletedFlashMessage(null);
+      }, 7000);
+      return () => clearTimeout(timer);
+    }
+  }, [accountDeletedFlashMessage]);
+
+  // Fecha menu mobile com tecla ESC e devolve o foco ao botão
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && mobileMenuOpen) {
+        setMobileMenuOpen(false);
+        hamburgerBtnRef.current?.focus();
+      }
+    };
+    if (mobileMenuOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [mobileMenuOpen]);
 
   const aiDemoCases = [
     {
@@ -125,6 +166,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   return (
     <div className="min-h-screen bg-dex-cream dark:bg-[#0A1922] text-dex-navy-950 dark:text-[#F9ECE2] font-serif selection:bg-dex-coral selection:text-white antialiased overflow-x-hidden transition-colors">
+      {/* Toast Notificação de Conta/Escritório Excluído com Sucesso */}
+      {accountDeletedFlashMessage && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed top-24 left-1/2 -translate-x-1/2 z-50 max-w-md w-[90%] p-4 rounded-2xl bg-dex-navy-950 text-white shadow-2xl border border-dex-teal/50 flex items-center justify-between gap-3 animate-fadeIn"
+        >
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-dex-teal shrink-0" />
+            <span className="text-xs font-serif leading-snug">{accountDeletedFlashMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAccountDeletedFlashMessage(null)}
+            className="text-white/60 hover:text-white p-1 rounded-lg cursor-pointer"
+            aria-label="Fechar notificação"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Header (Anexo 1) */}
       <header className="sticky top-0 z-50 bg-dex-cream/95 dark:bg-[#0A1922]/95 backdrop-blur-md border-b border-[#D8C3B5]/90 dark:border-[#214154] transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 h-20 flex items-center justify-between">
@@ -137,21 +200,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* Links e Ações à direita */}
-          <div className="flex items-center gap-4 sm:gap-8">
+          <div className="flex items-center gap-3 sm:gap-6">
             <nav className="hidden md:flex items-center gap-8 text-sm text-dex-support dark:text-[#A7BAC5] font-medium">
               <button
+                type="button"
                 onClick={() => scrollToSection('recursos')}
                 className="hover:text-dex-navy-950 dark:hover:text-white transition-colors cursor-pointer"
               >
                 Recursos
               </button>
               <button
+                type="button"
                 onClick={() => scrollToSection('sobre')}
                 className="hover:text-dex-navy-950 dark:hover:text-white transition-colors cursor-pointer"
               >
                 Sobre nós
               </button>
               <button
+                type="button"
                 onClick={() => scrollToSection('planos')}
                 className="hover:text-dex-navy-950 dark:hover:text-white transition-colors cursor-pointer"
               >
@@ -161,10 +227,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             {/* Seletor Rápido de Tema (Claro / Escuro) */}
             <button
+              type="button"
               onClick={toggleTheme}
               title={effectiveTheme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
               aria-label="Alternar tema"
-              className="p-2 rounded-xl bg-dex-peach/40 dark:bg-[#162B37] text-dex-navy-950 dark:text-[#F9ECE2] hover:bg-dex-peach dark:hover:bg-[#214154] border border-dex-border dark:border-[#214154] transition-all cursor-pointer"
+              className="w-11 h-11 flex items-center justify-center rounded-xl bg-dex-peach/40 dark:bg-[#162B37] text-dex-navy-950 dark:text-[#F9ECE2] hover:bg-dex-peach dark:hover:bg-[#214154] border border-dex-border dark:border-[#214154] transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-dex-coral"
             >
               {effectiveTheme === 'dark' ? (
                 <Sun className="w-4 h-4 text-amber-300" />
@@ -173,11 +240,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               )}
             </button>
 
-            <div className="flex items-center gap-3 sm:gap-4">
+            {/* Botões de Ação no Desktop */}
+            <div className="hidden md:flex items-center gap-3 sm:gap-4">
               {isLoggedIn && onBackToApp ? (
                 <button
+                  type="button"
                   onClick={onBackToApp}
-                  className="px-5 py-2.5 rounded-xl bg-dex-navy-950 dark:bg-[#4A808E] hover:bg-dex-navy-900 dark:hover:bg-[#3d6a76] text-white text-xs font-semibold shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                  className="min-h-[44px] px-5 py-2.5 rounded-xl bg-dex-navy-950 dark:bg-[#4A808E] hover:bg-dex-navy-900 dark:hover:bg-[#3d6a76] text-white text-xs font-semibold shadow-md transition-all flex items-center gap-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-dex-coral"
                 >
                   <span>Voltar ao Sistema</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -185,22 +254,125 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               ) : (
                 <>
                   <button
+                    type="button"
                     onClick={onNavigateToLogin}
-                    className="text-sm font-medium text-dex-support dark:text-[#A7BAC5] hover:text-dex-navy-950 dark:hover:text-white transition-colors px-2 py-1 cursor-pointer"
+                    className="min-h-[44px] text-sm font-medium text-dex-support dark:text-[#A7BAC5] hover:text-dex-navy-950 dark:hover:text-white transition-colors px-3 py-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-dex-coral rounded-lg"
                   >
                     Entrar
                   </button>
                   <button
+                    type="button"
                     onClick={() => onNavigateToRegister('Escritório Pro')}
-                    className="px-5 sm:px-6 py-2.5 rounded-xl bg-dex-navy-950 dark:bg-[#4A808E] hover:bg-dex-navy-900 dark:hover:bg-[#3d6a76] text-white text-xs sm:text-sm font-semibold shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                    className="min-h-[44px] px-5 sm:px-6 py-2.5 rounded-xl bg-dex-navy-950 dark:bg-[#4A808E] hover:bg-dex-navy-900 dark:hover:bg-[#3d6a76] text-white text-xs sm:text-sm font-semibold shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-dex-coral"
                   >
                     Criar conta
                   </button>
                 </>
               )}
             </div>
+
+            {/* Botão Hambúrguer Mobile com Acessibilidade */}
+            <button
+              ref={hamburgerBtnRef}
+              type="button"
+              onClick={() => setMobileMenuOpen(prev => !prev)}
+              aria-label={mobileMenuOpen ? 'Fechar menu de navegação' : 'Abrir menu de navegação'}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-nav-drawer"
+              className="md:hidden w-11 h-11 flex items-center justify-center rounded-xl bg-dex-peach/40 dark:bg-[#162B37] text-dex-navy-950 dark:text-[#F9ECE2] hover:bg-dex-peach dark:hover:bg-[#214154] border border-dex-border dark:border-[#214154] transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-dex-coral"
+            >
+              {mobileMenuOpen ? (
+                <X className="w-5 h-5" aria-hidden="true" />
+              ) : (
+                <Menu className="w-5 h-5" aria-hidden="true" />
+              )}
+            </button>
           </div>
         </div>
+
+        {/* Drawer do Menu Hambúrguer Mobile */}
+        {mobileMenuOpen && (
+          <div
+            id="mobile-nav-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu principal de navegação"
+            className="md:hidden border-t border-[#D8C3B5]/80 dark:border-[#214154] bg-dex-cream/98 dark:bg-[#0A1922]/98 backdrop-blur-xl shadow-2xl p-6 space-y-4 transition-all"
+          >
+            <nav className="flex flex-col space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  scrollToSection('recursos');
+                }}
+                className="min-h-[44px] flex items-center px-4 py-2.5 rounded-xl text-left text-base font-medium text-dex-navy-950 dark:text-[#F9ECE2] hover:bg-dex-peach/50 dark:hover:bg-[#162B37] transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-dex-coral"
+              >
+                Recursos
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  scrollToSection('sobre');
+                }}
+                className="min-h-[44px] flex items-center px-4 py-2.5 rounded-xl text-left text-base font-medium text-dex-navy-950 dark:text-[#F9ECE2] hover:bg-dex-peach/50 dark:hover:bg-[#162B37] transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-dex-coral"
+              >
+                Sobre nós
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  scrollToSection('planos');
+                }}
+                className="min-h-[44px] flex items-center px-4 py-2.5 rounded-xl text-left text-base font-medium text-dex-navy-950 dark:text-[#F9ECE2] hover:bg-dex-peach/50 dark:hover:bg-[#162B37] transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-dex-coral"
+              >
+                Planos
+              </button>
+            </nav>
+
+            <div className="pt-3 border-t border-[#D8C3B5]/60 dark:border-[#214154] flex flex-col gap-3">
+              {isLoggedIn && onBackToApp ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    onBackToApp();
+                  }}
+                  className="min-h-[44px] w-full py-3 rounded-xl bg-dex-navy-950 dark:bg-[#4A808E] text-white text-sm font-semibold flex items-center justify-center gap-2 shadow cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-dex-coral"
+                >
+                  <span>Voltar ao Sistema</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      onNavigateToLogin();
+                    }}
+                    className="min-h-[44px] w-full py-3 rounded-xl bg-dex-peach/60 dark:bg-[#162B37] text-dex-navy-950 dark:text-[#F9ECE2] text-sm font-semibold border border-dex-border dark:border-[#214154] flex items-center justify-center cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-dex-coral"
+                  >
+                    Entrar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      onNavigateToRegister('Escritório Pro');
+                    }}
+                    className="min-h-[44px] w-full py-3 rounded-xl bg-dex-navy-950 dark:bg-[#4A808E] text-white text-sm font-semibold flex items-center justify-center gap-2 shadow cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-dex-coral"
+                  >
+                    <span>Criar conta</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </header>
 
       {/* HERO SECTION (Fiel ao Anexo 1) */}
@@ -211,8 +383,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {/* Barras decorativas coral e teal empilhadas */}
             <DecorativeBars coralWidth="w-28 sm:w-36" tealWidth="w-28 sm:w-36" height="h-2" />
 
-            {/* Título Principal Fiel ao Anexo 1 */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold leading-[1.15] text-dex-coral tracking-tight">
+            {/* Título Principal com tipografia fluida */}
+            <h1 className="text-[clamp(2.1rem,6vw,3.75rem)] font-display font-bold leading-[1.15] text-dex-coral tracking-tight">
               Onde a advocacia encontra sua{' '}
               <span className="block italic text-dex-navy-950 dark:text-white font-serif font-normal mt-1">
                 melhor versão.
@@ -220,23 +392,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </h1>
 
             {/* Parágrafo de Apoio Cinza */}
-            <p className="text-base sm:text-lg text-dex-support dark:text-[#A7BAC5] leading-relaxed max-w-xl">
+            <p className="text-sm sm:text-base lg:text-lg text-dex-support dark:text-[#A7BAC5] leading-relaxed max-w-xl">
               Deixamos a burocracia invisível. Centralize prazos, honorários e o andamento processual do seu escritório em uma interface desenhada para não atrapalhar o seu dia.
             </p>
 
             {/* CTAs */}
             <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
               <button
+                type="button"
                 onClick={() => onNavigateToRegister('Escritório Pro')}
-                className="px-8 py-3.5 rounded-xl bg-dex-navy-950 dark:bg-[#4A808E] hover:bg-dex-navy-900 dark:hover:bg-[#3d6a76] text-white text-sm font-semibold shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                className="min-h-[44px] px-8 py-3.5 rounded-xl bg-dex-navy-950 dark:bg-[#4A808E] hover:bg-dex-navy-900 dark:hover:bg-[#3d6a76] text-white text-sm font-semibold shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-dex-coral"
               >
                 <span>Criar conta gratuitamente</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
               <button
+                type="button"
                 onClick={onNavigateToLogin}
-                className="px-6 py-3.5 rounded-xl bg-dex-peach/60 dark:bg-[#162B37] hover:bg-dex-peach dark:hover:bg-[#214154] text-dex-navy-950 dark:text-[#F9ECE2] text-sm font-semibold border border-dex-border dark:border-[#214154] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="min-h-[44px] px-6 py-3.5 rounded-xl bg-dex-peach/60 dark:bg-[#162B37] hover:bg-dex-peach dark:hover:bg-[#214154] text-dex-navy-950 dark:text-[#F9ECE2] text-sm font-semibold border border-dex-border dark:border-[#214154] transition-all flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-dex-coral"
               >
                 <span>Fazer login</span>
               </button>
@@ -286,56 +460,56 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </p>
         </div>
 
-        {/* Grade Bento do Anexo 2 */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-          {/* Card Grande à Esquerda: Painel de Controle (Fiel ao Anexo 2: toma o espaço inteiro com painel bege de ponta a ponta) */}
-          <div className="lg:col-span-7 bg-dex-cream dark:bg-[#162B37] rounded-[24px] border border-[#222222]/80 dark:border-[#214154] overflow-hidden shadow-sm flex flex-col sm:flex-row h-full">
-            {/* Metade Esquerda: Texto Explicativo com tipografia serifada */}
-            <div className="flex-1 p-8 sm:p-10 lg:p-12 flex flex-col justify-center space-y-4">
-              <h3 className="text-3xl sm:text-4xl font-display font-bold text-dex-navy-950 dark:text-white tracking-tight leading-[1.15]">
-                Painel de<br />Controle
+        {/* Grade Bento Responsiva: 1 coluna no celular (<768px), 2 colunas no tablet (md: 768px-1023px), 12 colunas no desktop (lg: >=1024px) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 items-stretch">
+          {/* Card Grande: Painel de Controle */}
+          <div className="md:col-span-2 lg:col-span-7 bg-dex-cream dark:bg-[#162B37] rounded-[24px] border border-[#222222]/80 dark:border-[#214154] overflow-hidden shadow-sm flex flex-col sm:flex-row h-full">
+            {/* Metade Esquerda: Texto Explicativo com tipografia fluida */}
+            <div className="flex-1 p-6 sm:p-8 lg:p-12 flex flex-col justify-center space-y-3 sm:space-y-4">
+              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-dex-navy-950 dark:text-white tracking-tight leading-[1.15]">
+                Painel de<br className="hidden sm:inline" /> Controle
               </h3>
-              <p className="text-sm sm:text-base text-dex-support dark:text-[#A7BAC5] leading-relaxed max-w-sm">
+              <p className="text-xs sm:text-sm lg:text-base text-dex-support dark:text-[#A7BAC5] leading-relaxed max-w-sm">
                 O pulso do seu escritório em uma única tela. Receitas, andamentos e alertas críticos disponíveis no momento em que você acessa o sistema.
               </p>
             </div>
 
-            {/* Metade Direita: Painel bege tomando toda a altura do card de ponta a ponta com as duas cápsulas verticais (Anexo 2) */}
-            <div className="w-full sm:w-[46%] lg:w-[48%] bg-[#EAE0DA] dark:bg-[#0F2733] border-t sm:border-t-0 sm:border-l border-[#222222]/20 dark:border-[#214154] flex items-end justify-center gap-4 sm:gap-6 px-6 pt-12 pb-8 sm:pb-10 self-stretch min-h-[300px] sm:min-h-full">
+            {/* Metade Direita / Inferior: Gráfico decorativo de duas barras (empilha no celular, lado a lado no tablet e desktop) */}
+            <div className="w-full sm:w-[46%] lg:w-[48%] bg-[#EAE0DA] dark:bg-[#0F2733] border-t sm:border-t-0 sm:border-l border-[#222222]/20 dark:border-[#214154] flex items-end justify-center gap-4 sm:gap-6 px-6 pt-8 pb-6 sm:pb-10 self-stretch min-h-[180px] sm:min-h-[260px] lg:min-h-full">
               {/* Cápsula 1 (menor) */}
-              <div className="w-12 sm:w-14 lg:w-16 h-44 sm:h-52 lg:h-56 rounded-full border-[1.5px] border-[#222222]/80 dark:border-[#4A808E] bg-[#EAE0DA] dark:bg-[#162B37] shadow-xs flex-shrink-0" />
+              <div className="w-10 sm:w-12 lg:w-14 h-28 sm:h-36 lg:h-48 rounded-full border-[1.5px] border-[#222222]/80 dark:border-[#4A808E] bg-[#EAE0DA] dark:bg-[#162B37] shadow-xs flex-shrink-0" />
               {/* Cápsula 2 (maior) */}
-              <div className="w-12 sm:w-14 lg:w-16 h-68 sm:h-80 lg:h-88 rounded-full border-[1.5px] border-[#222222]/80 dark:border-[#4A808E] bg-[#EAE0DA] dark:bg-[#162B37] shadow-xs flex-shrink-0" />
+              <div className="w-10 sm:w-12 lg:w-14 h-40 sm:h-48 lg:h-64 rounded-full border-[1.5px] border-[#222222]/80 dark:border-[#4A808E] bg-[#EAE0DA] dark:bg-[#162B37] shadow-xs flex-shrink-0" />
             </div>
           </div>
 
-          {/* Coluna Direita com 2 Cards Empilhados */}
-          <div className="lg:col-span-5 flex flex-col gap-6 h-full justify-between">
-            {/* Card Superior: Acompanhamento */}
-            <div className="flex-1 bg-dex-cream dark:bg-[#162B37] rounded-[24px] border border-[#222222]/80 dark:border-[#214154] p-8 sm:p-9 flex flex-col justify-center shadow-sm">
+          {/* Cards Secundários: lado a lado no tablet (md), empilhados na coluna direita no desktop (lg) */}
+          <div className="md:col-span-2 lg:col-span-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6 h-full">
+            {/* Card Superior / Coluna 1: Acompanhamento */}
+            <div className="bg-dex-cream dark:bg-[#162B37] rounded-[24px] border border-[#222222]/80 dark:border-[#214154] p-6 sm:p-8 lg:p-9 flex flex-col justify-center shadow-sm">
               <div className="space-y-3">
                 <div className="w-10 h-10 text-dex-navy-950 dark:text-[#F9ECE2]">
                   <Scale className="w-7 h-7 stroke-[1.8]" />
                 </div>
-                <h3 className="text-2xl font-display font-bold text-dex-navy-950 dark:text-white">
+                <h3 className="text-xl sm:text-2xl font-display font-bold text-dex-navy-950 dark:text-white">
                   Acompanhamento
                 </h3>
-                <p className="text-sm text-dex-support dark:text-[#A7BAC5] leading-relaxed">
+                <p className="text-xs sm:text-sm text-dex-support dark:text-[#A7BAC5] leading-relaxed">
                   Cada movimentação ou mudança de status organizada em uma linha do tempo clara.
                 </p>
               </div>
             </div>
 
-            {/* Card Inferior: Carteira de Clientes */}
-            <div className="flex-1 bg-dex-cream dark:bg-[#162B37] rounded-[24px] border border-[#222222]/80 dark:border-[#214154] p-8 sm:p-9 flex flex-col justify-center shadow-sm">
+            {/* Card Inferior / Coluna 2: Carteira de Clientes */}
+            <div className="bg-dex-cream dark:bg-[#162B37] rounded-[24px] border border-[#222222]/80 dark:border-[#214154] p-6 sm:p-8 lg:p-9 flex flex-col justify-center shadow-sm">
               <div className="space-y-3">
                 <div className="w-10 h-10 text-dex-navy-950 dark:text-[#F9ECE2]">
                   <Users className="w-7 h-7 stroke-[1.8]" />
                 </div>
-                <h3 className="text-2xl font-display font-bold text-dex-navy-950 dark:text-white">
+                <h3 className="text-xl sm:text-2xl font-display font-bold text-dex-navy-950 dark:text-white">
                   Carteira de Clientes
                 </h3>
-                <p className="text-sm text-dex-support dark:text-[#A7BAC5] leading-relaxed">
+                <p className="text-xs sm:text-sm text-dex-support dark:text-[#A7BAC5] leading-relaxed">
                   Mantenha o histórico completo de contratos, processos e comunicações.
                 </p>
               </div>

@@ -48,8 +48,13 @@ interface AuthContextType {
   addLawyerByOffice: (lawyerData: CreateLawyerByOfficeData) => Promise<{ success: boolean; lawyer?: Lawyer; error?: string }>;
   updateProfilePhoto: (photoUrl: string | undefined) => boolean;
   updateProfileData: (updates: Partial<User>) => boolean;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
   changeSubscription: (planId: PlanId, period: SubscriptionPeriod, cardDetails?: any) => Promise<{ success: boolean; message: string; error?: string }>;
   cancelSubscription: (reason?: string) => Promise<{ success: boolean; message: string; error?: string }>;
+  deleteMyAccount: (password: string, confirmationKeyword: string) => Promise<{ success: boolean; error?: string }>;
+  deleteMyOffice: (password: string, officeNameConfirmation: string) => Promise<{ success: boolean; error?: string }>;
+  adminDeleteUser: (userId: string) => Promise<{ success: boolean; error?: string }>;
+  adminDeleteOffice: (officeId: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   availableUsers: User[]; // Apenas o usuário atual e advogados vinculados (se for escritório)
 }
@@ -531,6 +536,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
+  const changePassword = async (
+    currentPassword: string,
+    newPassword: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!currentUser) {
+      return { success: false, error: 'Usuário não autenticado.' };
+    }
+
+    if (currentUser.passwordHash && currentUser.salt) {
+      const isValid = await cryptoService.verifyPassword(currentPassword, currentUser.salt, currentUser.passwordHash);
+      if (!isValid) {
+        return { success: false, error: 'A senha atual informada está incorreta.' };
+      }
+    } else {
+      if (currentPassword !== 'Admin123!') {
+        return { success: false, error: 'A senha atual informada está incorreta.' };
+      }
+    }
+
+    if (!newPassword || newPassword.length < 8) {
+      return { success: false, error: 'A nova senha deve ter no mínimo 8 caracteres.' };
+    }
+    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      return { success: false, error: 'A nova senha deve conter letras maiúsculas, minúsculas e números.' };
+    }
+
+    const salt = cryptoService.generateSalt();
+    const passwordHash = await cryptoService.hashPassword(newPassword, salt);
+
+    const updatedUser = { ...currentUser, passwordHash, salt };
+    setCurrentUser(updatedUser);
+    storageService.saveCurrentUser(updatedUser);
+
+    const users = storageService.getUsers();
+    const idx = users.findIndex(u => u.id === currentUser.id);
+    if (idx !== -1) {
+      users[idx] = { ...users[idx], passwordHash, salt };
+      storageService.saveUsers(users);
+    }
+
+    if (isSupabaseConfigured()) {
+      supabaseService.upsertUser(updatedUser).catch(console.warn);
+    }
+
+    storageService.addAuditLog({
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userRole: currentUser.role,
+      action: 'ALTERACAO_SENHA',
+      entity: `Usuário: ${currentUser.name}`,
+      details: `Senha de acesso alterada com sucesso pelo próprio usuário.`,
+      ipAddress: '187.54.12.90',
+      officeId: currentUser.officeId
+    });
+
+    return { success: true };
+  };
+
   const changeSubscription = async (
     planId: PlanId,
     period: SubscriptionPeriod,
@@ -744,6 +807,137 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const deleteMyAccount = async (
+    password: string,
+    confirmationKeyword: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!currentUser) {
+      return { success: false, error: 'Usuário não autenticado.' };
+    }
+
+    const check = storageService.canUserDeleteAccount(currentUser.id);
+    if (!check.allowed) {
+      return { success: false, error: check.reason };
+    }
+
+    if (confirmationKeyword.trim().toUpperCase() !== 'EXCLUIR') {
+      return { success: false, error: 'Digite a palavra EXCLUIR para confirmar.' };
+    }
+
+    if (currentUser.passwordHash && currentUser.salt) {
+      const isValid = await cryptoService.verifyPassword(password, currentUser.salt, currentUser.passwordHash);
+      if (!isValid) {
+        return { success: false, error: 'Senha incorreta. Verifique suas credenciais.' };
+      }
+    } else {
+      if (password !== 'Admin123!') {
+        return { success: false, error: 'Senha incorreta. Verifique suas credenciais.' };
+      }
+    }
+
+    try {
+      await fetch('/api/auth/delete-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: currentUser.email,
+          userName: currentUser.name,
+          targetType: 'USER',
+          confirmationText: confirmationKeyword,
+          isDemoAccount: currentUser.id === 'user-1' || currentUser.email === 'demo@dexjuridico.com.br'
+        })
+      });
+    } catch (e) {
+      console.warn('[deleteMyAccount] Endpoint serverless falhou ou offline:', e);
+    }
+
+    const result = storageService.deleteUserAccount(currentUser.id);
+    if (!result.success) {
+      return result;
+    }
+
+    sessionStorage.setItem('dex_account_deleted_msg', 'Sua conta foi excluída com sucesso em conformidade com a LGPD.');
+    logout();
+    return { success: true };
+  };
+
+  const deleteMyOffice = async (
+    password: string,
+    officeNameConfirmation: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!currentUser) {
+      return { success: false, error: 'Usuário não autenticado.' };
+    }
+
+    if (currentUser.role !== 'ADMIN' || currentUser.isIndependent || !currentUser.officeId) {
+      return { success: false, error: 'Apenas o sócio administrador titular pode excluir o escritório.' };
+    }
+
+    const expectedName = (currentUser.officeName || '').trim().toLowerCase();
+    const provided = officeNameConfirmation.trim().toLowerCase();
+    if (provided !== expectedName && provided !== 'excluir') {
+      return { 
+        success: false, 
+        error: `Digite exatamente o nome do escritório ("${currentUser.officeName}") ou a palavra EXCLUIR.` 
+      };
+    }
+
+    if (currentUser.passwordHash && currentUser.salt) {
+      const isValid = await cryptoService.verifyPassword(password, currentUser.salt, currentUser.passwordHash);
+      if (!isValid) {
+        return { success: false, error: 'Senha incorreta. Verifique suas credenciais.' };
+      }
+    } else {
+      if (password !== 'Admin123!') {
+        return { success: false, error: 'Senha incorreta. Verifique suas credenciais.' };
+      }
+    }
+
+    try {
+      await fetch('/api/auth/delete-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: currentUser.email,
+          userName: currentUser.name,
+          targetType: 'OFFICE',
+          officeName: currentUser.officeName,
+          confirmationText: 'EXCLUIR',
+          isDemoAccount: currentUser.officeId === 'office-1'
+        })
+      });
+    } catch (e) {
+      console.warn('[deleteMyOffice] Endpoint serverless falhou:', e);
+    }
+
+    const result = storageService.deleteOffice(currentUser.officeId);
+    if (!result.success) {
+      return result;
+    }
+
+    sessionStorage.setItem('dex_account_deleted_msg', 'O escritório foi encerrado e os dados foram tratados com sucesso.');
+    logout();
+    return { success: true };
+  };
+
+  const adminDeleteUser = async (userId: string): Promise<{ success: boolean; error?: string }> => {
+    if (!isAppAdmin) {
+      return { success: false, error: 'Permissão negada. Apenas o Administrador da Plataforma pode realizar esta ação.' };
+    }
+    const result = storageService.deleteUserAccount(userId);
+    refreshUsers();
+    return result;
+  };
+
+  const adminDeleteOffice = async (officeId: string): Promise<{ success: boolean; error?: string }> => {
+    if (!isAppAdmin) {
+      return { success: false, error: 'Permissão negada. Apenas o Administrador da Plataforma pode realizar esta ação.' };
+    }
+    const result = storageService.deleteOffice(officeId);
+    refreshUsers();
+    return result;
+  };
+
   const logout = () => {
     if (currentUser) {
       storageService.addAuditLog({
@@ -787,8 +981,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addLawyerByOffice,
         updateProfilePhoto,
         updateProfileData,
+        changePassword,
         changeSubscription,
         cancelSubscription,
+        deleteMyAccount,
+        deleteMyOffice,
+        adminDeleteUser,
+        adminDeleteOffice,
         logout,
         availableUsers
       }}

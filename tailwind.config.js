@@ -36,8 +36,8 @@ export default {
             darkHover: '#2A393C',
           },
           terracotta: {
-            DEFAULT: '#C48A5C',
-            hover: '#AD774C',
+            DEFAULT: '#9E432A',
+            hover: '#7F3621',
           },
           input: '#DCE5E4',
           support: '#8F8A87',

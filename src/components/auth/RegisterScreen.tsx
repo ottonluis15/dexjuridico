@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { 
-  Eye, 
-  EyeOff, 
   ArrowLeft,
   Building2,
   UserCheck,
@@ -14,6 +12,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useTheme } from '../../context/ThemeContext';
 import { DexLogo } from '../common/DexLogo';
+import { AuthSwitchLink } from '../common/AuthSwitchLink';
+import { PasswordInput } from '../common/PasswordInput';
 
 interface RegisterScreenProps {
   onNavigateToLogin: () => void;
@@ -52,8 +52,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
 
   // Estados de UI
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registrationCompletedEmail, setRegistrationCompletedEmail] = useState<string | null>(null);
@@ -545,53 +543,31 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                 </div>
               </div>
 
-              {/* Senha e Confirmar senha (Lado a Lado - Corrigido "senha" para "Senha" como solicitado) */}
+              {/* Senha e Confirmar senha (Lado a Lado) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs italic font-serif text-dex-navy-950">
-                      Senha
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="text-[11px] text-dex-support hover:text-dex-navy-950"
-                      tabIndex={-1}
-                    >
-                      {showPassword ? 'Ocultar' : 'Mostrar'}
-                    </button>
-                  </div>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
+                  <label className="block text-xs italic font-serif text-dex-navy-950">
+                    Senha
+                  </label>
+                  <PasswordInput
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Mínimo 6 dígitos"
-                    className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-slate-dark transition-all"
+                    autoComplete="new-password"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs italic font-serif text-dex-navy-950">
-                      Confirmar senha
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="text-[11px] text-dex-support hover:text-dex-navy-950"
-                      tabIndex={-1}
-                    >
-                      {showConfirmPassword ? 'Ocultar' : 'Mostrar'}
-                    </button>
-                  </div>
-                  <input
-                    type={showConfirmPassword ? 'text' : 'password'}
+                  <label className="block text-xs italic font-serif text-dex-navy-950">
+                    Confirmar senha
+                  </label>
+                  <PasswordInput
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Repita a senha"
-                    className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-slate-dark transition-all"
+                    autoComplete="new-password"
                   />
                 </div>
               </div>
@@ -606,17 +582,12 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   {isSubmitting ? 'Criando conta...' : (accountType === 'OFFICE' ? 'Criar escritório' : 'Criar minha conta')}
                 </button>
 
-                {/* LINK FAZER LOGIN (Terracota - Anexo 3) */}
-                <div className="text-xs text-dex-navy-950">
-                  <span>Já tem conta? </span>
-                  <button
-                    type="button"
-                    onClick={onNavigateToLogin}
-                    className="text-dex-terracotta hover:underline font-semibold cursor-pointer italic"
-                  >
-                    fazer Login
-                  </button>
-                </div>
+                {/* LINK FAZER LOGIN */}
+                <AuthSwitchLink
+                  prompt="Já tem conta?"
+                  actionLabel="Fazer login"
+                  onAction={onNavigateToLogin}
+                />
               </div>
             </form>
             </>

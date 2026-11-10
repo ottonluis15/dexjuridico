@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { 
   ArrowLeft, 
-  Eye, 
-  EyeOff, 
   ArrowRight, 
   X,
   Lock,
@@ -15,6 +13,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { storageService } from '../../services/storageService';
 import { DexLogo } from '../common/DexLogo';
+import { AuthSwitchLink } from '../common/AuthSwitchLink';
+import { PasswordInput } from '../common/PasswordInput';
 
 interface LoginScreenProps {
   onNavigateToRegister?: () => void;
@@ -34,7 +34,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -250,26 +249,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
               {/* Senha */}
               <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs italic font-serif text-dex-navy-950 dark:text-[#F9ECE2]">
-                    Senha
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="text-[11px] text-dex-support dark:text-[#A6C5CD] hover:text-dex-navy-950 dark:hover:text-white cursor-pointer"
-                    tabIndex={-1}
-                  >
-                    {showPassword ? 'Ocultar' : 'Mostrar'}
-                  </button>
-                </div>
-                <input
-                  type={showPassword ? 'text' : 'password'}
+                <label className="block text-xs italic font-serif text-dex-navy-950 dark:text-[#F9ECE2]">
+                  Senha
+                </label>
+                <PasswordInput
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Sua senha de acesso"
-                  className="w-full px-4 py-2.5 rounded-xl bg-dex-input dark:bg-[#0F2733] text-dex-navy-950 dark:text-[#F9ECE2] text-xs sm:text-sm placeholder:text-dex-support/70 dark:placeholder:text-white/40 border border-transparent dark:border-[#214154] focus:outline-none focus:ring-2 focus:ring-dex-coral transition-all"
+                  autoComplete="current-password"
                 />
               </div>
 
@@ -306,16 +294,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
               {/* Link Criar Escritório */}
               {onNavigateToRegister && (
-                <div className="text-center text-xs text-dex-navy-950 dark:text-[#F9ECE2] pt-1">
-                  <span>Não tem conta? </span>
-                  <button
-                    type="button"
-                    onClick={onNavigateToRegister}
-                    className="text-dex-terracotta dark:text-dex-coral-light hover:underline font-semibold cursor-pointer italic"
-                  >
-                    Criar escritório
-                  </button>
-                </div>
+                <AuthSwitchLink
+                  prompt="Não tem conta?"
+                  actionLabel="Criar escritório"
+                  onAction={onNavigateToRegister}
+                />
               )}
             </form>
 

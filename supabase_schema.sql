@@ -376,4 +376,9 @@ INSERT INTO public.dex_users (
 )
 ON CONFLICT (id) DO UPDATE SET "isDemo" = true, "officeId" = 'off_demo_sandbox';
 
+-- 12. Migração Segura: Exclusão e Desativação Forense com Carência (LGPD)
+ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "scheduledDeletionDate" TIMESTAMPTZ;
+ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMPTZ;
+
+
 

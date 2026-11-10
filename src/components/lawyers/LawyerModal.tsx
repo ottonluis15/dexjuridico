@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { UserCheck, Camera, Trash2, Eye, EyeOff, UserPlus, Link2 } from 'lucide-react';
+import { UserCheck, Camera, Trash2, UserPlus, Link2 } from 'lucide-react';
 import { Modal } from '../common/Modal';
+import { PasswordInput } from '../common/PasswordInput';
 import { Lawyer } from '../../types';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -27,7 +28,6 @@ export const LawyerModal: React.FC<LawyerModalProps> = ({
   const [phone, setPhone] = useState('');
   const [oab, setOab] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [roleTitle, setRoleTitle] = useState('Advogado Associado');
   const [specialtiesText, setSpecialtiesText] = useState('Direito Civil, Direito do Trabalho');
   const [status, setStatus] = useState<'ACTIVE' | 'ON_LEAVE' | 'INACTIVE'>('ACTIVE');
@@ -367,22 +367,12 @@ export const LawyerModal: React.FC<LawyerModalProps> = ({
                 <label className="block text-xs font-serif italic text-[#C2D6DC] mb-1.5">
                   Senha Provisória de Acesso
                 </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Deixe em branco para gerar aleatória"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-2.5 text-slate-600 hover:text-dex-navy-950"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
+                <PasswordInput
+                  placeholder="Deixe em branco para gerar aleatória"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  autoComplete="new-password"
+                />
               </div>
             )}
 

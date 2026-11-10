@@ -10,6 +10,7 @@ import {
   Moon
 } from 'lucide-react';
 import { DexLogo } from '../common/DexLogo';
+import { AuthSwitchLink } from '../common/AuthSwitchLink';
 import { storageService } from '../../services/storageService';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -280,13 +281,11 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
                       )}
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={onNavigateToLogin}
-                      className="text-xs text-dex-terracotta dark:text-dex-coral-light hover:underline font-semibold cursor-pointer italic"
-                    >
-                      Lembrou a senha? Fazer Login
-                    </button>
+                    <AuthSwitchLink
+                      prompt="Lembrou a senha?"
+                      actionLabel="Fazer login"
+                      onAction={onNavigateToLogin}
+                    />
                   </div>
                 </form>
               )}

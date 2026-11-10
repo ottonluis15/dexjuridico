@@ -11,6 +11,7 @@ import {
   Moon
 } from 'lucide-react';
 import { DexLogo } from '../common/DexLogo';
+import { AuthSwitchLink } from '../common/AuthSwitchLink';
 import { storageService } from '../../services/storageService';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -378,13 +379,11 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
                       )}
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={onNavigateToLogin}
-                      className="text-xs text-dex-terracotta hover:underline font-semibold cursor-pointer italic"
-                    >
-                      Já confirmou? Fazer Login
-                    </button>
+                    <AuthSwitchLink
+                      prompt="Já confirmou?"
+                      actionLabel="Fazer login"
+                      onAction={onNavigateToLogin}
+                    />
                   </div>
                 </div>
               )}

@@ -13,6 +13,8 @@ import {
   Moon
 } from 'lucide-react';
 import { DexLogo } from '../common/DexLogo';
+import { AuthSwitchLink } from '../common/AuthSwitchLink';
+import { PasswordInput } from '../common/PasswordInput';
 import { storageService } from '../../services/storageService';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -32,8 +34,6 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
   const { isDark, toggleTheme } = useTheme();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -278,46 +278,26 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
                     <label className="block text-xs font-serif italic text-dex-navy-950">
                       Nova Senha
                     </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full px-4 py-2.5 sm:py-3 pr-10 bg-dex-input rounded-xl text-dex-navy-950 text-sm focus:outline-none focus:ring-2 focus:ring-dex-navy-950 shadow-inner"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-dex-support hover:text-dex-navy-950"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
+                    <PasswordInput
+                      required
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="••••••••"
+                      autoComplete="new-password"
+                    />
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="block text-xs font-serif italic text-dex-navy-950">
                       Confirmar Nova Senha
                     </label>
-                    <div className="relative">
-                      <input
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        required
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full px-4 py-2.5 sm:py-3 pr-10 bg-dex-input rounded-xl text-dex-navy-950 text-sm focus:outline-none focus:ring-2 focus:ring-dex-navy-950 shadow-inner"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-dex-support hover:text-dex-navy-950"
-                      >
-                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
+                    <PasswordInput
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="••••••••"
+                      autoComplete="new-password"
+                    />
                   </div>
 
                   {/* INDICADOR VISUAL DE REQUISITOS DE SENHA */}
@@ -370,13 +350,11 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
                       )}
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={onNavigateToLogin}
-                      className="text-xs text-dex-terracotta dark:text-dex-coral-light hover:underline font-semibold cursor-pointer italic"
-                    >
-                      Voltar ao Login
-                    </button>
+                    <AuthSwitchLink
+                      prompt="Lembrou a senha?"
+                      actionLabel="Fazer login"
+                      onAction={onNavigateToLogin}
+                    />
                   </div>
                 </form>
               )}

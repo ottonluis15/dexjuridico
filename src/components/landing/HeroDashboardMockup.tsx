@@ -89,7 +89,7 @@ export const HeroDashboardMockup: React.FC = () => {
   return (
     <div
       ref={containerRef}
-      className="relative w-full max-w-[520px] sm:max-w-[560px] lg:max-w-[620px] mx-auto select-none [perspective:1400px]"
+      className="relative w-full max-w-[360px] sm:max-w-[520px] lg:max-w-[620px] mx-auto select-none [perspective:1400px]"
     >
       {/* Moldura / Fundo cinza-claro arredondado fiel à Imagem 1 */}
       <div
@@ -97,7 +97,7 @@ export const HeroDashboardMockup: React.FC = () => {
           transform: `translate3d(${normX * -6}px, ${normY * -5}px, 0px) scale(${isHovered ? 1.015 : 1})`,
           transition: 'transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
         }}
-        className="w-full bg-[#D6DDD8] rounded-[32px] sm:rounded-[36px] p-5 sm:p-7 md:p-8 shadow-2xl relative"
+        className="w-full bg-[#D6DDD8] rounded-[24px] sm:rounded-[36px] p-4 sm:p-7 md:p-8 shadow-2xl relative"
       >
         {/* Janela do Mockup do Dashboard (100% fiel à Imagem 1 e Anexo 1) */}
         <div
@@ -163,8 +163,8 @@ export const HeroDashboardMockup: React.FC = () => {
         </div>
       </div>
 
-      {/* Corvo pousando no canto superior esquerdo do mockup (restaurado exatamente como antes) */}
-      <div className="absolute -top-16 -left-12 sm:-top-20 sm:-left-16 z-20 pointer-events-none">
+      {/* Corvo pousando no canto superior esquerdo do mockup */}
+      <div className="absolute -top-10 -left-2 sm:-top-20 sm:-left-14 z-20 pointer-events-none">
         <img
           src="/img/corvo1.png"
           alt=""
@@ -173,17 +173,17 @@ export const HeroDashboardMockup: React.FC = () => {
           height="230"
           fetchPriority="high"
           decoding="async"
-          className="w-40 sm:w-56 h-auto drop-shadow-xl animate-float-gentle transform -rotate-3"
+          className="w-28 sm:w-44 lg:w-56 h-auto max-w-[75vw] drop-shadow-xl animate-float-gentle transform -rotate-3"
         />
       </div>
 
-      {/* Pena decorativa na base inferior (com parallax sutil) */}
+      {/* Pena decorativa na base inferior (oculta em mobile estreito para evitar sobreposição) */}
       <div
         style={{
           transform: `translate3d(${normX * -12}px, ${normY * -10}px, 20px)`,
           transition: 'transform 0.2s ease-out',
         }}
-        className="absolute -bottom-8 left-10 sm:left-14 z-30 pointer-events-none"
+        className="hidden sm:block absolute -bottom-8 left-10 sm:left-14 z-30 pointer-events-none"
       >
         <img
           src="/img/pena1.png"
@@ -197,15 +197,15 @@ export const HeroDashboardMockup: React.FC = () => {
         />
       </div>
 
-      {/* 3 bolinhas coral no canto inferior direito (Anexo 1) com parallax suave */}
+      {/* 3 bolinhas coral no canto inferior direito com posicionamento seguro */}
       <div
         style={{
           transform: `translate3d(${normX * 8}px, ${normY * 8}px, 25px)`,
           transition: 'transform 0.18s ease-out',
         }}
-        className="absolute -bottom-4 -right-2 sm:-bottom-5 sm:-right-4 z-30 pointer-events-none"
+        className="absolute -bottom-3 right-1 sm:-bottom-5 sm:-right-4 z-30 pointer-events-none"
       >
-        <DecorativeDots size="w-4 h-4 sm:w-5 sm:h-5" className="gap-2 sm:gap-2.5" />
+        <DecorativeDots size="w-3.5 h-3.5 sm:w-5 sm:h-5" className="gap-1.5 sm:gap-2.5" />
       </div>
     </div>
   );

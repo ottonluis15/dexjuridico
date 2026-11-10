@@ -20,12 +20,16 @@ import {
   Sun,
   Moon,
   Monitor,
-  Palette
+  Palette,
+  ShieldAlert,
+  AlertTriangle,
+  Crown
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useTheme } from '../../context/ThemeContext';
 import { LGPDCompliance } from '../lgpd/LGPDCompliance';
+import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
 import { 
   getSupabaseCredentials, 
   saveSupabaseCredentials, 
@@ -37,11 +41,13 @@ import { storageService } from '../../services/storageService';
 import { DecorativeBars } from '../common/DecorativeBars';
 
 export const SettingsView: React.FC = () => {
-  const { currentUser, isAdmin, updateProfilePhoto, updateProfileData } = useAuth();
+  const { currentUser, isAdmin, isAppAdmin, updateProfilePhoto, updateProfileData, deleteMyOffice, adminDeleteUser, adminDeleteOffice } = useAuth();
   const { showToast } = useData();
   const { themeMode, setThemeMode, effectiveTheme } = useTheme();
 
-  const [activeSubTab, setActiveSubTab] = useState<'database' | 'general' | 'profile' | 'appearance' | 'security' | 'integrations'>('database');
+  const [activeSubTab, setActiveSubTab] = useState<'database' | 'general' | 'profile' | 'appearance' | 'security' | 'integrations' | 'platform'>('database');
+  const [showDeleteOfficeModal, setShowDeleteOfficeModal] = useState(false);
+  const [adminDeleteTarget, setAdminDeleteTarget] = useState<{ type: 'USER' | 'OFFICE'; id: string; name: string } | null>(null);
 
   // Form states - Sociedade
   const [officeName, setOfficeName] = useState(currentUser?.officeName || 'Dex Sociedade de Advogados');
@@ -351,6 +357,20 @@ export const SettingsView: React.FC = () => {
           <Sliders className="w-4 h-4" />
           <span>Integrações</span>
         </button>
+
+        {isAppAdmin && (
+          <button
+            onClick={() => setActiveSubTab('platform')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-serif font-bold transition-all ${
+              activeSubTab === 'platform'
+                ? 'bg-dex-coral text-white shadow-md'
+                : 'text-[#8F8A87] hover:text-white'
+            }`}
+          >
+            <Crown className="w-4 h-4 text-amber-300" />
+            <span>Gestão da Plataforma (Admin)</span>
+          </button>
+        )}
       </div>
 
       {/* Tab: Aparência & Tema */}
@@ -627,71 +647,104 @@ export const SettingsView: React.FC = () => {
 
       {/* Tab: Dados da Sociedade */}
       {activeSubTab === 'general' && isAdmin && (
-        <form onSubmit={handleSaveOffice} className="p-6 md:p-8 rounded-[24px] bg-dex-navy-900 border border-white/5 space-y-5 max-w-3xl">
-          <h3 className="font-serif text-base font-bold text-white mb-2">Informações Institucionais do Escritório</h3>
+        <div className="space-y-6 max-w-3xl">
+          <form onSubmit={handleSaveOffice} className="p-6 md:p-8 rounded-[24px] bg-dex-navy-900 border border-white/5 space-y-5">
+            <h3 className="font-serif text-base font-bold text-white mb-2">Informações Institucionais do Escritório</h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5">Razão Social / Nome da Banca</label>
-              <input
-                type="text"
-                value={officeName}
-                onChange={e => setOfficeName(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5">Razão Social / Nome da Banca</label>
+                <input
+                  type="text"
+                  value={officeName}
+                  onChange={e => setOfficeName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5">CNPJ da Sociedade</label>
+                <input
+                  type="text"
+                  value={officeCnpj}
+                  onChange={e => setOfficeCnpj(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5">Registro OAB Sociedade</label>
+                <input
+                  type="text"
+                  value={officeOab}
+                  onChange={e => setOfficeOab(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5">Telefone Comercial</label>
+                <input
+                  type="text"
+                  value={officePhone}
+                  onChange={e => setOfficePhone(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5">Endereço Comercial</label>
+                <input
+                  type="text"
+                  value={officeAddress}
+                  onChange={e => setOfficeAddress(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5">CNPJ da Sociedade</label>
-              <input
-                type="text"
-                value={officeCnpj}
-                onChange={e => setOfficeCnpj(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
-              />
+            <div className="pt-3 border-t border-white/10 flex justify-end">
+              <button
+                type="submit"
+                className="flex items-center gap-2 px-6 py-2.5 bg-dex-coral hover:bg-dex-coral/90 text-white text-xs font-serif font-bold rounded-xl shadow-lg transition-all"
+              >
+                <Save className="w-4 h-4" />
+                <span>Salvar Dados da Sociedade</span>
+              </button>
             </div>
+          </form>
 
-            <div>
-              <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5">Registro OAB Sociedade</label>
-              <input
-                type="text"
-                value={officeOab}
-                onChange={e => setOfficeOab(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
-              />
+          {/* Zona de Perigo do Escritório */}
+          {!currentUser?.isIndependent && currentUser?.officeId && (
+            <div className="bg-red-500/5 dark:bg-red-950/20 border-2 border-red-500/40 dark:border-red-500/60 rounded-[24px] p-6 sm:p-8 shadow-xl font-serif">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                <div className="space-y-1.5 max-w-xl">
+                  <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-bold text-sm uppercase tracking-wider">
+                    <ShieldAlert className="w-5 h-5 shrink-0" />
+                    <span>Zona de Perigo • Encerramento do Escritório</span>
+                  </div>
+                  <h4 className="text-lg font-serif font-bold text-white">
+                    Encerrar escritório definitivamente
+                  </h4>
+                  <p className="text-xs text-[#A6C5CD] leading-relaxed">
+                    Esta ação apagará todos os dados institucionais associados a <strong>{currentUser.officeName || 'este escritório'}</strong> (processos, finanças, modelos, documentos e publicações do mural). Os advogados integrantes serão preservados e desvinculados como autônomos.
+                  </p>
+                </div>
+
+                <div className="shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteOfficeModal(true)}
+                    className="min-h-[44px] px-6 py-2.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-semibold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Encerrar Escritório</span>
+                  </button>
+                </div>
+              </div>
             </div>
-
-            <div>
-              <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5">Telefone Comercial</label>
-              <input
-                type="text"
-                value={officePhone}
-                onChange={e => setOfficePhone(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5">Endereço Comercial</label>
-              <input
-                type="text"
-                value={officeAddress}
-                onChange={e => setOfficeAddress(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
-              />
-            </div>
-          </div>
-
-          <div className="pt-3 border-t border-white/10 flex justify-end">
-            <button
-              type="submit"
-              className="flex items-center gap-2 px-6 py-2.5 bg-dex-coral hover:bg-dex-coral/90 text-white text-xs font-serif font-bold rounded-xl shadow-lg transition-all"
-            >
-              <Save className="w-4 h-4" />
-              <span>Salvar Dados da Sociedade</span>
-            </button>
-          </div>
-        </form>
+          )}
+        </div>
       )}
 
       {/* Tab: Segurança & LGPD */}
@@ -897,6 +950,177 @@ export const SettingsView: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Tab: Gestão da Plataforma (Admin da Plataforma / SuperAdmin) */}
+      {activeSubTab === 'platform' && isAppAdmin && (
+        <div className="p-6 md:p-8 rounded-[24px] bg-dex-navy-900 border border-white/5 space-y-8 max-w-4xl font-serif">
+          <div className="flex items-center gap-3 pb-4 border-b border-white/10">
+            <div className="w-10 h-10 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center">
+              <Crown className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-serif font-bold text-white">Administração Global da Plataforma Dex</h3>
+              <p className="text-xs text-[#8F8A87]">Controle institucional de contas forenses, escritórios ativos e conformidade com a LGPD.</p>
+            </div>
+          </div>
+
+          {/* Seção Usuários */}
+          <div className="space-y-4">
+            <h4 className="font-serif font-bold text-white uppercase tracking-wider text-xs">
+              Usuários Registrados ({storageService.getUsers().length})
+            </h4>
+            <div className="space-y-2.5">
+              {storageService.getUsers().map(u => {
+                const isSpecial = u.isSuperAdmin || u.id === 'user-1' || u.email.toLowerCase() === 'demo@dexjuridico.com.br';
+                return (
+                  <div key={u.id} className="p-4 rounded-xl bg-dex-navy-800 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-white">{u.name}</span>
+                        {u.isSuperAdmin && <span className="text-[10px] bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-full font-bold">Admin Plataforma</span>}
+                        {u.id === 'user-1' && <span className="text-[10px] bg-dex-teal/20 text-dex-teal px-2 py-0.5 rounded-full font-bold">Demo</span>}
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${u.role === 'ADMIN' ? 'bg-dex-coral/20 text-dex-coral' : 'bg-white/10 text-[#C2D6DC]'}`}>
+                          {u.role === 'ADMIN' ? 'Sócio Titular' : 'Advogado'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#8F8A87] mt-0.5">
+                        {u.email} • {u.officeName || 'Autônomo'} {u.oab ? `• OAB ${u.oab}` : ''}
+                      </p>
+                    </div>
+
+                    {!isSpecial && (
+                      <button
+                        type="button"
+                        onClick={() => setAdminDeleteTarget({ type: 'USER', id: u.id, name: u.name })}
+                        className="min-h-[44px] px-3.5 py-2 text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-950/40 rounded-xl border border-red-500/30 transition-all flex items-center justify-center gap-1.5 cursor-pointer self-end sm:self-auto"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Excluir Usuário</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Seção Escritórios */}
+          <div className="space-y-4 pt-4 border-t border-white/10">
+            <h4 className="font-serif font-bold text-white uppercase tracking-wider text-xs">
+              Escritórios Registrados
+            </h4>
+            <div className="space-y-2.5">
+              {Array.from(new Set(storageService.getUsers().filter(u => u.officeId).map(u => u.officeId!))).map(offId => {
+                const members = storageService.getUsers().filter(u => u.officeId === offId);
+                const offName = members[0]?.officeName || 'Escritório Sem Nome';
+                const isSpecial = offId === 'office-1';
+
+                return (
+                  <div key={offId} className="p-4 rounded-xl bg-dex-navy-800 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-white">{offName}</span>
+                        {isSpecial && <span className="text-[10px] bg-dex-teal/20 text-dex-teal px-2 py-0.5 rounded-full font-bold">Escritório Demo</span>}
+                        <span className="text-[10px] bg-white/10 text-[#C2D6DC] px-2 py-0.5 rounded-full font-bold">
+                          {members.length} {members.length === 1 ? 'integrante' : 'integrantes'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#8F8A87] mt-0.5">Código do Escritório: {offId}</p>
+                    </div>
+
+                    {!isSpecial && (
+                      <button
+                        type="button"
+                        onClick={() => setAdminDeleteTarget({ type: 'OFFICE', id: offId, name: offName })}
+                        className="min-h-[44px] px-3.5 py-2 text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-950/40 rounded-xl border border-red-500/30 transition-all flex items-center justify-center gap-1.5 cursor-pointer self-end sm:self-auto"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Encerrar Escritório</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Sócio Titular Encerrar o Próprio Escritório */}
+      <DeleteConfirmationModal
+        isOpen={showDeleteOfficeModal}
+        onClose={() => setShowDeleteOfficeModal(false)}
+        title="Encerrar Escritório"
+        subtitle={currentUser?.officeName}
+        isOffice={true}
+        description={
+          <div>
+            <p className="mb-2">
+              Você está prestes a encerrar permanentemente o escritório <strong>{currentUser?.officeName}</strong>.
+            </p>
+            <ul className="list-disc pl-5 space-y-1 text-[11px]">
+              <li>Todos os processos, clientes e lançamentos financeiros do escritório serão expurgados.</li>
+              <li>A assinatura do plano será cancelada.</li>
+              <li>Os advogados da equipe <strong>não</strong> serão excluídos: virarão autônomos com suas credenciais preservadas.</li>
+            </ul>
+          </div>
+        }
+        keywordRequired={currentUser?.officeName || 'EXCLUIR'}
+        keywordLabel={
+          <span>
+            Para autorizar o encerramento, digite o nome exato do escritório (<strong className="font-mono text-red-600 dark:text-red-400">{currentUser?.officeName}</strong>) ou <strong className="font-mono text-red-600 dark:text-red-400">EXCLUIR</strong>:
+          </span>
+        }
+        onConfirm={async (pwd, kw) => {
+          return await deleteMyOffice(pwd, kw);
+        }}
+      />
+
+      {/* Modal para Administrador da Plataforma (SuperAdmin) Excluir Usuário ou Escritório */}
+      {adminDeleteTarget && (
+        <DeleteConfirmationModal
+          isOpen={!!adminDeleteTarget}
+          onClose={() => setAdminDeleteTarget(null)}
+          title={adminDeleteTarget.type === 'OFFICE' ? 'Encerrar Escritório (Admin Plataforma)' : 'Excluir Usuário (Admin Plataforma)'}
+          subtitle={adminDeleteTarget.name}
+          isOffice={adminDeleteTarget.type === 'OFFICE'}
+          description={
+            adminDeleteTarget.type === 'OFFICE' ? (
+              <p>
+                Como Administrador da Plataforma, você está encerrando o escritório <strong>{adminDeleteTarget.name}</strong>. Os advogados integrantes serão preservados e desvinculados como autônomos.
+              </p>
+            ) : (
+              <p>
+                Como Administrador da Plataforma, você está excluindo a conta de <strong>{adminDeleteTarget.name}</strong>. Seus dados pessoais serão tratados em conformidade com a LGPD.
+              </p>
+            )
+          }
+          keywordRequired="EXCLUIR"
+          requirePassword={true}
+          keywordLabel={
+            <span>
+              Para autorizar como Administrador, digite a palavra <strong className="font-mono text-red-600 dark:text-red-400">EXCLUIR</strong>:
+            </span>
+          }
+          onConfirm={async (_pwd, _kw) => {
+            if (adminDeleteTarget.type === 'OFFICE') {
+              const res = await adminDeleteOffice(adminDeleteTarget.id);
+              if (res.success) {
+                showToast(`Escritório ${adminDeleteTarget.name} encerrado com sucesso.`, 'success');
+                setAdminDeleteTarget(null);
+              }
+              return res;
+            } else {
+              const res = await adminDeleteUser(adminDeleteTarget.id);
+              if (res.success) {
+                showToast(`Usuário ${adminDeleteTarget.name} excluído com sucesso.`, 'success');
+                setAdminDeleteTarget(null);
+              }
+              return res;
+            }
+          }}
+        />
       )}
     </div>
   );

@@ -1259,5 +1259,198 @@ export const storageService = {
     } catch {
       return 1;
     }
+  },
+
+  // ==========================================
+  // EXCLUSÃO SEGURA DE CONTA E ESCRITÓRIO (LGPD)
+  // ==========================================
+  canUserDeleteAccount(userId: string): { allowed: boolean; reason?: string } {
+    const users = this.getUsers();
+    const user = users.find(u => u.id === userId);
+    if (!user) {
+      return { allowed: false, reason: 'Usuário não encontrado.' };
+    }
+
+    if (user.id === 'user-1' || user.email.toLowerCase() === 'demo@dexjuridico.com.br') {
+      return { allowed: false, reason: 'A conta de demonstração institucional não pode ser excluída.' };
+    }
+
+    if (user.isSuperAdmin || user.email.toLowerCase() === 'otton.luis.alcaraz@gmail.com') {
+      return { allowed: false, reason: 'A conta do Administrador da Plataforma não pode ser excluída por este fluxo.' };
+    }
+
+    // Se for sócio titular do escritório, verificar se há outros membros ativos
+    if (user.role === 'ADMIN' && !user.isIndependent && user.officeId) {
+      const lawyers = this.getLawyers().filter(
+        l => l.officeId === user.officeId && l.userId !== user.id && l.status === 'ACTIVE'
+      );
+      if (lawyers.length > 0) {
+        return {
+          allowed: false,
+          reason: 'Como titular do escritório, você deve transferir a titularidade para outro sócio antes de excluir a conta, ou realizar a exclusão completa do escritório.'
+        };
+      }
+    }
+
+    return { allowed: true };
+  },
+
+  deleteUserAccount(userId: string): { success: boolean; error?: string } {
+    const check = this.canUserDeleteAccount(userId);
+    if (!check.allowed) {
+      return { success: false, error: check.reason };
+    }
+
+    const users = this.getUsers();
+    const user = users.find(u => u.id === userId);
+    if (!user) return { success: false, error: 'Usuário não encontrado.' };
+
+    const isLinkedLawyer = user.role === 'LAWYER' && !user.isIndependent;
+    const isIndependent = user.isIndependent || !user.officeId;
+
+    if (isLinkedLawyer) {
+      // 1. Dados institucionais pertencem ao escritório: reatribui processos e prazos para o sócio titular
+      const officeOwner = users.find(u => u.officeId === user.officeId && u.role === 'ADMIN');
+      const fallbackLawyerId = officeOwner ? officeOwner.id : '';
+
+      const cases = this.getCases();
+      const updatedCases = cases.map(c => {
+        if (c.lawyerId === user.id) {
+          return { ...c, lawyerId: fallbackLawyerId };
+        }
+        return c;
+      });
+      this.saveCases(updatedCases);
+
+      const deadlines = this.getDeadlines();
+      const updatedDeadlines = deadlines.map(d => {
+        if (d.lawyerId === user.id) {
+          return { ...d, lawyerId: fallbackLawyerId };
+        }
+        return d;
+      });
+      this.saveDeadlines(updatedDeadlines);
+
+      // 2. Mural da Equipe: preserva histórico com autoria anonimizada (LGPD)
+      const posts = this.getTeamPosts();
+      const updatedPosts = posts.map(p => {
+        if (p.authorId === user.id) {
+          return { ...p, authorName: 'Advogado Removido', authorInitial: 'A' };
+        }
+        return p;
+      });
+      this.saveTeamPosts(updatedPosts);
+
+      // 3. Remove vínculo em dex_lawyers
+      const lawyers = this.getLawyers().filter(l => l.userId !== user.id && l.email.toLowerCase() !== user.email.toLowerCase());
+      this.saveLawyers(lawyers);
+    } else if (isIndependent) {
+      // Advogado autônomo: expurga seus dados individuais
+      const cases = this.getCases().filter(c => c.lawyerId !== user.id);
+      this.saveCases(cases);
+
+      const deadlines = this.getDeadlines().filter(d => d.lawyerId !== user.id);
+      this.saveDeadlines(deadlines);
+
+      const clients = this.getClients().filter(cl => cl.linkedLawyerId !== user.id);
+      this.saveClients(clients);
+
+      const finances = this.getFinancial().filter(f => f.lawyerId !== user.id);
+      this.saveFinancial(finances);
+
+      const docs = this.getDocuments().filter(doc => doc.uploadedByLawyerId !== user.id);
+      this.saveDocuments(docs);
+
+      const templates = this.getTemplates().filter(t => t.uploadedByUserId !== user.id);
+      this.saveTemplates(templates);
+
+      const lawyers = this.getLawyers().filter(l => l.userId !== user.id && l.email.toLowerCase() !== user.email.toLowerCase());
+      this.saveLawyers(lawyers);
+    }
+
+    // 4. Remove a conta do usuário de dex_users
+    const remainingUsers = users.filter(u => u.id !== userId);
+    this.saveUsers(remainingUsers);
+
+    // 5. Se for o usuário logado, limpa sessão
+    const current = this.getCurrentUser();
+    if (current?.id === userId) {
+      this.saveCurrentUser(null);
+    }
+
+    // 6. Registro de Auditoria Forense
+    this.addAuditLog({
+      userId: 'SISTEMA',
+      userName: 'Sistema Forense Dex',
+      userRole: 'ADMIN',
+      action: 'EXCLUSAO_CONTA',
+      entity: `Conta: ${user.name}`,
+      details: `Conta pessoal do usuário ${user.name} (${user.email}) excluída em conformidade com a LGPD.`,
+      ipAddress: '187.54.12.90',
+      officeId: user.officeId
+    });
+
+    return { success: true };
+  },
+
+  deleteOffice(officeId: string): { success: boolean; error?: string } {
+    if (officeId === 'office-1') {
+      return { success: false, error: 'O escritório de demonstração institucional não pode ser excluído.' };
+    }
+
+    // 1. Desvincular advogados integrantes, convertendo-os em advogados autônomos
+    const users = this.getUsers().map(u => {
+      if (u.officeId === officeId) {
+        return {
+          ...u,
+          isIndependent: true,
+          officeId: undefined,
+          officeName: undefined,
+          officeCode: undefined,
+          role: 'LAWYER' as const
+        };
+      }
+      return u;
+    });
+    this.saveUsers(users);
+
+    // 2. Apagar dados vinculados ao escritório
+    const cases = this.getCases().filter(c => c.officeId !== officeId);
+    this.saveCases(cases);
+
+    const deadlines = this.getDeadlines().filter(d => d.officeId !== officeId);
+    this.saveDeadlines(deadlines);
+
+    const clients = this.getClients().filter(cl => cl.officeId !== officeId);
+    this.saveClients(clients);
+
+    const finances = this.getFinancial().filter(f => f.officeId !== officeId);
+    this.saveFinancial(finances);
+
+    const docs = this.getDocuments().filter(doc => doc.officeId !== officeId);
+    this.saveDocuments(docs);
+
+    const templates = this.getTemplates().filter(t => t.officeId !== officeId);
+    this.saveTemplates(templates);
+
+    const posts = this.getTeamPosts().filter(p => p.officeId !== officeId);
+    this.saveTeamPosts(posts);
+
+    const lawyers = this.getLawyers().filter(l => l.officeId !== officeId);
+    this.saveLawyers(lawyers);
+
+    // 3. Auditoria Forense
+    this.addAuditLog({
+      userId: 'SISTEMA',
+      userName: 'Sistema Forense Dex',
+      userRole: 'ADMIN',
+      action: 'EXCLUSAO_ESCRITORIO',
+      entity: `Escritório: ${officeId}`,
+      details: `Escritório encerrado e dados associados expurgados em conformidade com a LGPD. Advogados vinculados foram convertidos em autônomos.`,
+      ipAddress: '187.54.12.90',
+      officeId
+    });
+
+    return { success: true };
   }
 };

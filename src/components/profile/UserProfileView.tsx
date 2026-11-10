@@ -10,14 +10,19 @@ import {
   Phone, 
   Building2, 
   Award,
-  Lock
+  Lock,
+  ShieldAlert,
+  AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
+import { useTheme } from '../../context/ThemeContext';
 import { DecorativeBars } from '../common/DecorativeBars';
+import { PasswordInput } from '../common/PasswordInput';
+import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
 
 export const UserProfileView: React.FC = () => {
-  const { currentUser, updateProfilePhoto, updateProfileData, requestEmailChange } = useAuth();
+  const { currentUser, updateProfilePhoto, updateProfileData, requestEmailChange, changePassword, deleteMyAccount } = useAuth();
   const { showToast } = useData();
 
   // Form states - Perfil do Usuário
@@ -28,6 +33,15 @@ export const UserProfileView: React.FC = () => {
   const [isChangingEmail, setIsChangingEmail] = useState(false);
   const [userOab, setUserOab] = useState(currentUser?.oab || '');
   const [userPhone, setUserPhone] = useState(currentUser?.phone || '');
+
+  // Estados para alteração de senha
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
+  // Estados para exclusão de conta (Zona de Perigo)
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
 
   // Foto de Perfil
   const [photoPreview, setPhotoPreview] = useState<string | undefined>(currentUser?.avatarUrl);
@@ -109,6 +123,33 @@ export const UserProfileView: React.FC = () => {
     : (currentUser?.role === 'ADMIN'
         ? '⚖️ Sócio / Administrador do Escritório'
         : (currentUser?.isIndependent ? '⚖️ Advogado Autônomo' : `⚖️ Advogado Associado • ${currentUser?.officeName || 'Escritório'}`));
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword) {
+      showToast('Por favor, informe a senha atual.', 'error');
+      return;
+    }
+    if (newPassword.length < 8) {
+      showToast('A nova senha deve ter no mínimo 8 caracteres.', 'error');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      showToast('A confirmação da nova senha não coincide.', 'error');
+      return;
+    }
+    setIsUpdatingPassword(true);
+    const res = await changePassword(currentPassword, newPassword);
+    setIsUpdatingPassword(false);
+    if (res.success) {
+      showToast('Senha alterada com sucesso!', 'success');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } else {
+      showToast(res.error || 'Erro ao alterar a senha.', 'error');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -309,6 +350,146 @@ export const UserProfileView: React.FC = () => {
           </form>
         </div>
       </div>
+
+      {/* CARD: SEGURANÇA E ALTERAÇÃO DE SENHA */}
+      <div className="bg-dex-navy-900 border border-white/5 rounded-[24px] p-6 sm:p-8 shadow-2xl relative overflow-hidden font-serif">
+        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+          <div className="w-10 h-10 rounded-xl bg-dex-teal/20 text-dex-teal flex items-center justify-center">
+            <Lock className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-serif font-bold text-white">Segurança e Credencial</h3>
+            <p className="text-xs text-[#C2D6DC] italic">Altere sua senha de acesso com validação forense e criptografia de ponta a ponta.</p>
+          </div>
+        </div>
+
+        <form onSubmit={handlePasswordChange} className="space-y-4 max-w-xl">
+          <div>
+            <label className="block text-xs font-serif italic text-[#C2D6DC] mb-1.5">
+              Senha Atual
+            </label>
+            <PasswordInput
+              required
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Digite sua senha atual"
+              autoComplete="current-password"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-serif italic text-[#C2D6DC] mb-1.5">
+                Nova Senha
+              </label>
+              <PasswordInput
+                required
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Mínimo 8 caracteres"
+                autoComplete="new-password"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-serif italic text-[#C2D6DC] mb-1.5">
+                Confirmar Nova Senha
+              </label>
+              <PasswordInput
+                required
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                placeholder="Repita a nova senha"
+                autoComplete="new-password"
+              />
+            </div>
+          </div>
+
+          <div className="pt-2 flex justify-end">
+            <button
+              type="submit"
+              disabled={isUpdatingPassword}
+              className="px-6 py-2.5 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-xs font-serif font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 disabled:opacity-60 cursor-pointer"
+            >
+              <Lock className="w-4 h-4" />
+              <span>{isUpdatingPassword ? 'Atualizando...' : 'Atualizar Senha'}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* ZONA DE PERIGO: EXCLUSÃO DE CONTA (LGPD) */}
+      <div className="bg-red-500/5 dark:bg-red-950/20 border-2 border-red-500/40 dark:border-red-500/60 rounded-[24px] p-6 sm:p-8 shadow-xl relative overflow-hidden font-serif">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+          <div className="space-y-1.5 max-w-xl">
+            <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-bold text-sm uppercase tracking-wider">
+              <ShieldAlert className="w-5 h-5 shrink-0" />
+              <span>Zona de Perigo • Exclusão de Conta</span>
+            </div>
+            <h4 className="text-lg font-serif font-bold text-dex-navy-950 dark:text-white">
+              Excluir minha conta definitivamente
+            </h4>
+            <p className="text-xs text-dex-support dark:text-[#A6C5CD] leading-relaxed">
+              {currentUser?.role === 'ADMIN' && !currentUser.isIndependent ? (
+                <span>
+                  Como sócio administrador titular, a exclusão da sua conta pessoal exige a prévia transferência de titularidade ou a exclusão do escritório inteiro em Configurações.
+                </span>
+              ) : currentUser?.role === 'LAWYER' && !currentUser.isIndependent ? (
+                <span>
+                  Sua conta pessoal será permanentemente excluída e suas credenciais revogadas. Os processos e dados institucionais que você cadastrou permanecerão custodiados com o escritório.
+                </span>
+              ) : (
+                <span>
+                  Sua conta e todos os dados associados (clientes, processos, prazos e finanças) serão permanentemente expurgados em estrita observância à LGPD.
+                </span>
+              )}
+            </p>
+          </div>
+
+          <div className="shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowDeleteAccountModal(true)}
+              className="min-h-[44px] px-6 py-2.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-semibold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Excluir minha conta</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal Reforçado de Confirmação de Exclusão de Conta */}
+      <DeleteConfirmationModal
+        isOpen={showDeleteAccountModal}
+        onClose={() => setShowDeleteAccountModal(false)}
+        title="Excluir Minha Conta"
+        subtitle={currentUser?.email}
+        description={
+          currentUser?.role === 'ADMIN' && !currentUser.isIndependent ? (
+            <p>
+              Você é o titular de <strong>{currentUser.officeName || 'seu escritório'}</strong>. Para excluir sua conta pessoal, transfira a titularidade para outro sócio ou encerre o escritório na aba de configurações.
+            </p>
+          ) : currentUser?.role === 'LAWYER' && !currentUser.isIndependent ? (
+            <p>
+              Você está prestes a excluir sua conta pessoal do Dex. Suas credenciais de acesso serão revogadas e todas as sessões encerradas. Os processos e clientes vinculados permanecerão sob custódia do escritório <strong>{currentUser.officeName}</strong>.
+            </p>
+          ) : (
+            <p>
+              Você está prestes a excluir definitivamente sua conta de advogado autônomo. Todos os seus clientes, processos, prazos, registros financeiros e arquivos serão apagados.
+            </p>
+          )
+        }
+        keywordRequired="EXCLUIR"
+        keywordLabel={
+          <span>
+            Para autorizar o expurgo forense, digite a palavra <strong className="font-mono text-red-600 dark:text-red-400">EXCLUIR</strong>:
+          </span>
+        }
+        onConfirm={async (pwd, kw) => {
+          return await deleteMyAccount(pwd, kw);
+        }}
+      />
 
       {/* Modal de Alteração de E-mail com Confirmação Obrigatória */}
       {showEmailChangeModal && (
