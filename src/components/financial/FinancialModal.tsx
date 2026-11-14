@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { DollarSign, Upload, FileText, Image as ImageIcon, Trash2, Paperclip, AlertTriangle } from 'lucide-react';
 import { Modal } from '../common/Modal';
+import { MaskedInput } from '../common/MaskedInput';
 import { FinancialEntry, FinancialType, FinancialStatus, PaymentMethod } from '../../types';
 import { useData } from '../../context/DataContext';
+import { maskCurrency, unmaskCurrencyToFloat } from '../../utils/masks';
 
 interface FinancialModalProps {
   isOpen: boolean;
@@ -35,7 +37,8 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
   const [type, setType] = useState<FinancialType>('HONORARIOS_INICIAIS');
   const [clientId, setClientId] = useState('');
   const [caseId, setCaseId] = useState('');
-  const [amount, setAmount] = useState<string>('2500');
+  const [amount, setAmount] = useState<string>('R$ 0,00');
+  const [amountError, setAmountError] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState(new Date().toISOString().substring(0, 10));
   const [paymentDate, setPaymentDate] = useState('');
   const [status, setStatus] = useState<FinancialStatus>('PENDENTE');
@@ -54,7 +57,7 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
       setType(activeEntry.type);
       setClientId(activeEntry.clientId);
       setCaseId(activeEntry.caseId || '');
-      setAmount(activeEntry.amount.toString());
+      setAmount(maskCurrency(activeEntry.amount));
       setDueDate(activeEntry.dueDate);
       setPaymentDate(activeEntry.paymentDate || '');
       setStatus(activeEntry.status);
@@ -64,12 +67,13 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
       setReceiptName(activeEntry.receiptName || '');
       setReceiptUrl(activeEntry.receiptUrl || '');
       setFileError(null);
+      setAmountError(null);
     } else {
       setTitle('');
       setType('HONORARIOS_INICIAIS');
       setClientId(clients[0]?.id || '');
       setCaseId(cases[0]?.id || '');
-      setAmount('2500');
+      setAmount(maskCurrency(2500));
       setDueDate(new Date().toISOString().substring(0, 10));
       setPaymentDate('');
       setStatus('PENDENTE');
@@ -79,6 +83,7 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
       setReceiptName('');
       setReceiptUrl('');
       setFileError(null);
+      setAmountError(null);
     }
   }, [activeEntry, isOpen, clients, cases]);
 
@@ -108,8 +113,15 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setAmountError(null);
 
-    if (!title.trim() || !clientId || !amount || !dueDate) {
+    const numericAmount = unmaskCurrencyToFloat(amount);
+    if (numericAmount <= 0) {
+      setAmountError('Informe um valor monetário positivo maior que zero.');
+      return;
+    }
+
+    if (!title.trim() || !clientId || !dueDate) {
       alert('Por favor, preencha todos os campos obrigatórios (*).');
       return;
     }
@@ -119,7 +131,7 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
       type,
       clientId,
       caseId: caseId || undefined,
-      amount: parseFloat(amount) || 0,
+      amount: numericAmount,
       dueDate,
       paymentDate: status === 'PAGO' ? (paymentDate || dueDate) : undefined,
       status,
@@ -248,19 +260,18 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
 
         {/* Linha 3: Valor, Vencimento e Método */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="space-y-1">
-            <label className="block text-xs italic font-serif text-[#C2D6DC]">
-              Valor Nominal (R$)*
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              required
-              value={amount}
-              onChange={e => setAmount(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
-            />
-          </div>
+          <MaskedInput
+            mask="currency"
+            label="Valor Nominal (R$)"
+            required
+            value={amount}
+            onChange={(formatted) => {
+              setAmount(formatted);
+              setAmountError(null);
+            }}
+            error={amountError}
+            placeholder="R$ 0,00"
+          />
 
           <div className="space-y-1">
             <label className="block text-xs italic font-serif text-[#C2D6DC]">

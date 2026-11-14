@@ -22,7 +22,10 @@ import { DecorativeBars } from '../common/DecorativeBars';
 import { PasswordInput } from '../common/PasswordInput';
 import { PasswordRequirements } from '../common/PasswordRequirements';
 import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
+import { MaskedInput } from '../common/MaskedInput';
 import { validatePassword } from '../../utils/passwordPolicy';
+import { validateOAB, validatePhone } from '../../utils/validators';
+import { maskOAB, maskPhone } from '../../utils/masks';
 
 export const UserProfileView: React.FC = () => {
   const { currentUser, updateProfilePhoto, updateProfileData, requestEmailChange, changePassword, deleteMyAccount } = useAuth();
@@ -34,8 +37,10 @@ export const UserProfileView: React.FC = () => {
   const [newEmailInput, setNewEmailInput] = useState('');
   const [showEmailChangeModal, setShowEmailChangeModal] = useState(false);
   const [isChangingEmail, setIsChangingEmail] = useState(false);
-  const [userOab, setUserOab] = useState(currentUser?.oab || '');
-  const [userPhone, setUserPhone] = useState(currentUser?.phone || '');
+  const [userOab, setUserOab] = useState(currentUser?.oab ? maskOAB(currentUser.oab) : '');
+  const [userPhone, setUserPhone] = useState(currentUser?.phone ? maskPhone(currentUser.phone) : '');
+  const [oabError, setOabError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   // Estados para alteração de senha
   const [currentPassword, setCurrentPassword] = useState('');
@@ -65,8 +70,8 @@ export const UserProfileView: React.FC = () => {
   useEffect(() => {
     if (currentUser) {
       setUserName(currentUser.name);
-      setUserOab(currentUser.oab || '');
-      setUserPhone(currentUser.phone || '');
+      setUserOab(currentUser.oab ? maskOAB(currentUser.oab) : '');
+      setUserPhone(currentUser.phone ? maskPhone(currentUser.phone) : '');
       setPhotoPreview(currentUser.avatarUrl);
     }
   }, [currentUser]);
@@ -111,13 +116,35 @@ export const UserProfileView: React.FC = () => {
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userName.trim()) {
+    setOabError(null);
+    setPhoneError(null);
+
+    const cleanName = userName.replace(/\s+/g, ' ').trim();
+    if (!cleanName) {
       showToast('O nome não pode ficar em branco.', 'error');
       return;
     }
 
+    if (userOab.trim()) {
+      const oabVal = validateOAB(userOab);
+      if (!oabVal.isValid) {
+        setOabError(oabVal.error || 'Número de OAB inválido.');
+        showToast(oabVal.error || 'Número de OAB inválido.', 'error');
+        return;
+      }
+    }
+
+    if (userPhone.trim()) {
+      const phoneVal = validatePhone(userPhone);
+      if (!phoneVal.isValid) {
+        setPhoneError(phoneVal.error || 'Telefone inválido.');
+        showToast(phoneVal.error || 'Telefone inválido.', 'error');
+        return;
+      }
+    }
+
     updateProfileData({
-      name: userName.trim(),
+      name: cleanName,
       oab: userOab.trim().toUpperCase(),
       phone: userPhone.trim()
     });
@@ -311,15 +338,17 @@ export const UserProfileView: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5">
-                  Número de Inscrição na OAB
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: 245.890/SP"
+                <MaskedInput
+                  mask="oab"
+                  label="Número de Inscrição na OAB"
+                  placeholder="123456/SP"
                   value={userOab}
-                  onChange={e => setUserOab(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
+                  onChange={val => {
+                    setUserOab(val);
+                    if (oabError) setOabError(null);
+                  }}
+                  error={oabError || undefined}
+                  helperText="Formato oficial: NNNNNN/UF (ex: 123456/SP)"
                 />
               </div>
             </div>
@@ -360,16 +389,17 @@ export const UserProfileView: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-xs font-serif italic text-[#C2D6DC] block mb-1.5 flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5 text-slate-400" />
-                  Telefone / WhatsApp Profissional
-                </label>
-                <input
-                  type="text"
+                <MaskedInput
+                  mask="phone"
+                  label="Telefone / WhatsApp Profissional"
                   placeholder="(11) 98765-4321"
                   value={userPhone}
-                  onChange={e => setUserPhone(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
+                  onChange={val => {
+                    setUserPhone(val);
+                    if (phoneError) setPhoneError(null);
+                  }}
+                  error={phoneError || undefined}
+                  helperText="DDD + 8 ou 9 dígitos"
                 />
               </div>
             </div>

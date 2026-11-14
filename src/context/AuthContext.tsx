@@ -7,6 +7,8 @@ import { isSupabaseConfigured } from '../services/supabaseClient';
 import { PlanId, SubscriptionPeriod, getPlanById } from '../config/plans';
 import { activePaymentProvider } from '../services/payment/PaymentProvider';
 import { validatePassword } from '../utils/passwordPolicy';
+import { validateEmail, validateOAB, validatePhone, validateCNPJ } from '../utils/validators';
+import { normalizeOAB, unmaskAlphanumeric, unmaskDigits } from '../utils/masks';
 
 export interface RegisterUserData {
   name: string;
@@ -200,6 +202,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const registerUser = async (userData: RegisterUserData): Promise<{ success: boolean; user?: User; error?: string; pendingConfirmation?: boolean; emailWarning?: string }> => {
     const cleanEmail = userData.email.trim().toLowerCase();
 
+    // Validação formal de e-mail
+    const emailVal = validateEmail(cleanEmail);
+    if (!emailVal.isValid) {
+      return { success: false, error: emailVal.error || 'E-mail inválido.' };
+    }
+
     // Se o e-mail estava registrado no histórico de excluídos, libera para novo cadastro
     storageService.removeDeletedEmail(cleanEmail);
 
@@ -217,12 +225,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // Validação de OAB
-    if (!userData.oab || !userData.oab.trim()) {
+    // Validação forense de OAB
+    const oabVal = validateOAB(userData.oab);
+    if (!oabVal.isValid) {
       return { 
         success: false, 
-        error: 'O número de inscrição na OAB (com UF) é obrigatório.' 
+        error: oabVal.error || 'O número de inscrição na OAB (com UF) é obrigatório e deve ser válido.' 
       };
+    }
+
+    // Validação de CNPJ se informado (Escritório)
+    if (userData.cnpj && userData.cnpj.trim()) {
+      const cnpjVal = validateCNPJ(userData.cnpj);
+      if (!cnpjVal.isValid) {
+        return { success: false, error: cnpjVal.error || 'CNPJ do escritório inválido.' };
+      }
+    }
+
+    // Validação de Telefone se informado
+    if (userData.phone && userData.phone.trim()) {
+      const phoneVal = validatePhone(userData.phone);
+      if (!phoneVal.isValid) {
+        return { success: false, error: phoneVal.error || 'Telefone inválido.' };
+      }
     }
 
     // Validação de requisitos forenses de senha (Tarefa 2)
@@ -444,13 +469,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const cleanEmail = lawyerData.email.trim().toLowerCase();
+    const emailVal = validateEmail(cleanEmail);
+    if (!emailVal.isValid) {
+      return { success: false, error: emailVal.error || 'E-mail do advogado inválido.' };
+    }
+
     const existing = storageService.findUserByEmail(cleanEmail);
     if (existing) {
       return { success: false, error: 'Já existe um usuário cadastrado com este e-mail institucional.' };
     }
 
-    if (!lawyerData.oab.trim()) {
-      return { success: false, error: 'A inscrição OAB/UF é obrigatória.' };
+    const oabVal = validateOAB(lawyerData.oab);
+    if (!oabVal.isValid) {
+      return { success: false, error: oabVal.error || 'A inscrição OAB/UF é obrigatória e deve ser válida.' };
+    }
+
+    if (lawyerData.phone && lawyerData.phone.trim()) {
+      const phoneVal = validatePhone(lawyerData.phone);
+      if (!phoneVal.isValid) {
+        return { success: false, error: phoneVal.error || 'Telefone inválido.' };
+      }
     }
 
     const pwdValidation = validatePassword(lawyerData.password);
@@ -549,6 +587,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProfileData = (updates: Partial<User>): boolean => {
     if (!currentUser) return false;
+
+    if (updates.oab) {
+      const oabVal = validateOAB(updates.oab);
+      if (!oabVal.isValid) return false;
+      updates.oab = normalizeOAB(updates.oab);
+    }
+
+    if (updates.phone && updates.phone.trim()) {
+      const phoneVal = validatePhone(updates.phone);
+      if (!phoneVal.isValid) return false;
+    }
+
     const updated = { ...currentUser, ...updates };
     setCurrentUser(updated);
     storageService.saveCurrentUser(updated);
@@ -1020,6 +1070,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         officeId: currentUser.officeId
       });
     }
+    // Invalidação de cache local e sessão
+    try {
+      sessionStorage.clear();
+      localStorage.removeItem('dex_quick_tasks');
+    } catch {}
+
     setCurrentUser(null);
     storageService.saveCurrentUser(null);
     if (window.location.pathname !== '/login' && window.location.pathname !== '/') {

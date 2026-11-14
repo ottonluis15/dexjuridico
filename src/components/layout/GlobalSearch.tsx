@@ -54,6 +54,14 @@ function cleanDigits(text: string): string {
 }
 
 /**
+ * Remove pontuações mantendo dígitos e letras (suporta CNPJ alfanumérico e OAB com UF)
+ */
+function cleanAlphanumeric(text: string): string {
+  if (!text) return '';
+  return text.toUpperCase().replace(/[^0-9A-Z]/g, '');
+}
+
+/**
  * Destaca o trecho pesquisado com proteção contra injeção de HTML
  */
 function HighlightMatch({ text, query }: { text: string; query: string }) {
@@ -161,6 +169,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
     if (!cleanQ || cleanQ.length < 2) return [];
 
     const digitsQ = cleanDigits(debouncedQuery);
+    const alphaQ = cleanAlphanumeric(debouncedQuery);
     const items: SearchResultItem[] = [];
 
     // 1. Processos (userCases - já isolado por escritório e advogado)
@@ -202,12 +211,14 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
     const matchingClients = userClients.filter(cl => {
       const name = normalizeText(cl.name || '');
       const doc = cleanDigits(cl.document || '');
+      const docAlpha = cleanAlphanumeric(cl.document || '');
       const email = normalizeText(cl.email || '');
       const phone = cleanDigits(cl.phone || '');
 
       return (
         name.includes(cleanQ) ||
         (digitsQ.length >= 3 && doc.includes(digitsQ)) ||
+        (alphaQ.length >= 3 && docAlpha.includes(alphaQ)) ||
         email.includes(cleanQ) ||
         (digitsQ.length >= 4 && phone.includes(digitsQ))
       );
@@ -276,11 +287,20 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
     const matchingLawyers = visibleTeamLawyers.filter(l => {
       const name = normalizeText(l.name || '');
       const oab = normalizeText(l.oab || '');
+      const oabAlpha = cleanAlphanumeric(l.oab || '');
       const email = normalizeText(l.email || '');
       const role = normalizeText(l.roleTitle || '');
       const specs = (l.specialties || []).map(normalizeText).join(' ');
 
-      return name.includes(cleanQ) || oab.includes(cleanQ) || email.includes(cleanQ) || role.includes(cleanQ) || specs.includes(cleanQ);
+      return (
+        name.includes(cleanQ) ||
+        oab.includes(cleanQ) ||
+        (alphaQ.length >= 3 && oabAlpha.includes(alphaQ)) ||
+        (digitsQ.length >= 3 && cleanDigits(l.oab || '').includes(digitsQ)) ||
+        email.includes(cleanQ) ||
+        role.includes(cleanQ) ||
+        specs.includes(cleanQ)
+      );
     }).slice(0, 4);
 
     matchingLawyers.forEach(l => {

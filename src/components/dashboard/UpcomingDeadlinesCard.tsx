@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Clock, CheckCircle2, AlertTriangle, ArrowRight, Feather } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 
 export const UpcomingDeadlinesCard: React.FC<{ onNavigate: () => void }> = ({ onNavigate }) => {
@@ -49,8 +49,16 @@ export const UpcomingDeadlinesCard: React.FC<{ onNavigate: () => void }> = ({ on
         {/* Lista de Prazos */}
         <div className="space-y-3">
           {activeDeadlines.length === 0 ? (
-            <div className="text-center py-6 text-xs text-[#A6C5CD] font-serif">
-              Nenhum prazo pendente na pauta.
+            <div className="text-center py-7 px-3 flex flex-col items-center justify-center space-y-2">
+              <div className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-[#A6C5CD]/60">
+                <Feather className="w-4 h-4 stroke-[1.5]" />
+              </div>
+              <p className="text-xs text-white/90 font-serif font-medium">
+                Nenhum prazo pendente na pauta
+              </p>
+              <p className="text-[11px] text-[#A6C5CD]/70 font-serif leading-relaxed">
+                Sua agenda forense está em dia e sem prazos pendentes.
+              </p>
             </div>
           ) : (
             activeDeadlines.map((deadline) => {

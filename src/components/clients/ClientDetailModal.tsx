@@ -16,6 +16,7 @@ import { Modal } from '../common/Modal';
 import { Client } from '../../types';
 import { useData } from '../../context/DataContext';
 import { CaseStatusBadge } from '../common/Badge';
+import { formatDisplay } from '../../utils/masks';
 
 interface ClientDetailModalProps {
   client: Client;
@@ -61,7 +62,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-bold px-2.5 py-1 rounded-xl bg-dex-navy-950 border border-white/10 text-white font-mono">
-                {client.document}
+                {formatDisplay(client.document, 'cpf_or_cnpj')}
               </span>
               <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
                 client.status === 'ACTIVE'
@@ -114,7 +115,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-3.5 h-3.5 text-dex-coral" />
-                <span>{client.phone}</span>
+                <span>{formatDisplay(client.phone, 'phone')}</span>
               </div>
             </div>
           </div>
@@ -125,7 +126,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
             </h4>
             <div className="text-xs text-white">
               <p>{client.address.street}, nº {client.address.number} {client.address.complement && `(${client.address.complement})`}</p>
-              <p className="text-[#A6C5CD]">{client.address.neighborhood} • {client.address.city}/{client.address.state} • CEP {client.address.zipCode}</p>
+              <p className="text-[#A6C5CD]">{client.address.neighborhood} • {client.address.city}/{client.address.state} • CEP {formatDisplay(client.address.zipCode, 'cep')}</p>
             </div>
           </div>
         </div>

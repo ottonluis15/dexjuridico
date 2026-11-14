@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Users, UserPlus } from 'lucide-react';
 import { Modal } from '../common/Modal';
+import { MaskedInput } from '../common/MaskedInput';
 import { Client, ClientType, ClientStatus } from '../../types';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
+import { validateCPFOrCNPJ, validatePhone, validateEmail, validateCEP } from '../../utils/validators';
+import { maskCPFOrCNPJ, maskPhone, maskCEP, unmaskAlphanumeric, unmaskDigits } from '../../utils/masks';
 
 interface ClientModalProps {
   isOpen: boolean;
@@ -38,20 +41,26 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   const [status, setStatus] = useState<ClientStatus>('ACTIVE');
   const [linkedLawyerId, setLinkedLawyerId] = useState('');
 
+  // Estados de erro por campo
+  const [docError, setDocError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [generalError, setGeneralError] = useState<string | null>(null);
+
   useEffect(() => {
     if (activeClient) {
       setName(activeClient.name);
       setType(activeClient.type);
-      setDocument(activeClient.document);
+      setDocument(maskCPFOrCNPJ(activeClient.document, activeClient.type));
       setEmail(activeClient.email);
-      setPhone(activeClient.phone);
+      setPhone(maskPhone(activeClient.phone));
       setStreet(activeClient.address.street);
       setNumber(activeClient.address.number);
       setComplement(activeClient.address.complement || '');
       setNeighborhood(activeClient.address.neighborhood);
       setCity(activeClient.address.city);
       setState(activeClient.address.state);
-      setZipCode(activeClient.address.zipCode);
+      setZipCode(maskCEP(activeClient.address.zipCode));
       setNotes(activeClient.notes || '');
       setStatus(activeClient.status);
       setLinkedLawyerId(activeClient.linkedLawyerId || '');
@@ -72,22 +81,54 @@ export const ClientModal: React.FC<ClientModalProps> = ({
       setStatus('ACTIVE');
       setLinkedLawyerId(lawyers[0]?.id || '');
     }
+    setDocError(null);
+    setPhoneError(null);
+    setEmailError(null);
+    setGeneralError(null);
   }, [activeClient, isOpen, lawyers]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setDocError(null);
+    setPhoneError(null);
+    setEmailError(null);
+    setGeneralError(null);
 
-    if (!name.trim() || !document.trim() || !email.trim() || !phone.trim()) {
-      alert('Por favor, preencha todos os dados obrigatórios (*).');
+    const cleanName = name.replace(/\s+/g, ' ').trim();
+    if (!cleanName) {
+      setGeneralError('Informe o nome ou razão social do cliente.');
       return;
     }
 
+    const docVal = validateCPFOrCNPJ(document, type);
+    if (!docVal.isValid) {
+      setDocError(docVal.error || 'Documento inválido.');
+      return;
+    }
+
+    const phoneVal = validatePhone(phone);
+    if (!phoneVal.isValid) {
+      setPhoneError(phoneVal.error || 'Telefone inválido.');
+      return;
+    }
+
+    const emailVal = validateEmail(email);
+    if (!emailVal.isValid) {
+      setEmailError(emailVal.error || 'E-mail inválido.');
+      return;
+    }
+
+    // Normaliza documento gravado no banco (apenas caracteres úteis)
+    const normalizedDoc = type === 'PJ' || /[A-Z]/.test(document)
+      ? unmaskAlphanumeric(document)
+      : unmaskDigits(document);
+
     const payload = {
-      name: name.trim(),
+      name: cleanName,
       type,
-      document: document.trim(),
+      document: normalizedDoc,
       email: email.trim().toLowerCase(),
-      phone: phone.trim(),
+      phone: unmaskDigits(phone),
       address: {
         street: street.trim() || 'Rua Principal',
         number: number.trim() || 'S/N',
@@ -95,7 +136,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
         neighborhood: neighborhood.trim() || 'Centro',
         city: city.trim() || 'São Paulo',
         state: state.trim() || 'SP',
-        zipCode: zipCode.trim() || '01000-000'
+        zipCode: unmaskDigits(zipCode) || '01000000'
       },
       notes: notes.trim(),
       status,
@@ -147,6 +188,13 @@ export const ClientModal: React.FC<ClientModalProps> = ({
           </button>
         </div>
 
+        {/* Mensagem Geral de Erro */}
+        {generalError && (
+          <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/50 text-red-300 text-xs font-serif">
+            {generalError}
+          </div>
+        )}
+
         {/* Linha 1: Nome / Razão Social e CPF/CNPJ */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1">
@@ -163,19 +211,18 @@ export const ClientModal: React.FC<ClientModalProps> = ({
             />
           </div>
 
-          <div className="space-y-1">
-            <label className="block text-xs italic font-serif text-[#C2D6DC]">
-              {type === 'PF' ? 'CPF*' : 'CNPJ*'}
-            </label>
-            <input
-              type="text"
-              required
-              placeholder={type === 'PF' ? '000.000.000-00' : '00.000.000/0000-00'}
-              value={document}
-              onChange={e => setDocument(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-coral font-mono"
-            />
-          </div>
+          <MaskedInput
+            mask="cpf_cnpj"
+            clientType={type}
+            label={type === 'PF' ? 'CPF' : 'CNPJ'}
+            required
+            value={document}
+            onChange={(formatted) => {
+              setDocument(formatted);
+              setDocError(null);
+            }}
+            error={docError}
+          />
         </div>
 
         {/* Linha 2: E-mail e Telefone / WhatsApp */}
@@ -189,31 +236,45 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               required
               placeholder="cliente@email.com"
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={e => {
+                setEmail(e.target.value);
+                setEmailError(null);
+              }}
               className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             />
+            {emailError && (
+              <p className="text-xs text-red-400 font-serif">• {emailError}</p>
+            )}
           </div>
 
-          <div className="space-y-1">
-            <label className="block text-xs italic font-serif text-[#C2D6DC]">
-              Telefone / Celular (WhatsApp)*
-            </label>
-            <input
-              type="tel"
-              required
-              placeholder="(00) 00000-0000"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
-            />
-          </div>
+          <MaskedInput
+            mask="phone"
+            label="Telefone / Celular (WhatsApp)"
+            required
+            value={phone}
+            onChange={(formatted) => {
+              setPhone(formatted);
+              setPhoneError(null);
+            }}
+            error={phoneError}
+          />
         </div>
 
-        {/* Linha 3: Endereço (Logradouro, Número, Cidade e UF) */}
+        {/* Linha 3: Endereço (CEP, Logradouro, Número) */}
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-          <div className="sm:col-span-8 space-y-1">
+          <div className="sm:col-span-4">
+            <MaskedInput
+              mask="cep"
+              label="CEP"
+              value={zipCode}
+              onChange={(formatted) => setZipCode(formatted)}
+              placeholder="00000-000"
+            />
+          </div>
+
+          <div className="sm:col-span-5 space-y-1">
             <label className="block text-xs italic font-serif text-[#C2D6DC]">
-              Logradouro (Rua, Av, Travessa)
+              Logradouro (Rua, Av)
             </label>
             <input
               type="text"
@@ -224,7 +285,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
             />
           </div>
 
-          <div className="sm:col-span-4 space-y-1">
+          <div className="sm:col-span-3 space-y-1">
             <label className="block text-xs italic font-serif text-[#C2D6DC]">
               Número / Sala
             </label>

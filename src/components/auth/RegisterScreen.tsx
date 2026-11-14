@@ -17,7 +17,9 @@ import { DexLogo } from '../common/DexLogo';
 import { AuthSwitchLink } from '../common/AuthSwitchLink';
 import { PasswordInput } from '../common/PasswordInput';
 import { PasswordRequirements } from '../common/PasswordRequirements';
+import { MaskedInput } from '../common/MaskedInput';
 import { validatePassword } from '../../utils/passwordPolicy';
+import { validateCNPJ, validatePhone, validateOAB, validateEmail } from '../../utils/validators';
 import { DEX_PLANS, PlanId, SubscriptionPeriod, getPlanById } from '../../config/plans';
 
 interface RegisterScreenProps {
@@ -77,54 +79,69 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registrationCompletedEmail, setRegistrationCompletedEmail] = useState<string | null>(null);
 
-  // Máscara amigável de CNPJ: 00.000.000/0000-00
-  const handleCnpjChange = (val: string) => {
-    const raw = val.replace(/\D/g, '').slice(0, 14);
-    let formatted = raw;
-    if (raw.length > 12) {
-      formatted = raw.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{1,2})$/, '$1.$2.$3/$4-$5');
-    } else if (raw.length > 8) {
-      formatted = raw.replace(/^(\d{2})(\d{3})(\d{3})(\d{1,4})$/, '$1.$2.$3/$4');
-    } else if (raw.length > 5) {
-      formatted = raw.replace(/^(\d{2})(\d{3})(\d{1,3})$/, '$1.$2.$3');
-    } else if (raw.length > 2) {
-      formatted = raw.replace(/^(\d{2})(\d{1,3})$/, '$1.$2');
-    }
-    setCnpj(formatted);
-  };
-
-  // Máscara amigável de Telefone: (00) 00000-0000
-  const handlePhoneChange = (val: string) => {
-    const raw = val.replace(/\D/g, '').slice(0, 11);
-    let formatted = raw;
-    if (raw.length > 10) {
-      formatted = raw.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
-    } else if (raw.length > 6) {
-      formatted = raw.replace(/^(\d{2})(\d{4})(\d{0,4})$/, '($1) $2-$3');
-    } else if (raw.length > 2) {
-      formatted = raw.replace(/^(\d{2})(\d{0,5})$/, '($1) $2');
-    }
-    setPhone(formatted);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
+    const sanitizedName = fullName.replace(/\s+/g, ' ').trim();
+    const cleanEmail = email.trim().toLowerCase();
+
     // Validações gerais
-    if (!fullName.trim() || !email.trim() || !password.trim()) {
+    if (!sanitizedName || !cleanEmail || !password.trim()) {
       setError('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
 
-    if (accountType === 'OFFICE' && !firmName.trim()) {
-      setError('Informe o nome do escritório.');
+    if (sanitizedName.length < 3) {
+      setError('Informe seu nome completo (mínimo de 3 caracteres).');
       return;
     }
 
-    if (accountType === 'LAWYER' && lawyerAffiliation === 'LINKED' && !officeCodeOrEmail.trim()) {
-      setError('Informe o código ou e-mail do escritório ao qual deseja se vincular.');
+    const emailVal = validateEmail(cleanEmail);
+    if (!emailVal.isValid) {
+      setError(emailVal.error || 'E-mail inválido.');
       return;
+    }
+
+    const oabVal = validateOAB(oab);
+    if (!oabVal.isValid) {
+      setError(oabVal.error || 'Inscrição na OAB inválida.');
+      return;
+    }
+
+    if (accountType === 'OFFICE') {
+      if (!firmName.trim()) {
+        setError('Informe o nome do escritório.');
+        return;
+      }
+      if (cnpj.trim()) {
+        const cnpjVal = validateCNPJ(cnpj);
+        if (!cnpjVal.isValid) {
+          setError(cnpjVal.error || 'CNPJ do escritório inválido.');
+          return;
+        }
+      }
+      if (phone.trim()) {
+        const phoneVal = validatePhone(phone);
+        if (!phoneVal.isValid) {
+          setError(phoneVal.error || 'Telefone inválido.');
+          return;
+        }
+      }
+    }
+
+    if (accountType === 'LAWYER') {
+      if (lawyerAffiliation === 'LINKED' && !officeCodeOrEmail.trim()) {
+        setError('Informe o código ou e-mail do escritório ao qual deseja se vincular.');
+        return;
+      }
+      if (phone.trim()) {
+        const phoneVal = validatePhone(phone);
+        if (!phoneVal.isValid) {
+          setError(phoneVal.error || 'Telefone inválido.');
+          return;
+        }
+      }
     }
 
     const pwdValidation = validatePassword(password);
@@ -142,11 +159,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
     try {
       const res = await registerUser({
-        name: fullName.trim(),
-        email: email.trim().toLowerCase(),
+        name: sanitizedName,
+        email: cleanEmail,
         password,
         role: accountType === 'OFFICE' ? 'ADMIN' : 'LAWYER',
-        oab: oab.trim().toUpperCase() || 'OAB/PENDENTE',
+        oab: oab.trim().toUpperCase(),
         phone: phone.trim() || undefined,
         firmName: accountType === 'OFFICE' ? firmName.trim() : undefined,
         cnpj: accountType === 'OFFICE' ? cnpj.trim() : undefined,
@@ -613,31 +630,21 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
                   {/* Cnpj e Telefone (Lado a Lado) */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div className="space-y-1">
-                      <label className="block text-xs italic font-serif text-dex-navy-950 dark:text-[#F9ECE2]">
-                        Cnpj
-                      </label>
-                      <input
-                        type="text"
-                        value={cnpj}
-                        onChange={(e) => handleCnpjChange(e.target.value)}
-                        placeholder="00.000.000/0000-00"
-                        className="w-full px-4 py-2.5 rounded-xl bg-dex-input dark:bg-[#0F2733] text-dex-navy-950 dark:text-[#F9ECE2] text-xs sm:text-sm placeholder:text-dex-support/70 dark:placeholder:text-white/40 border border-transparent dark:border-[#214154] focus:outline-none focus:ring-2 focus:ring-dex-coral transition-all"
-                      />
-                    </div>
+                    <MaskedInput
+                      mask="cnpj"
+                      label="Cnpj"
+                      value={cnpj}
+                      onChange={(formatted) => setCnpj(formatted)}
+                      placeholder="00.000.000/0000-00"
+                    />
 
-                    <div className="space-y-1">
-                      <label className="block text-xs italic font-serif text-dex-navy-950 dark:text-[#F9ECE2]">
-                        Telefone
-                      </label>
-                      <input
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => handlePhoneChange(e.target.value)}
-                        placeholder="(00) 00000-0000"
-                        className="w-full px-4 py-2.5 rounded-xl bg-dex-input dark:bg-[#0F2733] text-dex-navy-950 dark:text-[#F9ECE2] text-xs sm:text-sm placeholder:text-dex-support/70 dark:placeholder:text-white/40 border border-transparent dark:border-[#214154] focus:outline-none focus:ring-2 focus:ring-dex-coral transition-all"
-                      />
-                    </div>
+                    <MaskedInput
+                      mask="phone"
+                      label="Telefone"
+                      value={phone}
+                      onChange={(formatted) => setPhone(formatted)}
+                      placeholder="(00) 00000-0000"
+                    />
                   </div>
 
                   {/* Área Principal e Endereço (Lado a Lado) */}
@@ -748,7 +755,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-1">
                   <label className="block text-xs italic font-serif text-dex-navy-950 dark:text-[#F9ECE2]">
-                    E-mail
+                    E-mail <span className="text-dex-coral">*</span>
                   </label>
                   <input
                     type="email"
@@ -760,20 +767,26 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="block text-xs italic font-serif text-dex-navy-950 dark:text-[#F9ECE2]">
-                    OAB*
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={oab}
-                    onChange={(e) => setOab(e.target.value)}
-                    placeholder="Ex: SP 123.456"
-                    className="w-full px-4 py-2.5 rounded-xl bg-dex-input dark:bg-[#0F2733] text-dex-navy-950 dark:text-[#F9ECE2] text-xs sm:text-sm placeholder:text-dex-support/70 dark:placeholder:text-white/40 border border-transparent dark:border-[#214154] focus:outline-none focus:ring-2 focus:ring-dex-coral transition-all"
-                  />
-                </div>
+                <MaskedInput
+                  mask="oab"
+                  label="OAB"
+                  required
+                  value={oab}
+                  onChange={(formatted) => setOab(formatted)}
+                  placeholder="123456/SP"
+                />
               </div>
+
+              {/* Telefone para Advogado Individual */}
+              {accountType === 'LAWYER' && (
+                <MaskedInput
+                  mask="phone"
+                  label="Telefone com DDD"
+                  value={phone}
+                  onChange={(formatted) => setPhone(formatted)}
+                  placeholder="(00) 00000-0000"
+                />
+              )}
 
               {/* Senha e Confirmar senha (Lado a Lado) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">

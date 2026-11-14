@@ -1,11 +1,11 @@
 import React from 'react';
+import { Feather, Scale } from 'lucide-react';
 import { useData } from '../../context/DataContext';
-import { CaseStatus } from '../../types';
 
 export const ProcessStatusChart: React.FC<{ onNavigate: () => void }> = ({ onNavigate }) => {
   const { userCases } = useData();
 
-  const total = userCases.length || 1;
+  const total = userCases.length;
 
   // Contagem por status
   const statusCounts: Record<string, { label: string; count: number; color: string }> = {
@@ -50,30 +50,44 @@ export const ProcessStatusChart: React.FC<{ onNavigate: () => void }> = ({ onNav
         </button>
       </div>
 
-      <div className="mt-5 space-y-4 flex-1 flex flex-col justify-center">
-        {Object.entries(statusCounts).map(([key, item]) => {
-          const percent = Math.round((item.count / total) * 100);
-          return (
-            <div key={key} className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs font-serif">
-                <span className="text-[#EAE0DA]">{item.label}</span>
-                <span className="text-[#A6C5CD] font-medium">
-                  {item.count} ({percent}%)
-                </span>
+      {total === 0 ? (
+        <div className="mt-5 flex-1 flex flex-col items-center justify-center py-8 text-center space-y-2">
+          <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-[#A6C5CD]/60 mb-1">
+            <Feather className="w-5 h-5 stroke-[1.5]" />
+          </div>
+          <p className="text-xs text-white/90 font-serif font-medium">
+            Nenhum processo em andamento
+          </p>
+          <p className="text-[11px] text-[#A6C5CD]/70 font-serif max-w-xs leading-relaxed">
+            Cadastre seu primeiro processo judicial para acompanhar a distribuição por fases processuais.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-5 space-y-4 flex-1 flex flex-col justify-center">
+          {Object.entries(statusCounts).map(([key, item]) => {
+            const percent = total > 0 ? Math.round((item.count / total) * 100) : 0;
+            return (
+              <div key={key} className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-serif">
+                  <span className="text-[#EAE0DA]">{item.label}</span>
+                  <span className="text-[#A6C5CD] font-medium">
+                    {item.count} ({percent}%)
+                  </span>
+                </div>
+                <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${item.count > 0 ? Math.max(percent, 4) : 0}%`,
+                      backgroundColor: item.color,
+                    }}
+                  />
+                </div>
               </div>
-              <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${Math.max(percent, 4)}%`,
-                    backgroundColor: item.color,
-                  }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

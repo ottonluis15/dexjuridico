@@ -8,30 +8,52 @@ import {
 import { useData } from '../../context/DataContext';
 
 export const KPICards: React.FC<{ onNavigate: (tab: any) => void }> = ({ onNavigate }) => {
-  const { stats, clients, userCases, userFinancial, userDeadlines } = useData();
+  const { stats, userClients, userCases, userFinancial } = useData();
 
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(val);
+  // Limites do mês corrente no fuso horário oficial de Brasília (America/Sao_Paulo)
+  const currentMonthBrasilia = (() => {
+    try {
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit'
+      });
+      return formatter.format(new Date()).substring(0, 7);
+    } catch {
+      return new Date().toISOString().substring(0, 7);
+    }
+  })();
+
+  const isRevenueType = (t: string) => 
+    t === 'HONORARIOS_INICIAIS' || t === 'HONORARIOS_EXITO' || t === 'MENSALIDADE';
+
+  // Receita mensal real: soma estrita em centavos inteiros (evita imprecisão de float)
+  // Critério: lançamentos de receita ('HONORARIOS_INICIAIS', 'HONORARIOS_EXITO', 'MENSALIDADE')
+  // com status liquidado 'PAGO' e competência/recebimento no mês corrente de Brasília.
+  const monthlyRevenueCents = userFinancial.reduce((acc, curr) => {
+    if (isRevenueType(curr.type) && curr.status === 'PAGO') {
+      const refDate = curr.paymentDate || curr.dueDate || '';
+      if (refDate.substring(0, 7) === currentMonthBrasilia) {
+        return acc + Math.round((curr.amount || 0) * 100);
+      }
+    }
+    return acc;
+  }, 0);
+
+  const formatCurrencyExact = (cents: number) => {
+    return (cents / 100).toLocaleString('pt-BR', { 
+      style: 'currency', 
+      currency: 'BRL', 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    });
   };
 
-  // Cálculo da receita mensal (honorários recebidos este mês ou total recente)
-  const currentMonth = new Date().toISOString().substring(0, 7);
-  const isRevenue = (t: string) => t !== 'DESPESA' && t !== 'CUSTAS';
-  const monthlyRevenue = userFinancial
-    .filter(f => isRevenue(f.type) && f.status === 'PAGO' && f.dueDate.startsWith(currentMonth))
-    .reduce((acc, curr) => acc + curr.amount, 0);
-
-  const fallbackRevenue = monthlyRevenue > 0 
-    ? monthlyRevenue 
-    : userFinancial
-        .filter(f => isRevenue(f.type) && f.status === 'PAGO')
-        .reduce((acc, curr) => acc + curr.amount, 0);
-
   const activeCasesCount = userCases.filter(c => c.status !== 'ARQUIVADO').length;
-  const clientsCount = clients.length;
+  const clientsCount = userClients.length;
   const upcomingDeadlinesCount = stats.upcomingDeadlinesCount;
 
-  // 4 Cards FIEIS AO ANEXO 4
+  // 4 Cards FIEIS AO ANEXO 4 (Conta nova começa estritamente zerada)
   const cards = [
     {
       id: 'cases',
@@ -54,7 +76,7 @@ export const KPICards: React.FC<{ onNavigate: (tab: any) => void }> = ({ onNavig
     {
       id: 'financial',
       label: 'Receita mensal',
-      value: formatCurrency(fallbackRevenue || 45800),
+      value: formatCurrencyExact(monthlyRevenueCents),
       icon: DollarSign,
       tileBg: 'bg-[#E0D7F5]',
       tileColor: 'text-[#6B46C1]',

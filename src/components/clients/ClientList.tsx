@@ -22,6 +22,7 @@ import { ClientDetailModal } from './ClientDetailModal';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { EmptyState } from '../common/EmptyState';
 import { InternalPageLayout, SummaryCardItem } from '../layout/InternalPageLayout';
+import { formatDisplay } from '../../utils/masks';
 
 export const ClientList: React.FC = () => {
   const { userClients, userCases, deleteClient, exportClientsCsv } = useData();
@@ -38,16 +39,19 @@ export const ClientList: React.FC = () => {
 
   const cleanS = search.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
   const digitsS = search.replace(/\D/g, '');
+  const alphaS = search.toUpperCase().replace(/[^0-9A-Z]/g, '');
 
   const filteredClients = userClients.filter(c => {
     const clientNameNorm = (c.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const clientDocDigits = (c.document || '').replace(/\D/g, '');
+    const clientDocAlpha = (c.document || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
     const clientPhoneDigits = (c.phone || '').replace(/\D/g, '');
     const clientEmail = (c.email || '').toLowerCase();
 
     const matchesSearch = !cleanS || (
       clientNameNorm.includes(cleanS) ||
       (digitsS.length >= 3 && clientDocDigits.includes(digitsS)) ||
+      (alphaS.length >= 3 && clientDocAlpha.includes(alphaS)) ||
       clientEmail.includes(cleanS) ||
       (digitsS.length >= 3 && clientPhoneDigits.includes(digitsS))
     );
@@ -182,7 +186,7 @@ export const ClientList: React.FC = () => {
                           {client.name}
                         </h4>
                         <span className="text-[11px] text-[#A6C5CD] font-mono">
-                          {client.document}
+                          {formatDisplay(client.document, 'cpf_or_cnpj')}
                         </span>
                       </div>
                     </div>
@@ -207,7 +211,7 @@ export const ClientList: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Phone className="w-3.5 h-3.5 text-[#A6C5CD] shrink-0" />
-                        <span>{client.phone}</span>
+                        <span>{formatDisplay(client.phone, 'phone')}</span>
                       </div>
                       {cleanPhone.length >= 10 && (
                         <a

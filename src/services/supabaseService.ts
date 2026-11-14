@@ -9,7 +9,8 @@ import {
   DocumentItem, 
   TemplateDocument,
   AuditLog,
-  WallPost 
+  WallPost,
+  QuickTask 
 } from '../types';
 
 export const supabaseService = {
@@ -743,6 +744,84 @@ export const supabaseService = {
       return { liked, count: finalCount };
     } catch {
       return null;
+    }
+  },
+
+  /**
+   * Busca as tarefas rápidas do usuário logado no Supabase
+   */
+  async fetchQuickTasks(userId: string): Promise<QuickTask[] | null> {
+    const client = getSupabaseClient();
+    if (!client || !userId) return null;
+
+    try {
+      const { data, error } = await client
+        .from('dex_quick_tasks')
+        .select('*')
+        .eq('userId', userId)
+        .order('createdAt', { ascending: false });
+
+      if (error) {
+        console.warn('Supabase fetchQuickTasks error:', error.message);
+        return null;
+      }
+      return (data as QuickTask[]) || [];
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Salva ou atualiza uma tarefa rápida no Supabase
+   */
+  async upsertQuickTask(task: QuickTask, userId: string, officeId?: string): Promise<boolean> {
+    const client = getSupabaseClient();
+    if (!client || !userId) return false;
+
+    try {
+      const payload = {
+        id: task.id,
+        userId,
+        officeId: officeId || null,
+        text: task.text,
+        completed: !!task.completed,
+        updatedAt: new Date().toISOString()
+      };
+
+      const { error } = await client
+        .from('dex_quick_tasks')
+        .upsert(payload, { onConflict: 'id' });
+
+      if (error) {
+        console.warn('Supabase upsertQuickTask error:', error.message);
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * Remove uma tarefa rápida no Supabase
+   */
+  async deleteQuickTask(id: string): Promise<boolean> {
+    const client = getSupabaseClient();
+    if (!client || !id) return false;
+
+    try {
+      const { error } = await client
+        .from('dex_quick_tasks')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase deleteQuickTask error:', error.message);
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
     }
   }
 };

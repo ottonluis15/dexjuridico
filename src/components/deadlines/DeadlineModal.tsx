@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, AlertTriangle } from 'lucide-react';
 import { Modal } from '../common/Modal';
+import { MaskedInput } from '../common/MaskedInput';
 import { Deadline, DeadlineType, DeadlinePriority, DeadlineStatus } from '../../types';
 import { useData } from '../../context/DataContext';
+import { validateTime, validateDate } from '../../utils/validators';
 
 interface DeadlineModalProps {
   isOpen: boolean;
@@ -31,6 +33,7 @@ export const DeadlineModal: React.FC<DeadlineModalProps> = ({
   const [priority, setPriority] = useState<DeadlinePriority>('HIGH');
   const [status, setStatus] = useState<DeadlineStatus>('PENDING');
   const [notes, setNotes] = useState('');
+  const [timeError, setTimeError] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeDeadline) {
@@ -54,14 +57,24 @@ export const DeadlineModal: React.FC<DeadlineModalProps> = ({
       setStatus('PENDING');
       setNotes('');
     }
+    setTimeError(null);
   }, [activeDeadline, defaultCaseId, isOpen, cases, lawyers]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setTimeError(null);
 
     if (!caseId || !lawyerId || !description.trim() || !dueDate) {
       alert('Por favor, preencha todos os campos obrigatórios (*).');
       return;
+    }
+
+    if (dueTime) {
+      const timeVal = validateTime(dueTime);
+      if (!timeVal.isValid) {
+        setTimeError(timeVal.error || 'Horário inválido.');
+        return;
+      }
     }
 
     const payload = {
@@ -192,17 +205,17 @@ export const DeadlineModal: React.FC<DeadlineModalProps> = ({
             />
           </div>
 
-          <div className="space-y-1">
-            <label className="block text-xs italic font-serif text-[#C2D6DC]">
-              Horário Limite do Protocolo
-            </label>
-            <input
-              type="time"
-              value={dueTime}
-              onChange={e => setDueTime(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
-            />
-          </div>
+          <MaskedInput
+            mask="time"
+            label="Horário Limite do Protocolo"
+            value={dueTime}
+            onChange={(formatted) => {
+              setDueTime(formatted);
+              setTimeError(null);
+            }}
+            error={timeError}
+            placeholder="23:59"
+          />
         </div>
 
         {/* Linha 4: Descrição do Prazo */}

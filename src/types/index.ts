@@ -299,3 +299,14 @@ export interface PostLike {
   officeId?: string;
   createdAt?: string;
 }
+
+export interface QuickTask {
+  id: string;
+  userId: string;
+  officeId?: string;
+  text: string;
+  completed: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+

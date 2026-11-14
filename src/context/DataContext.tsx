@@ -242,26 +242,40 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
-  // Filtragem de dados com base no isolamento de Escritório e Perfil RBAC
+  // Filtragem de dados com base no isolamento estrito de Escritório e Perfil RBAC
   const userCases = useMemo(() => {
     if (!currentUser) return [];
-    if (isAdmin) {
+    if (isAdmin && currentUser.officeId) {
       // Escritório vê apenas os processos pertencentes à sua banca
-      return cases.filter(c => !currentUser.officeId || c.officeId === currentUser.officeId);
+      return cases.filter(c => c.officeId === currentUser.officeId);
+    }
+    if (currentUser.isIndependent && currentLawyer) {
+      // Advogado autônomo vê apenas os seus processos
+      return cases.filter(c => c.lawyerId === currentLawyer.id);
     }
     if (!currentLawyer) return [];
-    // Advogado vê apenas os processos atribuídos a ele
-    return cases.filter(c => c.lawyerId === currentLawyer.id);
+    // Advogado associado vê processos atribuídos a ele dentro da sua banca
+    return cases.filter(c => 
+      (!currentUser.officeId || c.officeId === currentUser.officeId) && 
+      c.lawyerId === currentLawyer.id
+    );
   }, [cases, isAdmin, currentUser, currentLawyer]);
 
   const userDeadlines = useMemo(() => {
     if (!currentUser) return [];
-    if (isAdmin) {
-      return deadlines.filter(d => !currentUser.officeId || d.officeId === currentUser.officeId);
+    if (isAdmin && currentUser.officeId) {
+      return deadlines.filter(d => d.officeId === currentUser.officeId);
+    }
+    if (currentUser.isIndependent && currentLawyer) {
+      const myCaseIds = new Set(userCases.map(c => c.id));
+      return deadlines.filter(d => d.lawyerId === currentLawyer.id || (d.caseId && myCaseIds.has(d.caseId)));
     }
     if (!currentLawyer) return [];
     const myCaseIds = new Set(userCases.map(c => c.id));
-    return deadlines.filter(d => d.lawyerId === currentLawyer.id || myCaseIds.has(d.caseId));
+    return deadlines.filter(d => 
+      (!currentUser.officeId || d.officeId === currentUser.officeId) && 
+      (d.lawyerId === currentLawyer.id || (d.caseId && myCaseIds.has(d.caseId)))
+    );
   }, [deadlines, userCases, isAdmin, currentUser, currentLawyer]);
 
   const userClients = useMemo(() => {
@@ -270,22 +284,36 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const userFinancial = useMemo(() => {
     if (!currentUser) return [];
-    if (isAdmin) {
-      return financial.filter(f => !currentUser.officeId || f.officeId === currentUser.officeId);
+    if (isAdmin && currentUser.officeId) {
+      return financial.filter(f => f.officeId === currentUser.officeId);
+    }
+    if (currentUser.isIndependent && currentLawyer) {
+      const myCaseIds = new Set(userCases.map(c => c.id));
+      return financial.filter(f => f.lawyerId === currentLawyer.id || (f.caseId && myCaseIds.has(f.caseId)));
     }
     if (!currentLawyer) return [];
     const myCaseIds = new Set(userCases.map(c => c.id));
-    return financial.filter(f => (f.caseId && myCaseIds.has(f.caseId)) || f.lawyerId === currentLawyer.id);
+    return financial.filter(f => 
+      (!currentUser.officeId || f.officeId === currentUser.officeId) && 
+      ((f.caseId && myCaseIds.has(f.caseId)) || f.lawyerId === currentLawyer.id)
+    );
   }, [financial, userCases, isAdmin, currentUser, currentLawyer]);
 
   const userDocuments = useMemo(() => {
     if (!currentUser) return [];
-    if (isAdmin) {
-      return documents.filter(d => !currentUser.officeId || d.officeId === currentUser.officeId);
+    if (isAdmin && currentUser.officeId) {
+      return documents.filter(d => d.officeId === currentUser.officeId);
+    }
+    if (currentUser.isIndependent && currentLawyer) {
+      const myCaseIds = new Set(userCases.map(c => c.id));
+      return documents.filter(d => d.uploadedByLawyerId === currentLawyer.id || (d.caseId && myCaseIds.has(d.caseId)));
     }
     if (!currentLawyer) return [];
     const myCaseIds = new Set(userCases.map(c => c.id));
-    return documents.filter(d => (d.caseId && myCaseIds.has(d.caseId)) || d.uploadedByLawyerId === currentLawyer.id);
+    return documents.filter(d => 
+      (!currentUser.officeId || d.officeId === currentUser.officeId) && 
+      ((d.caseId && myCaseIds.has(d.caseId)) || d.uploadedByLawyerId === currentLawyer.id)
+    );
   }, [documents, userCases, isAdmin, currentUser, currentLawyer]);
 
   // Área de trabalho individual: processos estritamente atribuídos ao profissional logado
@@ -647,7 +675,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...caseData,
       id: `case_${Date.now()}`,
       updatedAt: new Date().toISOString().substring(0, 10),
-      officeId: currentUser?.officeId
+      officeId: currentUser?.officeId,
+      lawyerId: caseData.lawyerId || currentLawyer?.id || ''
     };
     const updated = [newCase, ...cases];
     setCases(updated);
@@ -716,7 +745,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newDeadline: Deadline = {
       ...deadlineData,
       id: `ded_${Date.now()}`,
-      officeId: currentUser?.officeId
+      officeId: currentUser?.officeId,
+      lawyerId: deadlineData.lawyerId || currentLawyer?.id || ''
     };
     const updated = [newDeadline, ...deadlines];
     setDeadlines(updated);
@@ -801,7 +831,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newEntry: FinancialEntry = {
       ...entryData,
       id: `fin_${Date.now()}`,
-      officeId: currentUser?.officeId
+      officeId: currentUser?.officeId,
+      lawyerId: entryData.lawyerId || currentLawyer?.id
     };
     const updated = [newEntry, ...financial];
     setFinancial(updated);

@@ -390,5 +390,40 @@ ON CONFLICT (id) DO UPDATE SET "isDemo" = true, "officeId" = 'off_demo_sandbox';
 ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "scheduledDeletionDate" TIMESTAMPTZ;
 ALTER TABLE public.dex_users ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMPTZ;
 
+-- 13. Tabela de Tarefas Rápidas Isoladas por Usuário (Tarefa 1)
+CREATE TABLE IF NOT EXISTS public.dex_quick_tasks (
+    id TEXT PRIMARY KEY,
+    "userId" TEXT NOT NULL,
+    "officeId" TEXT,
+    text TEXT NOT NULL,
+    completed BOOLEAN DEFAULT false,
+    "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+    "updatedAt" TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_dex_quick_tasks_user ON public.dex_quick_tasks ("userId");
+CREATE INDEX IF NOT EXISTS idx_dex_quick_tasks_office ON public.dex_quick_tasks ("officeId");
+
+ALTER TABLE public.dex_quick_tasks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Permitir Leitura Dex Quick Tasks" ON public.dex_quick_tasks FOR SELECT USING (true);
+CREATE POLICY "Permitir Gravacao Dex Quick Tasks" ON public.dex_quick_tasks FOR ALL USING (true);
+
+-- 14. QUERY DE SIMULAÇÃO (DRY RUN) - Detecção de Sementes/Exemplos em Contas Reais
+-- Executa apenas consulta analítica para conferência manual sem alterar nenhum registro:
+/*
+SELECT 'dex_cases' AS tabela, id, "officeId", "caseNumber" AS identificador FROM public.dex_cases 
+WHERE ("officeId" NOT IN ('off_dex_principal', 'off_demo_sandbox') AND id ~ '^case_[0-9]{1,2}$')
+UNION ALL
+SELECT 'dex_clients' AS tabela, id, "officeId", name AS identificador FROM public.dex_clients 
+WHERE ("officeId" NOT IN ('off_dex_principal', 'off_demo_sandbox') AND id ~ '^cli_[0-9]{1,2}$')
+UNION ALL
+SELECT 'dex_deadlines' AS tabela, id, "officeId", description AS identificador FROM public.dex_deadlines 
+WHERE ("officeId" NOT IN ('off_dex_principal', 'off_demo_sandbox') AND id ~ '^dl_[0-9]{1,2}$')
+UNION ALL
+SELECT 'dex_financial' AS tabela, id, "officeId", title AS identificador FROM public.dex_financial 
+WHERE ("officeId" NOT IN ('off_dex_principal', 'off_demo_sandbox') AND id ~ '^fin_[0-9]{1,2}$');
+*/
+
+
 
 

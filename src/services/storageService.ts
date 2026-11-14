@@ -9,7 +9,8 @@ import {
   User,
   TemplateDocument,
   WallPost,
-  SubscriptionRecord 
+  SubscriptionRecord,
+  QuickTask 
 } from '../types';
 import { 
   INITIAL_CLIENTS, 
@@ -80,6 +81,9 @@ export const storageService = {
   // Inicialização padrão segura e auto-recuperável
   init() {
     try {
+      // Limpeza de chaves globais legadas que vazavam dados entre contas (Tarefa 1)
+      localStorage.removeItem('dex_quick_tasks');
+
       const storedVersion = localStorage.getItem(STORAGE_KEYS.DATA_VERSION);
       const isOutdated = storedVersion !== CURRENT_SEED_VERSION;
 
@@ -215,6 +219,8 @@ export const storageService = {
           }
         } catch {}
       }
+      // Executa normalização forense segura (Tarefa 2)
+      this.normalizeForensicData();
     } catch {
       // Ignora falhas de storage restrito
     }
@@ -608,6 +614,69 @@ export const storageService = {
       this.saveClients(updated);
     }
     return { migratedCount };
+  },
+
+  /**
+   * Migração de normalização forense segura para dados existentes (Tarefa 2)
+   * Padroniza OAB para NNNNNN/UF, desmascara CPF/CNPJ/Telefone nos registros
+   * sem perda de dados e de forma idempotente.
+   */
+  normalizeForensicData(): { migratedClients: number; migratedLawyers: number } {
+    let migratedClients = 0;
+    let migratedLawyers = 0;
+
+    try {
+      // 1. Normaliza advogados (OAB para NNNNNN/UF e telefone limpo)
+      const rawLawyers = localStorage.getItem(STORAGE_KEYS.LAWYERS);
+      if (rawLawyers) {
+        const lawyers: Lawyer[] = JSON.parse(rawLawyers);
+        let changed = false;
+        lawyers.forEach(l => {
+          if (l.oab) {
+            const cleanDigits = l.oab.replace(/\D/g, '');
+            const matchUF = l.oab.match(/[A-Za-z]{2}/);
+            const uf = matchUF ? matchUF[0].toUpperCase() : 'SP';
+            if (cleanDigits && uf) {
+              const standardOab = `${cleanDigits.padStart(6, '0').slice(-6)}/${uf}`;
+              if (l.oab !== standardOab) {
+                l.oab = standardOab;
+                changed = true;
+                migratedLawyers++;
+              }
+            }
+          }
+        });
+        if (changed) {
+          localStorage.setItem(STORAGE_KEYS.LAWYERS, JSON.stringify(lawyers));
+        }
+      }
+
+      // 2. Normaliza clientes
+      const rawClients = localStorage.getItem(STORAGE_KEYS.CLIENTS);
+      if (rawClients) {
+        const clients: Client[] = JSON.parse(rawClients);
+        let changed = false;
+        clients.forEach(c => {
+          if (c.document && /[\.\-\/]/.test(c.document)) {
+            const cleanDoc = c.type === 'PJ' || /[A-Z]/.test(c.document)
+              ? c.document.toUpperCase().replace(/[^0-9A-Z]/g, '')
+              : c.document.replace(/\D/g, '');
+            if (cleanDoc && cleanDoc !== c.document) {
+              c.document = cleanDoc;
+              changed = true;
+              migratedClients++;
+            }
+          }
+        });
+        if (changed) {
+          localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(clients));
+        }
+      }
+    } catch {
+      // Ignora falhas em storage corrompido
+    }
+
+    return { migratedClients, migratedLawyers };
   },
 
   // Busca de clientes com isolamento estrito por escritório / advogado (Item 6)
@@ -1514,5 +1583,46 @@ export const storageService = {
     });
 
     return { success: true };
+  },
+
+  // Gerenciamento de Tarefas Rápidas Isoladas por Usuário (Tarefa 1)
+  getQuickTasks(userId?: string, isDemo?: boolean): QuickTask[] {
+    if (!userId) return [];
+    try {
+      const scopedKey = `dex_quick_tasks_${userId}`;
+      const raw = localStorage.getItem(scopedKey);
+      if (raw) {
+        return JSON.parse(raw);
+      }
+      // Se for estritamente a conta comercial de demonstração e não tiver tarefas salvas, carrega as 3 tarefas de exemplo
+      if (isDemo || userId === 'usr_demo_apresentacao') {
+        const demoTasks: QuickTask[] = [
+          { id: 'task_demo_1', userId, text: 'Protocolar contestação no processo 5001248-91', completed: false },
+          { id: 'task_demo_2', userId, text: 'Ligar para perito contábil sobre honorários', completed: false },
+          { id: 'task_demo_3', userId, text: 'Enviar minuta de procuração para Dr. Otton revisar', completed: true },
+        ];
+        localStorage.setItem(scopedKey, JSON.stringify(demoTasks));
+        return demoTasks;
+      }
+      // Usuários normais e contas novas sempre nascem com lista vazia
+      return [];
+    } catch {
+      return [];
+    }
+  },
+
+  saveQuickTasks(userId: string, tasks: QuickTask[]): void {
+    if (!userId) return;
+    try {
+      const scopedKey = `dex_quick_tasks_${userId}`;
+      localStorage.setItem(scopedKey, JSON.stringify(tasks));
+    } catch {}
+  },
+
+  clearQuickTasks(userId: string): void {
+    if (!userId) return;
+    try {
+      localStorage.removeItem(`dex_quick_tasks_${userId}`);
+    } catch {}
   }
 };

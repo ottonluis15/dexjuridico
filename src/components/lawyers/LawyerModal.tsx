@@ -3,7 +3,10 @@ import { UserCheck, Camera, Trash2, UserPlus, Link2 } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { PasswordInput } from '../common/PasswordInput';
 import { PasswordRequirements } from '../common/PasswordRequirements';
+import { MaskedInput } from '../common/MaskedInput';
 import { validatePassword } from '../../utils/passwordPolicy';
+import { validateOAB, validatePhone, validateEmail } from '../../utils/validators';
+import { maskPhone, maskOAB } from '../../utils/masks';
 import { Lawyer } from '../../types';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -36,13 +39,16 @@ export const LawyerModal: React.FC<LawyerModalProps> = ({
   const [photoPreview, setPhotoPreview] = useState<string | undefined>(undefined);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [oabError, setOabError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   useEffect(() => {
     if (lawyerToEdit) {
       setName(lawyerToEdit.name);
       setEmail(lawyerToEdit.email);
-      setPhone(lawyerToEdit.phone);
-      setOab(lawyerToEdit.oab);
+      setPhone(maskPhone(lawyerToEdit.phone));
+      setOab(maskOAB(lawyerToEdit.oab));
       setRoleTitle(lawyerToEdit.roleTitle);
       setSpecialtiesText(lawyerToEdit.specialties.join(', '));
       setStatus(lawyerToEdit.status);
@@ -63,6 +69,9 @@ export const LawyerModal: React.FC<LawyerModalProps> = ({
       setCreationMode('NEW');
     }
     setPhotoError(null);
+    setOabError(null);
+    setPhoneError(null);
+    setEmailError(null);
   }, [lawyerToEdit, isOpen]);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -114,10 +123,34 @@ export const LawyerModal: React.FC<LawyerModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setOabError(null);
+    setPhoneError(null);
+    setEmailError(null);
 
-    if (!name.trim() || !email.trim() || !oab.trim()) {
-      showToast('Preencha os campos obrigatórios (*).', 'warning');
+    const cleanName = name.replace(/\s+/g, ' ').trim();
+    if (!cleanName) {
+      showToast('Preencha o nome completo do profissional.', 'warning');
       return;
+    }
+
+    const emailVal = validateEmail(email);
+    if (!emailVal.isValid) {
+      setEmailError(emailVal.error || 'E-mail inválido.');
+      return;
+    }
+
+    const oabVal = validateOAB(oab);
+    if (!oabVal.isValid) {
+      setOabError(oabVal.error || 'Inscrição na OAB inválida.');
+      return;
+    }
+
+    if (phone.trim()) {
+      const phoneVal = validatePhone(phone);
+      if (!phoneVal.isValid) {
+        setPhoneError(phoneVal.error || 'Telefone inválido.');
+        return;
+      }
     }
 
     const specialties = specialtiesText
@@ -130,8 +163,8 @@ export const LawyerModal: React.FC<LawyerModalProps> = ({
     try {
       if (lawyerToEdit) {
         updateLawyer(lawyerToEdit.id, {
-          name: name.trim(),
-          email: email.trim(),
+          name: cleanName,
+          email: email.trim().toLowerCase(),
           phone: phone.trim(),
           oab: oab.trim().toUpperCase(),
           roleTitle: roleTitle.trim(),
@@ -143,8 +176,8 @@ export const LawyerModal: React.FC<LawyerModalProps> = ({
         onClose();
       } else {
         const res = await addLawyerByOffice({
-          name: name.trim(),
-          email: email.trim(),
+          name: cleanName,
+          email: email.trim().toLowerCase(),
           oab: oab.trim().toUpperCase(),
           phone: phone.trim(),
           password: password || 'Dex@2026',
@@ -299,16 +332,18 @@ export const LawyerModal: React.FC<LawyerModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-serif italic text-[#C2D6DC] mb-1.5">
-                Número OAB *
-              </label>
-              <input
-                type="text"
+              <MaskedInput
+                mask="oab"
+                label="Número OAB *"
                 required
-                placeholder="Ex: SP 123.456"
+                placeholder="123456/SP"
                 value={oab}
-                onChange={e => setOab(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
+                onChange={val => {
+                  setOab(val);
+                  if (oabError) setOabError(null);
+                }}
+                error={oabError || undefined}
+                helperText="Formato oficial: NNNNNN/UF (ex: 123456/SP)"
               />
             </div>
 
@@ -320,20 +355,31 @@ export const LawyerModal: React.FC<LawyerModalProps> = ({
                 type="email"
                 required
                 value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
+                onChange={e => {
+                  setEmail(e.target.value);
+                  if (emailError) setEmailError(null);
+                }}
+                className={`w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 ${
+                  emailError ? 'border border-red-500 focus:ring-red-400' : 'focus:ring-dex-coral'
+                }`}
               />
+              {emailError && (
+                <p className="mt-1 text-[11px] text-red-400 font-serif">{emailError}</p>
+              )}
             </div>
 
             <div>
-              <label className="block text-xs font-serif italic text-[#C2D6DC] mb-1.5">
-                Telefone / WhatsApp
-              </label>
-              <input
-                type="text"
+              <MaskedInput
+                mask="phone"
+                label="Telefone / WhatsApp"
+                placeholder="(11) 98765-4321"
                 value={phone}
-                onChange={e => setPhone(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
+                onChange={val => {
+                  setPhone(val);
+                  if (phoneError) setPhoneError(null);
+                }}
+                error={phoneError || undefined}
+                helperText="DDD + 8 ou 9 dígitos"
               />
             </div>
 

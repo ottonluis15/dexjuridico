@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { FolderPlus, Scale, Sparkles } from 'lucide-react';
 import { Modal } from '../common/Modal';
+import { MaskedInput } from '../common/MaskedInput';
 import { LegalCase, LegalArea, CaseStatus } from '../../types';
 import { useData } from '../../context/DataContext';
+import { validateCNJ } from '../../utils/validators';
+import { maskCNJ, maskCurrency, unmaskCurrencyToFloat } from '../../utils/masks';
 
 interface CaseModalProps {
   isOpen: boolean;
@@ -27,31 +30,32 @@ export const CaseModal: React.FC<CaseModalProps> = ({
   const [legalArea, setLegalArea] = useState<LegalArea>('Cível');
   const [actionType, setActionType] = useState('');
   const [status, setStatus] = useState<CaseStatus>('INICIAL');
-  const [value, setValue] = useState<string>('0');
+  const [value, setValue] = useState<string>('R$ 0,00');
   const [distributionDate, setDistributionDate] = useState(new Date().toISOString().substring(0, 10));
   const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
+  const [cnjError, setCnjError] = useState<string | null>(null);
 
   // Pre-fill form when editing or when coming from Dex AI
   useEffect(() => {
     if (activeCase) {
-      setCaseNumber(activeCase.caseNumber);
+      setCaseNumber(maskCNJ(activeCase.caseNumber));
       setCourt(activeCase.court);
       setClientId(activeCase.clientId);
       setLawyerId(activeCase.lawyerId);
       setLegalArea(activeCase.legalArea);
       setActionType(activeCase.actionType);
       setStatus(activeCase.status);
-      setValue(activeCase.value.toString());
+      setValue(maskCurrency(activeCase.value));
       setDistributionDate(activeCase.distributionDate);
       setDescription(activeCase.description);
       setNotes(activeCase.notes || '');
     } else if (pendingAiDraft) {
       const randomCNJ = `10${Math.floor(10000 + Math.random() * 90000)}-${Math.floor(10 + Math.random() * 89)}.2026.8.26.0100`;
-      setCaseNumber(randomCNJ);
+      setCaseNumber(maskCNJ(randomCNJ));
       setLegalArea(pendingAiDraft.analysis.suggestedLegalArea);
       setActionType(pendingAiDraft.analysis.suggestedActionType);
-      setValue((pendingAiDraft.analysis.estimatedValue || 50000).toString());
+      setValue(maskCurrency(pendingAiDraft.analysis.estimatedValue || 50000));
       setDescription(pendingAiDraft.analysis.factsSummary);
       setNotes(`[Triagem Dex AI]\nEnquadramento: ${pendingAiDraft.analysis.legalFraming}\n\nPerguntas pendentes:\n- ${pendingAiDraft.analysis.clarificationQuestions.join('\n- ')}`);
       setCourt('Foro Central da Comarca da Capital / SP');
@@ -65,20 +69,30 @@ export const CaseModal: React.FC<CaseModalProps> = ({
       setLegalArea('Cível');
       setActionType('');
       setStatus('INICIAL');
-      setValue('50000');
+      setValue(maskCurrency(50000));
       setDistributionDate(new Date().toISOString().substring(0, 10));
       setDescription('');
       setNotes('');
     }
+    setCnjError(null);
   }, [activeCase, pendingAiDraft, isOpen, clients, lawyers]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setCnjError(null);
 
     if (!caseNumber.trim() || !clientId || !lawyerId || !actionType.trim()) {
       alert('Por favor, preencha todos os campos obrigatórios (*).');
       return;
     }
+
+    const cnjVal = validateCNJ(caseNumber, true);
+    if (!cnjVal.isValid) {
+      setCnjError(cnjVal.error || 'Número do processo CNJ inválido.');
+      return;
+    }
+
+    const numericValue = unmaskCurrencyToFloat(value);
 
     const payload = {
       caseNumber: caseNumber.trim(),
@@ -88,7 +102,7 @@ export const CaseModal: React.FC<CaseModalProps> = ({
       legalArea,
       actionType: actionType.trim(),
       status,
-      value: parseFloat(value) || 0,
+      value: numericValue,
       distributionDate,
       description: description.trim(),
       notes: notes.trim()
@@ -139,19 +153,18 @@ export const CaseModal: React.FC<CaseModalProps> = ({
 
         {/* Linha 1: Número do Processo (CNJ) e Foro/Vara */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="block text-xs italic font-serif text-[#C2D6DC]">
-              Número do Processo (CNJ)*
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="0000000-00.2026.8.26.0000"
-              value={caseNumber}
-              onChange={e => setCaseNumber(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-coral font-mono"
-            />
-          </div>
+          <MaskedInput
+            mask="cnj"
+            label="Número do Processo (CNJ)"
+            required
+            value={caseNumber}
+            onChange={(formatted) => {
+              setCaseNumber(formatted);
+              setCnjError(null);
+            }}
+            error={cnjError}
+            helperText="Padrão CNJ: 0000000-00.0000.0.00.0000"
+          />
 
           <div className="space-y-1">
             <label className="block text-xs italic font-serif text-[#C2D6DC]">
@@ -255,18 +268,13 @@ export const CaseModal: React.FC<CaseModalProps> = ({
             </select>
           </div>
 
-          <div className="space-y-1">
-            <label className="block text-xs italic font-serif text-[#C2D6DC]">
-              Valor da Causa (R$)
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={value}
-              onChange={e => setValue(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
-            />
-          </div>
+          <MaskedInput
+            mask="currency"
+            label="Valor da Causa (R$)"
+            value={value}
+            onChange={(formatted) => setValue(formatted)}
+            placeholder="R$ 0,00"
+          />
 
           <div className="space-y-1">
             <label className="block text-xs italic font-serif text-[#C2D6DC]">
