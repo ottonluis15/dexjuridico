@@ -86,7 +86,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   return (
     <div className="min-h-screen bg-dex-cream dark:bg-[#0A1922] flex flex-col justify-center items-center py-8 px-4 sm:px-6 lg:px-8 relative font-serif text-dex-navy-950 dark:text-[#F9ECE2] overflow-x-hidden selection:bg-dex-coral selection:text-white transition-colors duration-200">
       {/* Navegação Superior */}
-      <div className="max-w-[960px] w-full mx-auto mb-4 flex items-center justify-between px-2 relative z-10">
+      <div className="max-w-[60rem] w-full mx-auto mb-4 flex items-center justify-between px-2 relative z-10">
         {onNavigateToLanding ? (
           <button
             onClick={onNavigateToLanding}
@@ -110,7 +110,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       </div>
 
       {/* CONTAINER FLEX: COLUNA DE PENAS ESQUERDA + CARD CENTRAL + COLUNA DE PENAS DIREITA */}
-      <div className="w-full max-w-[1340px] mx-auto flex flex-col sm:flex-row items-center sm:items-stretch justify-center gap-4 md:gap-6 lg:gap-8">
+      <div className="w-full max-w-[83.75rem] mx-auto flex flex-col sm:flex-row items-center sm:items-stretch justify-center gap-4 md:gap-6 lg:gap-8">
         {/* Penas do Topo no Mobile (< sm) */}
         <div className="flex sm:hidden w-full justify-between items-center px-2 pointer-events-none select-none">
           <img
@@ -152,7 +152,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         </div>
 
         {/* CARD PRINCIPAL PÊSSEGO / NAVY (Estilo Anexo 3) */}
-        <div className="flex-1 max-w-[960px] w-full bg-dex-peach dark:bg-[#162B37] rounded-[28px] sm:rounded-[36px] shadow-2xl p-6 sm:p-10 lg:p-12 relative z-10 border border-[#D5B093]/70 dark:border-[#214154] transition-colors duration-200">
+        <div className="flex-1 max-w-[60rem] w-full bg-dex-peach dark:bg-[#162B37] rounded-[28px] sm:rounded-[36px] shadow-2xl p-6 sm:p-10 lg:p-12 relative z-10 border border-[#D5B093]/70 dark:border-[#214154] transition-colors duration-200">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
           
           {/* COLUNA ESQUERDA: Logo, Textos e Ilustração */}

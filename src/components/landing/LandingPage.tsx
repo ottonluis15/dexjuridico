@@ -441,55 +441,62 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* SEÇÃO DE RECURSOS / BENTO GRID (Fiel ao Anexo 2) */}
-      <section id="recursos" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-12 max-w-7xl mx-auto border-t border-[#D8C3B5]/70 dark:border-[#214154]">
+      <section id="recursos" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-12 max-w-7xl mx-auto border-t border-[#D8C3B5]/70 dark:border-[#214154] transition-colors">
         {/* Cabeçalho da Seção Centralizado */}
-        <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-dex-navy-950 dark:text-white tracking-tight">
+        <div className="text-center max-w-4xl mx-auto mb-14 sm:mb-16 space-y-3 sm:space-y-4">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-dex-navy-950 dark:text-white tracking-tight leading-tight pb-2 sm:pb-3">
             Construído para quem vive o{' '}
-            <span className="relative inline-block">
-              Direito
-              {/* Duas barras decorativas sublinhando a palavra Direito */}
-              <span className="block mt-2">
-                <DecorativeBars centered coralWidth="w-28 sm:w-36" tealWidth="w-28 sm:w-36" height="h-1.5" />
+            <span className="relative inline-block whitespace-nowrap">
+              <span>Direito</span>
+              {/* Duas barras decorativas sublinhando a palavra Direito: coral em cima, teal embaixo, ligeiramente deslocadas */}
+              <span
+                className="absolute -bottom-2 sm:-bottom-2.5 left-0 w-full flex flex-col gap-0.5 sm:gap-1 select-none pointer-events-none"
+                aria-hidden="true"
+              >
+                <span className="w-full h-1 sm:h-1.5 bg-[#F4665C] rounded-full shadow-xs" />
+                <span className="w-full h-1 sm:h-1.5 bg-[#4A808E] rounded-full shadow-xs translate-x-1 sm:translate-x-1.5" />
               </span>
             </span>
           </h2>
 
-          <p className="text-base sm:text-lg text-dex-support dark:text-[#A7BAC5] leading-relaxed max-w-2xl mx-auto pt-2">
-            Menos abas abertas, menos planilhas perdidas. O Dex unifica o que realmente importa para a saúde do seu escritório.
+          <p className="text-base sm:text-lg text-[#8F8A87] dark:text-[#A7BAC5] leading-relaxed max-w-2xl mx-auto pt-2">
+            Menos abas abertas, menos planilhas perdidas.<br className="hidden sm:inline" /> O Dex unifica o que realmente importa para a saúde do seu escritório.
           </p>
         </div>
 
-        {/* Grade Bento Responsiva: 1 coluna no celular (<768px), 2 colunas no tablet (md: 768px-1023px), 12 colunas no desktop (lg: >=1024px) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 items-stretch">
+        {/* Grade Bento Responsiva: 1 coluna no celular (<768px), 2 colunas no tablet (md), 1.6x para 1x no desktop (lg) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.6fr_1fr] gap-6 items-stretch">
           {/* Card Grande: Painel de Controle */}
-          <div className="md:col-span-2 lg:col-span-7 bg-dex-cream dark:bg-[#162B37] rounded-[24px] border border-[#222222]/80 dark:border-[#214154] overflow-hidden shadow-sm flex flex-col sm:flex-row h-full">
-            {/* Metade Esquerda: Texto Explicativo com tipografia fluida */}
-            <div className="flex-1 p-6 sm:p-8 lg:p-12 flex flex-col justify-center space-y-3 sm:space-y-4">
-              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-dex-navy-950 dark:text-white tracking-tight leading-[1.15]">
-                Painel de<br className="hidden sm:inline" /> Controle
+          <div className="md:col-span-2 lg:col-span-1 rounded-[20px] sm:rounded-[24px] border border-[#222222]/75 dark:border-[#214154] overflow-hidden shadow-sm flex flex-col sm:flex-row h-full">
+            {/* Painel Esquerdo em Bege (#EAE0DA): Texto Explicativo com tipografia fluida */}
+            <div className="flex-1 bg-[#EAE0DA] dark:bg-[#1A3342] p-6 sm:p-8 lg:p-10 flex flex-col justify-center space-y-3 sm:space-y-4 transition-colors">
+              <h3 className="text-2xl sm:text-3xl lg:text-[32px] font-display font-bold text-dex-navy-950 dark:text-white tracking-tight leading-[1.15]">
+                Painel de<br />Controle
               </h3>
-              <p className="text-xs sm:text-sm lg:text-base text-dex-support dark:text-[#A7BAC5] leading-relaxed max-w-sm">
+              <p className="text-xs sm:text-sm text-dex-navy-950/80 dark:text-[#C2D6DC] leading-relaxed max-w-sm">
                 O pulso do seu escritório em uma única tela. Receitas, andamentos e alertas críticos disponíveis no momento em que você acessa o sistema.
               </p>
             </div>
 
-            {/* Metade Direita / Inferior: Gráfico decorativo de duas barras (empilha no celular, lado a lado no tablet e desktop) */}
-            <div className="w-full sm:w-[46%] lg:w-[48%] bg-[#EAE0DA] dark:bg-[#0F2733] border-t sm:border-t-0 sm:border-l border-[#222222]/20 dark:border-[#214154] flex items-end justify-center gap-4 sm:gap-6 px-6 pt-8 pb-6 sm:pb-10 self-stretch min-h-[180px] sm:min-h-[260px] lg:min-h-full">
-              {/* Cápsula 1 (menor) */}
-              <div className="w-10 sm:w-12 lg:w-14 h-28 sm:h-36 lg:h-48 rounded-full border-[1.5px] border-[#222222]/80 dark:border-[#4A808E] bg-[#EAE0DA] dark:bg-[#162B37] shadow-xs flex-shrink-0" />
-              {/* Cápsula 2 (maior) */}
-              <div className="w-10 sm:w-12 lg:w-14 h-40 sm:h-48 lg:h-64 rounded-full border-[1.5px] border-[#222222]/80 dark:border-[#4A808E] bg-[#EAE0DA] dark:bg-[#162B37] shadow-xs flex-shrink-0" />
+            {/* Painel Direito em Creme mais claro (#FAF5F0): Gráfico decorativo de duas barras verticais arredondadas em bege */}
+            <div 
+              aria-hidden="true" 
+              className="w-full sm:w-[46%] lg:w-[45%] bg-[#FAF5F0] dark:bg-[#0F2733] border-t sm:border-t-0 sm:border-l border-[#222222]/20 dark:border-[#214154] flex items-end justify-center gap-4 sm:gap-5 px-6 pt-8 pb-6 sm:pb-8 self-stretch min-h-[160px] sm:min-h-[240px] lg:min-h-full transition-colors"
+            >
+              {/* Barra vertical esquerda (menor / mais baixa) */}
+              <div className="w-9 sm:w-11 lg:w-12 h-24 sm:h-32 lg:h-36 rounded-full border border-[#222222]/75 dark:border-[#4A808E] bg-[#EAE0DA] dark:bg-[#1A3342] shadow-xs shrink-0" />
+              {/* Barra vertical direita (maior / mais alta) */}
+              <div className="w-9 sm:w-11 lg:w-12 h-36 sm:h-44 lg:h-52 rounded-full border border-[#222222]/75 dark:border-[#4A808E] bg-[#EAE0DA] dark:bg-[#1A3342] shadow-xs shrink-0" />
             </div>
           </div>
 
-          {/* Cards Secundários: lado a lado no tablet (md), empilhados na coluna direita no desktop (lg) */}
-          <div className="md:col-span-2 lg:col-span-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6 h-full">
-            {/* Card Superior / Coluna 1: Acompanhamento */}
-            <div className="bg-dex-cream dark:bg-[#162B37] rounded-[24px] border border-[#222222]/80 dark:border-[#214154] p-6 sm:p-8 lg:p-9 flex flex-col justify-center shadow-sm">
-              <div className="space-y-3">
-                <div className="w-10 h-10 text-dex-navy-950 dark:text-[#F9ECE2]">
-                  <Scale className="w-7 h-7 stroke-[1.8]" />
+          {/* Coluna Direita: Dois cards empilhados com fundo transparente, somando a altura exata do card grande */}
+          <div className="md:col-span-2 lg:col-span-1 flex flex-col sm:grid sm:grid-cols-2 lg:flex lg:flex-col gap-6 h-full">
+            {/* Card Superior: Acompanhamento */}
+            <div className="bg-transparent rounded-[20px] sm:rounded-[24px] border border-[#222222]/75 dark:border-[#214154] p-6 sm:p-8 lg:p-9 flex-1 flex flex-col justify-center shadow-xs transition-colors">
+              <div className="space-y-2.5">
+                <div className="w-9 h-9 text-dex-navy-950 dark:text-[#F9ECE2] flex items-center">
+                  <Scale className="w-7 h-7 stroke-[1.5]" aria-hidden="true" />
                 </div>
                 <h3 className="text-xl sm:text-2xl font-display font-bold text-dex-navy-950 dark:text-white">
                   Acompanhamento
@@ -500,11 +507,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             </div>
 
-            {/* Card Inferior / Coluna 2: Carteira de Clientes */}
-            <div className="bg-dex-cream dark:bg-[#162B37] rounded-[24px] border border-[#222222]/80 dark:border-[#214154] p-6 sm:p-8 lg:p-9 flex flex-col justify-center shadow-sm">
-              <div className="space-y-3">
-                <div className="w-10 h-10 text-dex-navy-950 dark:text-[#F9ECE2]">
-                  <Users className="w-7 h-7 stroke-[1.8]" />
+            {/* Card Inferior: Carteira de Clientes */}
+            <div className="bg-transparent rounded-[20px] sm:rounded-[24px] border border-[#222222]/75 dark:border-[#214154] p-6 sm:p-8 lg:p-9 flex-1 flex flex-col justify-center shadow-xs transition-colors">
+              <div className="space-y-2.5">
+                <div className="w-9 h-9 text-dex-navy-950 dark:text-[#F9ECE2] flex items-center">
+                  <Users className="w-7 h-7 stroke-[1.5]" aria-hidden="true" />
                 </div>
                 <h3 className="text-xl sm:text-2xl font-display font-bold text-dex-navy-950 dark:text-white">
                   Carteira de Clientes

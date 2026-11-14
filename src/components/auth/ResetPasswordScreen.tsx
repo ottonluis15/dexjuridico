@@ -118,7 +118,7 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
   return (
     <div className="min-h-screen bg-dex-cream dark:bg-[#0A1922] flex flex-col justify-center items-center py-8 px-4 sm:px-6 lg:px-8 relative font-serif text-dex-navy-950 dark:text-[#F9ECE2] overflow-x-hidden selection:bg-dex-coral selection:text-white transition-colors duration-200">
       {/* Navegação Superior */}
-      <div className="max-w-[960px] w-full mx-auto mb-4 flex items-center justify-between px-2 relative z-10">
+      <div className="max-w-[60rem] w-full mx-auto mb-4 flex items-center justify-between px-2 relative z-10">
         <button
           onClick={onNavigateToLanding}
           className="flex items-center gap-1.5 text-xs text-dex-support dark:text-[#A6C5CD] hover:text-dex-navy-950 dark:hover:text-white transition-colors cursor-pointer"
@@ -140,7 +140,7 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
       </div>
 
       {/* CONTAINER FLEX: PENAS ESQUERDA + CARD CENTRAL + PENAS DIREITA */}
-      <div className="w-full max-w-[1340px] mx-auto flex flex-col sm:flex-row items-center sm:items-stretch justify-center gap-4 md:gap-6 lg:gap-8">
+      <div className="w-full max-w-[83.75rem] mx-auto flex flex-col sm:flex-row items-center sm:items-stretch justify-center gap-4 md:gap-6 lg:gap-8">
         
         {/* Penas do Topo no Mobile (< sm) */}
         <div className="flex sm:hidden w-full justify-between items-center px-2 pointer-events-none select-none">
@@ -183,7 +183,7 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
         </div>
 
         {/* CARD PRINCIPAL PÊSSEGO / NAVY (Anexo 3) */}
-        <div className="flex-1 max-w-[960px] w-full bg-dex-peach dark:bg-[#162B37] rounded-[28px] sm:rounded-[36px] shadow-2xl p-6 sm:p-10 lg:p-12 relative z-10 border border-[#D5B093]/70 dark:border-[#214154] transition-colors duration-200">
+        <div className="flex-1 max-w-[60rem] w-full bg-dex-peach dark:bg-[#162B37] rounded-[28px] sm:rounded-[36px] shadow-2xl p-6 sm:p-10 lg:p-12 relative z-10 border border-[#D5B093]/70 dark:border-[#214154] transition-colors duration-200">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
             
             {/* COLUNA ESQUERDA: Logo, Identidade e Corvo */}
@@ -238,14 +238,14 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
             <div className="lg:col-span-7 flex flex-col justify-center py-2 sm:py-6">
               {isSuccess ? (
                 <div className="text-center py-8 space-y-6">
-                  <div className="w-16 h-16 rounded-full bg-emerald-500/15 text-emerald-700 flex items-center justify-center mx-auto shadow-sm">
-                    <CheckCircle2 className="w-10 h-10" />
+                  <div className="w-16 h-16 rounded-full bg-emerald-500/15 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-300/40 dark:border-emerald-700/60 flex items-center justify-center mx-auto shadow-sm">
+                    <CheckCircle2 className="w-10 h-10 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div className="space-y-3">
-                    <h3 className="text-2xl font-bold font-display text-dex-navy-950">
+                    <h3 className="text-2xl font-bold font-display text-dex-navy-950 dark:text-[#F9ECE2]">
                       Senha alterada com sucesso!
                     </h3>
-                    <p className="text-sm text-dex-navy-950/80 leading-relaxed max-w-md mx-auto">
+                    <p className="text-sm text-dex-navy-950/80 dark:text-[#C2D6DC] leading-relaxed max-w-md mx-auto">
                       Sua credencial foi atualizada e todas as sessões anteriores foram invalidadas por segurança. Você já pode fazer login.
                     </p>
                   </div>
@@ -254,7 +254,7 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
                     <button
                       type="button"
                       onClick={onNavigateToLogin}
-                      className="px-8 py-3.5 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-sm font-semibold rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer inline-flex items-center gap-2"
+                      className="px-8 py-3.5 bg-dex-slate-dark dark:bg-[#4A808E] hover:bg-dex-slate-darkHover dark:hover:bg-[#3d6a76] text-white text-sm font-semibold rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer inline-flex items-center gap-2"
                     >
                       <span>Fazer Login agora</span>
                       <ArrowLeft className="w-4 h-4 rotate-180" />
@@ -264,14 +264,14 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {error && (
-                    <div className="p-3 bg-red-100/80 border border-red-300 rounded-xl text-red-800 text-xs flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 shrink-0" />
+                    <div className="p-3 bg-red-100/80 dark:bg-red-950/50 border border-red-300 dark:border-red-800 rounded-xl text-red-800 dark:text-red-200 text-xs flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-red-600 dark:text-red-400" />
                       <span>{error}</span>
                     </div>
                   )}
 
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-serif italic text-dex-navy-950">
+                    <label className="block text-xs font-serif italic text-dex-navy-950 dark:text-[#F9ECE2]">
                       Nova Senha
                     </label>
                     <PasswordInput
@@ -284,7 +284,7 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-serif italic text-dex-navy-950">
+                    <label className="block text-xs font-serif italic text-dex-navy-950 dark:text-[#F9ECE2]">
                       Confirmar Nova Senha
                     </label>
                     <PasswordInput

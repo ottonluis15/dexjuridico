@@ -80,6 +80,17 @@ export const App: React.FC = () => {
     }
   }, [cleanPath, isAppAdmin]);
 
+  // Sincronização da escala de interface (Tarefa 3):
+  // A rota /cadastro permanece estritamente em escala normal 100% (data-escala="normal")
+  // Todas as demais rotas recebem a escala ampliada de 110% no desktop Full HD
+  useEffect(() => {
+    if (cleanPath === '/cadastro') {
+      document.documentElement.setAttribute('data-escala', 'normal');
+    } else {
+      document.documentElement.removeAttribute('data-escala');
+    }
+  }, [cleanPath]);
+
   // 3. Hook de redirecionamento automático (login / logout)
   useEffect(() => {
     if (isAuthenticated) {

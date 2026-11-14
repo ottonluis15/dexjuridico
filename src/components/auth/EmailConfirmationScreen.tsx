@@ -168,7 +168,7 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
   return (
     <div className="min-h-screen bg-dex-cream dark:bg-[#0A1922] flex flex-col justify-center items-center py-8 px-4 sm:px-6 lg:px-8 relative font-serif text-dex-navy-950 dark:text-[#F9ECE2] overflow-x-hidden selection:bg-dex-coral selection:text-white transition-colors duration-200">
       {/* Navegação Superior */}
-      <div className="max-w-[960px] w-full mx-auto mb-4 flex items-center justify-between px-2 relative z-10">
+      <div className="max-w-[60rem] w-full mx-auto mb-4 flex items-center justify-between px-2 relative z-10">
         <button
           onClick={onNavigateToLanding}
           className="flex items-center gap-1.5 text-xs text-dex-support dark:text-[#A6C5CD] hover:text-dex-navy-950 dark:hover:text-white transition-colors cursor-pointer"
@@ -190,7 +190,7 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
       </div>
 
       {/* CONTAINER PRINCIPAL */}
-      <div className="w-full max-w-[1340px] mx-auto flex flex-col sm:flex-row items-center sm:items-stretch justify-center gap-4 md:gap-6 lg:gap-8">
+      <div className="w-full max-w-[83.75rem] mx-auto flex flex-col sm:flex-row items-center sm:items-stretch justify-center gap-4 md:gap-6 lg:gap-8">
         
         {/* Penas do Topo no Mobile (< sm) */}
         <div className="flex sm:hidden w-full justify-between items-center px-2 pointer-events-none select-none">
@@ -233,7 +233,7 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
         </div>
 
         {/* CARD PRINCIPAL PÊSSEGO / NAVY */}
-        <div className="flex-1 max-w-[960px] w-full bg-dex-peach dark:bg-[#162B37] rounded-[28px] sm:rounded-[36px] shadow-2xl p-6 sm:p-10 lg:p-12 relative z-10 border border-[#D5B093]/70 dark:border-[#214154] transition-colors duration-200">
+        <div className="flex-1 max-w-[60rem] w-full bg-dex-peach dark:bg-[#162B37] rounded-[28px] sm:rounded-[36px] shadow-2xl p-6 sm:p-10 lg:p-12 relative z-10 border border-[#D5B093]/70 dark:border-[#214154] transition-colors duration-200">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
             
             {/* COLUNA ESQUERDA: Logo, Identidade e Corvo */}
@@ -364,7 +364,7 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
                     <button
                       type="button"
                       onClick={onNavigateToLogin}
-                      className="px-8 py-3.5 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-sm font-semibold rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer inline-flex items-center gap-2"
+                      className="px-8 py-3.5 bg-dex-slate-dark dark:bg-[#4A808E] hover:bg-dex-slate-darkHover dark:hover:bg-[#3d6a76] text-white text-sm font-semibold rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer inline-flex items-center gap-2"
                     >
                       <span>Fazer login agora</span>
                       <ArrowLeft className="w-4 h-4 rotate-180" />
@@ -394,7 +394,7 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
                     <button
                       type="button"
                       onClick={onNavigateToLogin}
-                      className="w-full sm:w-auto px-6 py-3 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-sm font-semibold rounded-xl shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full sm:w-auto px-6 py-3 bg-dex-slate-dark dark:bg-[#4A808E] hover:bg-dex-slate-darkHover dark:hover:bg-[#3d6a76] text-white text-sm font-semibold rounded-xl shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center gap-2"
                     >
                       <span>Ir para o Login</span>
                       <ArrowLeft className="w-4 h-4 rotate-180" />
@@ -442,7 +442,7 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="seu.email@escritorio.adv.br"
-                        className="w-full px-4 py-3 bg-dex-input rounded-xl text-dex-navy-950 text-sm focus:outline-none focus:ring-2 focus:ring-dex-navy-950 placeholder:text-dex-support/60 shadow-inner"
+                        className="w-full px-4 py-3 bg-dex-input dark:bg-[#0F2733] border border-transparent dark:border-[#214154] rounded-xl text-dex-navy-950 dark:text-[#F9ECE2] text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral placeholder:text-dex-support/60 dark:placeholder:text-white/40 shadow-inner"
                       />
                     </div>
                   </div>
@@ -459,7 +459,7 @@ export const EmailConfirmationScreen: React.FC<EmailConfirmationScreenProps> = (
                       type="button"
                       onClick={handleResend}
                       disabled={isResending || cooldown > 0}
-                      className="w-full sm:w-auto px-6 py-3 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-xs sm:text-sm font-semibold rounded-xl shadow-md transition-all hover:scale-105 active:scale-95 disabled:opacity-60 disabled:pointer-events-none cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full sm:w-auto px-6 py-3 bg-dex-slate-dark dark:bg-[#4A808E] hover:bg-dex-slate-darkHover dark:hover:bg-[#3d6a76] text-white text-xs sm:text-sm font-semibold rounded-xl shadow-md transition-all hover:scale-105 active:scale-95 disabled:opacity-60 disabled:pointer-events-none cursor-pointer flex items-center justify-center gap-2"
                     >
                       {isResending ? (
                         <>

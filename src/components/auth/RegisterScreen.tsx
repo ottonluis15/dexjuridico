@@ -178,7 +178,10 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-dex-cream dark:bg-[#0A1922] flex flex-col justify-center items-center py-8 px-4 sm:px-6 lg:px-8 relative font-serif text-dex-navy-950 dark:text-[#F9ECE2] overflow-x-hidden selection:bg-dex-coral selection:text-white transition-colors duration-200">
+    <div 
+      data-escala="normal"
+      className="min-h-screen bg-dex-cream dark:bg-[#0A1922] flex flex-col justify-center items-center py-8 px-4 sm:px-6 lg:px-8 relative font-serif text-dex-navy-950 dark:text-[#F9ECE2] overflow-x-hidden selection:bg-dex-coral selection:text-white transition-colors duration-200"
+    >
       {/* Barra de Navegação Superior e Seletor de Tipo */}
       <div className="max-w-[980px] w-full mx-auto mb-4 flex items-center justify-between px-2 relative z-10 gap-3">
         <button
@@ -336,27 +339,27 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
           <div className="lg:col-span-8 flex flex-col justify-center">
             {registrationCompletedEmail ? (
               <div className="text-center py-8 space-y-6">
-                <div className="w-16 h-16 rounded-full bg-dex-slate-dark/15 text-dex-slate-dark flex items-center justify-center mx-auto shadow-sm">
-                  <CheckCircle2 className="w-10 h-10 text-dex-slate-dark" />
+                <div className="w-16 h-16 rounded-full bg-emerald-500/15 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-300/40 dark:border-emerald-700/60 flex items-center justify-center mx-auto shadow-sm">
+                  <CheckCircle2 className="w-10 h-10 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div className="space-y-3">
-                  <h3 className="text-2xl font-bold font-display text-dex-navy-950">
+                  <h3 className="text-2xl font-bold font-display text-dex-navy-950 dark:text-[#F9ECE2]">
                     Cadastro recebido com sucesso!
                   </h3>
-                  <p className="text-sm text-dex-navy-950/80 leading-relaxed max-w-md mx-auto">
-                    Enviamos um link de confirmação para o endereço <strong className="text-dex-navy-950">{registrationCompletedEmail}</strong>.
+                  <p className="text-sm text-dex-navy-950/80 dark:text-[#C2D6DC] leading-relaxed max-w-md mx-auto">
+                    Enviamos um link de confirmação para o endereço <strong className="text-dex-navy-950 dark:text-white bg-black/5 dark:bg-white/10 px-2 py-0.5 rounded font-mono">{registrationCompletedEmail}</strong>.
                   </p>
-                  <p className="text-xs text-dex-support italic max-w-sm mx-auto">
+                  <p className="text-xs text-dex-support dark:text-[#A6C5CD] italic max-w-sm mx-auto">
                     {selectedPlanId !== 'TRIAL' 
                       ? 'Por segurança institucional, sua conta ficará pendente de ativação até a confirmação do e-mail. Em seguida, você terá acesso à finalização segura pelo Stripe.' 
                       : 'Por segurança institucional, sua conta de avaliação ficará pendente de ativação até a confirmação do e-mail (válido por 24 horas).'}
                   </p>
 
-                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-left max-w-md mx-auto text-xs text-dex-navy-950/90 dark:text-white/90">
-                    <p className="font-semibold text-amber-700 dark:text-amber-400 mb-1 flex items-center gap-1.5">
+                  <div className="p-3.5 bg-amber-500/10 dark:bg-amber-950/30 border border-amber-500/30 dark:border-amber-700/50 rounded-xl text-left max-w-md mx-auto text-xs text-dex-navy-950/90 dark:text-[#F9ECE2]">
+                    <p className="font-semibold text-amber-800 dark:text-amber-300 mb-1 flex items-center gap-1.5">
                       <span>💡 Dica de recebimento:</span>
                     </p>
-                    <p className="leading-relaxed text-[11px] text-dex-navy-950/80 dark:text-white/80">
+                    <p className="leading-relaxed text-[11px] text-dex-navy-950/80 dark:text-[#C2D6DC]">
                       Caso não encontre a mensagem na sua <strong>Caixa de Entrada</strong> em até 1 minuto, consulte a pasta de <strong>Spam</strong> ou <strong>Lixo Eletrônico</strong> e clique em <strong>&ldquo;Não é spam&rdquo;</strong> para liberar seus próximos avisos institucionais.
                     </p>
                   </div>
@@ -366,7 +369,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   <button
                     type="button"
                     onClick={onNavigateToLogin}
-                    className="px-8 py-3 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-xs sm:text-sm font-semibold rounded-xl shadow-md transition-all cursor-pointer"
+                    className="px-8 py-3 bg-dex-slate-dark dark:bg-[#4A808E] hover:bg-dex-slate-darkHover dark:hover:bg-[#3d6a76] text-white text-xs sm:text-sm font-semibold rounded-xl shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer"
                   >
                     Ir para Login
                   </button>
@@ -376,7 +379,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                       setRegistrationCompletedEmail(null);
                       setCurrentStep(1);
                     }}
-                    className="text-xs text-dex-terracotta hover:underline font-semibold cursor-pointer italic"
+                    className="text-xs text-dex-terracotta dark:text-dex-coral-light hover:underline font-semibold cursor-pointer italic"
                   >
                     Voltar ao formulário
                   </button>
@@ -407,7 +410,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                 </div>
 
                 {error && (
-                  <div className="mb-4 p-3.5 rounded-xl bg-dex-coral/20 border border-dex-coral/60 text-dex-navy-950 text-xs font-semibold">
+                  <div className="mb-4 p-3.5 rounded-xl bg-dex-coral/20 dark:bg-rose-950/50 border border-dex-coral/60 dark:border-rose-800 text-dex-navy-950 dark:text-[#F9ECE2] text-xs font-semibold">
                     {error}
                   </div>
                 )}
@@ -588,14 +591,14 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               {accountType === 'OFFICE' ? (
                 <div className="space-y-4">
                   <div className="text-center">
-                    <span className="text-xs sm:text-sm italic font-serif text-dex-navy-950/90 font-medium">
+                    <span className="text-xs sm:text-sm italic font-serif text-dex-navy-950/90 dark:text-[#F9ECE2] font-medium">
                       Dados do escritório
                     </span>
                   </div>
 
                   {/* Nome do escritório (Largura Total) */}
                   <div className="space-y-1">
-                    <label className="block text-xs italic font-serif text-dex-navy-950">
+                    <label className="block text-xs italic font-serif text-dex-navy-950 dark:text-[#F9ECE2]">
                       Nome do escritório
                     </label>
                     <input
@@ -604,14 +607,14 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                       value={firmName}
                       onChange={(e) => setFirmName(e.target.value)}
                       placeholder="Ex: Moreira & Associados Advocacia"
-                      className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-slate-dark transition-all"
+                      className="w-full px-4 py-2.5 rounded-xl bg-dex-input dark:bg-[#0F2733] text-dex-navy-950 dark:text-[#F9ECE2] text-xs sm:text-sm placeholder:text-dex-support/70 dark:placeholder:text-white/40 border border-transparent dark:border-[#214154] focus:outline-none focus:ring-2 focus:ring-dex-coral transition-all"
                     />
                   </div>
 
                   {/* Cnpj e Telefone (Lado a Lado) */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-1">
-                      <label className="block text-xs italic font-serif text-dex-navy-950">
+                      <label className="block text-xs italic font-serif text-dex-navy-950 dark:text-[#F9ECE2]">
                         Cnpj
                       </label>
                       <input
@@ -619,12 +622,12 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                         value={cnpj}
                         onChange={(e) => handleCnpjChange(e.target.value)}
                         placeholder="00.000.000/0000-00"
-                        className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-slate-dark transition-all"
+                        className="w-full px-4 py-2.5 rounded-xl bg-dex-input dark:bg-[#0F2733] text-dex-navy-950 dark:text-[#F9ECE2] text-xs sm:text-sm placeholder:text-dex-support/70 dark:placeholder:text-white/40 border border-transparent dark:border-[#214154] focus:outline-none focus:ring-2 focus:ring-dex-coral transition-all"
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <label className="block text-xs italic font-serif text-dex-navy-950">
+                      <label className="block text-xs italic font-serif text-dex-navy-950 dark:text-[#F9ECE2]">
                         Telefone
                       </label>
                       <input
@@ -632,7 +635,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                         value={phone}
                         onChange={(e) => handlePhoneChange(e.target.value)}
                         placeholder="(00) 00000-0000"
-                        className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-slate-dark transition-all"
+                        className="w-full px-4 py-2.5 rounded-xl bg-dex-input dark:bg-[#0F2733] text-dex-navy-950 dark:text-[#F9ECE2] text-xs sm:text-sm placeholder:text-dex-support/70 dark:placeholder:text-white/40 border border-transparent dark:border-[#214154] focus:outline-none focus:ring-2 focus:ring-dex-coral transition-all"
                       />
                     </div>
                   </div>
@@ -640,7 +643,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   {/* Área Principal e Endereço (Lado a Lado) */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-1">
-                      <label className="block text-xs italic font-serif text-dex-navy-950">
+                      <label className="block text-xs italic font-serif text-dex-navy-950 dark:text-[#F9ECE2]">
                         Área Principal
                       </label>
                       <input
@@ -648,12 +651,12 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                         value={primaryArea}
                         onChange={(e) => setPrimaryArea(e.target.value)}
                         placeholder="Ex: Cível, Trabalhista, Tributário"
-                        className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-slate-dark transition-all"
+                        className="w-full px-4 py-2.5 rounded-xl bg-dex-input dark:bg-[#0F2733] text-dex-navy-950 dark:text-[#F9ECE2] text-xs sm:text-sm placeholder:text-dex-support/70 dark:placeholder:text-white/40 border border-transparent dark:border-[#214154] focus:outline-none focus:ring-2 focus:ring-dex-coral transition-all"
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <label className="block text-xs italic font-serif text-dex-navy-950">
+                      <label className="block text-xs italic font-serif text-dex-navy-950 dark:text-[#F9ECE2]">
                         Endereço
                       </label>
                       <input
@@ -661,7 +664,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                         value={address}
                         onChange={(e) => setAddress(e.target.value)}
                         placeholder="Ex: Av. Paulista, 1500 - SP"
-                        className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-slate-dark transition-all"
+                        className="w-full px-4 py-2.5 rounded-xl bg-dex-input dark:bg-[#0F2733] text-dex-navy-950 dark:text-[#F9ECE2] text-xs sm:text-sm placeholder:text-dex-support/70 dark:placeholder:text-white/40 border border-transparent dark:border-[#214154] focus:outline-none focus:ring-2 focus:ring-dex-coral transition-all"
                       />
                     </div>
                   </div>
@@ -669,7 +672,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               ) : (
                 <div className="space-y-4">
                   <div className="text-center">
-                    <span className="text-xs sm:text-sm italic font-serif text-dex-navy-950/90 font-medium">
+                    <span className="text-xs sm:text-sm italic font-serif text-dex-navy-950/90 dark:text-[#F9ECE2] font-medium">
                       Modalidade do Advogado
                     </span>
                   </div>
@@ -678,10 +681,10 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                     <button
                       type="button"
                       onClick={() => setLawyerAffiliation('INDEPENDENT')}
-                      className={`p-3 rounded-xl border text-xs font-semibold transition-all ${
+                      className={`p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                         lawyerAffiliation === 'INDEPENDENT'
-                          ? 'bg-dex-navy-950 text-white border-dex-navy-950 shadow'
-                          : 'bg-dex-input text-dex-navy-950 border-transparent hover:bg-dex-beige'
+                          ? 'bg-dex-navy-950 dark:bg-[#4A808E] text-white border-dex-navy-950 dark:border-[#4A808E] shadow'
+                          : 'bg-dex-input dark:bg-[#0F2733] text-dex-navy-950 dark:text-[#F9ECE2] border-transparent dark:border-[#214154] hover:bg-dex-beige dark:hover:bg-[#1A3342]'
                       }`}
                     >
                       Advogado Autônomo
@@ -689,10 +692,10 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                     <button
                       type="button"
                       onClick={() => setLawyerAffiliation('LINKED')}
-                      className={`p-3 rounded-xl border text-xs font-semibold transition-all ${
+                      className={`p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                         lawyerAffiliation === 'LINKED'
-                          ? 'bg-dex-navy-950 text-white border-dex-navy-950 shadow'
-                          : 'bg-dex-input text-dex-navy-950 border-transparent hover:bg-dex-beige'
+                          ? 'bg-dex-navy-950 dark:bg-[#4A808E] text-white border-dex-navy-950 dark:border-[#4A808E] shadow'
+                          : 'bg-dex-input dark:bg-[#0F2733] text-dex-navy-950 dark:text-[#F9ECE2] border-transparent dark:border-[#214154] hover:bg-dex-beige dark:hover:bg-[#1A3342]'
                       }`}
                     >
                       Vinculado a Escritório
@@ -701,7 +704,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
                   {lawyerAffiliation === 'LINKED' && (
                     <div className="space-y-1 pt-1">
-                      <label className="block text-xs italic font-serif text-dex-navy-950">
+                      <label className="block text-xs italic font-serif text-dex-navy-950 dark:text-[#F9ECE2]">
                         Código ou E-mail do Escritório
                       </label>
                       <input
@@ -710,7 +713,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                         value={officeCodeOrEmail}
                         onChange={(e) => setOfficeCodeOrEmail(e.target.value)}
                         placeholder="admin@escritorio.adv.br ou código DEX-XXXX"
-                        className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-slate-dark"
+                        className="w-full px-4 py-2.5 rounded-xl bg-dex-input dark:bg-[#0F2733] text-dex-navy-950 dark:text-[#F9ECE2] text-xs sm:text-sm placeholder:text-dex-support/70 dark:placeholder:text-white/40 border border-transparent dark:border-[#214154] focus:outline-none focus:ring-2 focus:ring-dex-coral transition-all"
                       />
                     </div>
                   )}
@@ -719,16 +722,16 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
               {/* SEPARADOR CENTRAL COM DADOS DO ADMINISTRADOR / ADVOGADO */}
               <div className="flex items-center gap-3 pt-2">
-                <div className="flex-1 h-[1px] bg-[#35474B]/40" />
-                <span className="text-xs sm:text-sm italic font-serif text-dex-navy-950/90 font-medium shrink-0">
+                <div className="flex-1 h-[1px] bg-[#35474B]/40 dark:bg-[#214154]/70" />
+                <span className="text-xs sm:text-sm italic font-serif text-dex-navy-950/90 dark:text-[#F9ECE2] font-medium shrink-0">
                   {accountType === 'OFFICE' ? 'Dados do administrador' : 'Dados do profissional'}
                 </span>
-                <div className="flex-1 h-[1px] bg-[#35474B]/40" />
+                <div className="flex-1 h-[1px] bg-[#35474B]/40 dark:bg-[#214154]/70" />
               </div>
 
               {/* Nome completo (Largura Total) */}
               <div className="space-y-1">
-                <label className="block text-xs italic font-serif text-dex-navy-950">
+                <label className="block text-xs italic font-serif text-dex-navy-950 dark:text-[#F9ECE2]">
                   Nome completo
                 </label>
                 <input
@@ -737,14 +740,14 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Ex: Dra. Helena Moreira"
-                  className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-slate-dark transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl bg-dex-input dark:bg-[#0F2733] text-dex-navy-950 dark:text-[#F9ECE2] text-xs sm:text-sm placeholder:text-dex-support/70 dark:placeholder:text-white/40 border border-transparent dark:border-[#214154] focus:outline-none focus:ring-2 focus:ring-dex-coral transition-all"
                 />
               </div>
 
               {/* E-mail e OAB* (Lado a Lado) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-1">
-                  <label className="block text-xs italic font-serif text-dex-navy-950">
+                  <label className="block text-xs italic font-serif text-dex-navy-950 dark:text-[#F9ECE2]">
                     E-mail
                   </label>
                   <input
@@ -753,12 +756,12 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="usuario@escritorio.adv.br"
-                    className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-slate-dark transition-all"
+                    className="w-full px-4 py-2.5 rounded-xl bg-dex-input dark:bg-[#0F2733] text-dex-navy-950 dark:text-[#F9ECE2] text-xs sm:text-sm placeholder:text-dex-support/70 dark:placeholder:text-white/40 border border-transparent dark:border-[#214154] focus:outline-none focus:ring-2 focus:ring-dex-coral transition-all"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs italic font-serif text-dex-navy-950">
+                  <label className="block text-xs italic font-serif text-dex-navy-950 dark:text-[#F9ECE2]">
                     OAB*
                   </label>
                   <input
@@ -767,7 +770,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                     value={oab}
                     onChange={(e) => setOab(e.target.value)}
                     placeholder="Ex: SP 123.456"
-                    className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-slate-dark transition-all"
+                    className="w-full px-4 py-2.5 rounded-xl bg-dex-input dark:bg-[#0F2733] text-dex-navy-950 dark:text-[#F9ECE2] text-xs sm:text-sm placeholder:text-dex-support/70 dark:placeholder:text-white/40 border border-transparent dark:border-[#214154] focus:outline-none focus:ring-2 focus:ring-dex-coral transition-all"
                   />
                 </div>
               </div>
@@ -775,7 +778,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               {/* Senha e Confirmar senha (Lado a Lado) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-1">
-                  <label className="block text-xs italic font-serif text-dex-navy-950">
+                  <label className="block text-xs italic font-serif text-dex-navy-950 dark:text-[#F9ECE2]">
                     Senha
                   </label>
                   <PasswordInput
@@ -788,7 +791,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs italic font-serif text-dex-navy-950">
+                  <label className="block text-xs italic font-serif text-dex-navy-950 dark:text-[#F9ECE2]">
                     Confirmar senha
                   </label>
                   <PasswordInput
@@ -815,7 +818,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full sm:w-auto min-w-[220px] px-8 py-3 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-sm font-semibold rounded-xl shadow-md transition-all hover:scale-105 active:scale-95 disabled:opacity-60 cursor-pointer"
+                  className="w-full sm:w-auto min-w-[220px] px-8 py-3 bg-dex-slate-dark dark:bg-[#4A808E] hover:bg-dex-slate-darkHover dark:hover:bg-[#3d6a76] text-white text-sm font-semibold rounded-xl shadow-md transition-all hover:scale-105 active:scale-95 disabled:opacity-60 cursor-pointer"
                 >
                   {isSubmitting ? 'Criando conta...' : (accountType === 'OFFICE' ? 'Criar escritório' : 'Criar minha conta')}
                 </button>

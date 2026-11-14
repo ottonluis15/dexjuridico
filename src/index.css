@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* ==========================================================================
+     VARIÁVEL CENTRAL DE ESCALA (110% de zoom em Full HD no Desktop — Tarefa 3)
+     Para ajustar a escala do sistema no futuro, basta alterar o valor abaixo:
+     ========================================================================== */
+  --escala-ui: 110%;
+  --escala-ui-notebook: 105%;
+}
+
 @layer base {
   html {
     font-family: 'Lora', Georgia, serif;
@@ -12,11 +21,41 @@
     @apply antialiased font-serif text-dex-navy-950;
     background-color: #F9ECE2;
     font-feature-settings: "kern", "liga", "calt";
+    overflow-x: hidden;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: 'DM Serif Display', 'Lora', Georgia, serif;
   }
+}
+
+/* ==========================================================================
+   REGRAS DE ESCALA DE INTERFACE EM DESKTOP (Full HD 1920x1080 / Notebooks)
+   - Respeita escala do navegador do usuário usando porcentagem (WCAG 2.1 AA)
+   - Exceção: tela de cadastro (/cadastro) fixa em 100% via [data-escala="normal"]
+   ========================================================================== */
+
+/* Telas de notebook (1280px a 1439px): escala intermediária suave de 105% */
+@media (min-width: 1280px) and (max-width: 1439px) {
+  html:not([data-escala="normal"]):not([class*="a11y-font-"]) {
+    font-size: var(--escala-ui-notebook);
+  }
+}
+
+/* Telas Desktop Full HD (1920x1080, 1600x900) e superiores (>= 1440px): escala de 110% */
+@media (min-width: 1440px) {
+  html:not([data-escala="normal"]):not([class*="a11y-font-"]) {
+    font-size: var(--escala-ui);
+  }
+}
+
+/* Escopo de exceção explícito: tela de cadastro permanece 100% normal (16px base) */
+html[data-escala="normal"] {
+  font-size: 100% !important;
+}
+
+[data-escala="normal"] {
+  font-size: 1rem;
 }
 
 /* Scrollbars estilizadas no tema Dex */

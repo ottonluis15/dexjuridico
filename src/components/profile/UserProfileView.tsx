@@ -480,7 +480,7 @@ export const UserProfileView: React.FC = () => {
             <button
               type="submit"
               disabled={isUpdatingPassword}
-              className="px-6 py-2.5 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-xs font-serif font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 disabled:opacity-60 cursor-pointer"
+              className="px-6 py-2.5 bg-dex-slate-dark dark:bg-[#4A808E] hover:bg-dex-slate-darkHover dark:hover:bg-[#3d6a76] text-white text-xs font-serif font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 disabled:opacity-60 cursor-pointer"
             >
               <Lock className="w-4 h-4" />
               <span>{isUpdatingPassword ? 'Atualizando...' : 'Atualizar Senha'}</span>

@@ -89,7 +89,7 @@ export const HeroDashboardMockup: React.FC = () => {
   return (
     <div
       ref={containerRef}
-      className="relative w-full max-w-[360px] sm:max-w-[520px] lg:max-w-[620px] mx-auto select-none [perspective:1400px]"
+      className="relative w-full max-w-[22.5rem] sm:max-w-[32.5rem] lg:max-w-[38.75rem] mx-auto select-none [perspective:1400px]"
     >
       {/* Moldura / Fundo cinza-claro arredondado fiel à Imagem 1 */}
       <div

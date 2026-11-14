@@ -86,7 +86,7 @@ export const PaymentReturnScreen: React.FC<PaymentReturnScreenProps> = ({
               <button
                 type="button"
                 onClick={onNavigateToApp}
-                className="w-full sm:w-auto px-8 py-3.5 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-sm font-semibold rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-8 py-3.5 bg-dex-slate-dark dark:bg-[#4A808E] hover:bg-dex-slate-darkHover dark:hover:bg-[#3d6a76] text-white text-sm font-semibold rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center gap-2"
               >
                 <span>Acessar Meu Painel</span>
                 <ArrowRight className="w-4 h-4" />
@@ -118,7 +118,7 @@ export const PaymentReturnScreen: React.FC<PaymentReturnScreenProps> = ({
               <button
                 type="button"
                 onClick={onNavigateToApp}
-                className="w-full sm:w-auto px-8 py-3.5 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-sm font-semibold rounded-xl shadow-md transition-all cursor-pointer"
+                className="w-full sm:w-auto px-8 py-3.5 bg-dex-slate-dark dark:bg-[#4A808E] hover:bg-dex-slate-darkHover dark:hover:bg-[#3d6a76] text-white text-sm font-semibold rounded-xl shadow-md transition-all cursor-pointer"
               >
                 Continuar para o Dex
               </button>
@@ -145,7 +145,7 @@ export const PaymentReturnScreen: React.FC<PaymentReturnScreenProps> = ({
               <button
                 type="button"
                 onClick={onNavigateToPlans}
-                className="w-full sm:w-auto px-8 py-3 bg-dex-slate-dark hover:bg-dex-slate-darkHover text-white text-sm font-semibold rounded-xl shadow-md transition-all cursor-pointer"
+                className="w-full sm:w-auto px-8 py-3 bg-dex-slate-dark dark:bg-[#4A808E] hover:bg-dex-slate-darkHover dark:hover:bg-[#3d6a76] text-white text-sm font-semibold rounded-xl shadow-md transition-all cursor-pointer"
               >
                 Tentar Novamente
               </button>
