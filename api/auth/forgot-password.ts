@@ -29,13 +29,14 @@ function getEmailCredentials() {
 
   const cleanUser = rawUser.trim().replace(/^["']|["']$/g, '');
   const cleanPass = rawPass.trim().replace(/\s+/g, '').replace(/^["']|["']$/g, '');
-  const emailFrom = process.env.EMAIL_FROM || `Dex Jurídico <${cleanUser || 'confirm.dex@gmail.com'}>`;
+  const senderAddress = cleanUser || 'confirm.dex@gmail.com';
+  const emailFrom = `"Dex Jurídico" <${senderAddress}>`;
 
-  return { cleanUser, cleanPass, emailFrom };
+  return { cleanUser, cleanPass, senderAddress, emailFrom };
 }
 
 async function sendResetEmail(to: string, resetUrl: string, userName: string) {
-  const { cleanUser, cleanPass, emailFrom } = getEmailCredentials();
+  const { cleanUser, cleanPass, senderAddress, emailFrom } = getEmailCredentials();
 
   if (!cleanUser || !cleanPass) {
     console.warn('[Forgot Password] SMTP_USER ou SMTP_PASS ausentes no ambiente. Simulação ativada.');
@@ -46,48 +47,48 @@ async function sendResetEmail(to: string, resetUrl: string, userName: string) {
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Redefinição de Senha — Dex Gestão Jurídica</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #F9ECE2; font-family: 'Georgia', Cambria, serif;">
+<body style="margin: 0; padding: 0; background-color: #F9ECE2; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <div style="display: none; max-height: 0px; overflow: hidden; mso-hide: all; font-size: 1px; line-height: 1px; color: #fff; opacity: 0;">
+    Solicitação de recuperação de credencial no Dex. Redefina sua senha com segurança.
+  </div>
   <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F9ECE2; padding: 32px 12px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #FFFFFF; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 30px rgba(15, 39, 51, 0.08); border: 1px solid #EAE0DA;">
+        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #FFFFFF; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 24px rgba(15, 39, 51, 0.06); border: 1px solid #EAE0DA;">
           <tr>
-            <td style="padding: 32px 36px 20px; background-color: #FAF5F0; border-bottom: 2px solid #F0CBAE; text-align: center;">
+            <td style="padding: 28px 32px 20px; background-color: #FAF5F0; border-bottom: 2px solid #F0CBAE; text-align: center;">
               <span style="font-family: 'Georgia', serif; font-size: 26px; font-weight: bold; color: #0F2733; vertical-align: middle;">⚖️ Dex</span>
-              <p style="margin: 4px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #8F8A87; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Gestão Jurídica Inteligente</p>
+              <p style="margin: 4px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #8F8A87;">Gestão Jurídica Inteligente</p>
             </td>
           </tr>
           <tr>
-            <td style="padding: 36px 36px 28px; text-align: left;">
-              <h1 style="margin: 0 0 18px; font-family: 'Georgia', serif; font-size: 22px; font-weight: bold; color: #0F2733;">Recuperação de Acesso Forense</h1>
-              <p style="margin: 0 0 16px; font-size: 15px; line-height: 1.6; color: #35474B; font-weight: 600;">Olá, ${userName || 'Colega Advogado'}.</p>
-              <p style="margin: 0 0 16px; font-size: 15px; line-height: 1.6; color: #35474B;">Recebemos uma solicitação para redefinir a senha de acesso da sua conta no Dex.</p>
-              <p style="margin: 0 0 16px; font-size: 15px; line-height: 1.6; color: #35474B;">Se foi você quem solicitou, clique no botão abaixo para definir sua nova credencial de segurança:</p>
+            <td style="padding: 32px 32px 24px; text-align: left;">
+              <h1 style="margin: 0 0 16px; font-family: 'Georgia', serif; font-size: 21px; font-weight: bold; color: #0F2733;">Recuperação de Acesso Forense</h1>
+              <p style="margin: 0 0 14px; font-size: 15px; line-height: 1.5; color: #35474B; font-weight: 600;">Olá, ${userName || 'Colega Advogado'}.</p>
+              <p style="margin: 0 0 14px; font-size: 15px; line-height: 1.5; color: #35474B;">Recebemos uma solicitação para redefinir a credencial de acesso da sua conta no Dex.</p>
+              <p style="margin: 0 0 14px; font-size: 15px; line-height: 1.5; color: #35474B;">Se foi você quem solicitou, clique no botão abaixo para criar sua nova senha com segurança:</p>
               
-              <div style="text-align: center; margin: 32px 0 24px;">
-                <a href="${resetUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #0F2733; color: #FFFFFF; font-family: 'Georgia', serif; font-size: 15px; font-weight: bold; text-decoration: none; padding: 14px 32px; border-radius: 12px; box-shadow: 0 4px 12px rgba(15, 39, 51, 0.25);">
+              <div style="text-align: center; margin: 28px 0 20px;">
+                <a href="${resetUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #0F2733; color: #FFFFFF; font-family: 'Georgia', serif; font-size: 15px; font-weight: bold; text-decoration: none; padding: 14px 32px; border-radius: 10px; box-shadow: 0 4px 12px rgba(15, 39, 51, 0.2);">
                   Redefinir minha senha
                 </a>
-                <p style="margin: 14px 0 0; font-size: 12px; color: #8F8A87; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                  Se o botão não funcionar, copie e cole este link no seu navegador:<br/>
-                  <a href="${resetUrl}" style="color: #4A808E; text-decoration: underline; word-break: break-all;">${resetUrl}</a>
-                </p>
               </div>
 
-              <div style="padding: 14px; background-color: #F9ECE2; border-radius: 10px; margin: 20px 0; border: 1px solid #EAE0DA; font-size: 13px; color: #6D6865; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                Por segurança, este link expira em 45 minutos e pode ser utilizado apenas uma única vez. Gerar um novo link invalida este anterior.
+              <div style="padding: 12px 16px; background-color: #F9ECE2; border-radius: 8px; margin: 20px 0; border: 1px solid #EAE0DA; font-size: 13px; color: #6D6865; line-height: 1.4;">
+                Por segurança institucional, este link expira em 45 minutos para uso único.
               </div>
 
-              <p style="margin: 24px 0 0; font-size: 12px; color: #8F8A87; border-top: 1px solid #EAE0DA; padding-top: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                <strong>Nota de segurança:</strong> Se você não solicitou a alteração da sua senha, ignore este e-mail. Sua senha atual permanecerá inalterada e segura.
+              <p style="margin: 20px 0 0; font-size: 12px; color: #8F8A87; border-top: 1px solid #EAE0DA; padding-top: 14px; line-height: 1.4;">
+                Se você não solicitou a alteração, ignore este e-mail. Sua senha atual permanecerá segura e inalterada.
               </p>
             </td>
           </tr>
           <tr>
-            <td style="padding: 24px 36px 32px; background-color: #FAF5F0; border-top: 1px solid #EAE0DA; text-align: center;">
-              <p style="margin: 0; font-size: 12px; color: #8F8A87; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Dex — Sistema de Advocacia e Gestão Jurídica com IA</p>
+            <td style="padding: 20px 32px 24px; background-color: #FAF5F0; border-top: 1px solid #EAE0DA; text-align: center;">
+              <p style="margin: 0; font-size: 11px; color: #8F8A87;">Dex — Sistema de Advocacia e Gestão Jurídica com IA</p>
             </td>
           </tr>
         </table>
@@ -97,7 +98,21 @@ async function sendResetEmail(to: string, resetUrl: string, userName: string) {
 </body>
 </html>`;
 
-  const text = `DEX — GESTÃO JURÍDICA INTELIGENTE\nRecuperação de Acesso Forense\n\nOlá, ${userName || 'Colega Advogado'}.\nRecebemos uma solicitação para redefinir a senha de acesso da sua conta no Dex.\nPara prosseguir, acesse o link abaixo:\n${resetUrl}\n\nPor segurança, este link expira em 45 minutos.\nSe não foi você quem solicitou, ignore esta mensagem.`;
+  const text = `DEX — GESTÃO JURÍDICA INTELIGENTE\nRecuperação de Acesso Forense\n\nOlá, ${userName || 'Colega Advogado'}.\nRecebemos uma solicitação para redefinir a credencial da sua conta no Dex.\nPara prosseguir, acesse o link abaixo:\n${resetUrl}\n\nVálido por 45 minutos. Se não foi você quem solicitou, ignore esta mensagem.`;
+
+  const mailOptions = {
+    from: emailFrom,
+    to,
+    replyTo: senderAddress,
+    subject: 'Redefinição de Senha — Dex Gestão Jurídica',
+    headers: {
+      'X-Priority': '3',
+      'X-MSMail-Priority': 'Normal',
+      'Importance': 'Normal'
+    },
+    html,
+    text
+  };
 
   // Tenta porta 465 (SSL) com fallback para 587 (STARTTLS)
   try {
@@ -109,13 +124,7 @@ async function sendResetEmail(to: string, resetUrl: string, userName: string) {
       connectionTimeout: 5000,
       tls: { rejectUnauthorized: false }
     });
-    const info = await transporter465.sendMail({
-      from: emailFrom,
-      to,
-      subject: 'Redefinição de Senha — Dex Gestão Jurídica',
-      html,
-      text
-    });
+    const info = await transporter465.sendMail(mailOptions);
     return { success: true, messageId: info.messageId };
   } catch (err465: any) {
     console.warn('[Forgot Password] Porta 465 falhou, tentando porta 587...', err465?.message);
@@ -127,13 +136,7 @@ async function sendResetEmail(to: string, resetUrl: string, userName: string) {
       connectionTimeout: 5000,
       tls: { rejectUnauthorized: false }
     });
-    const info = await transporter587.sendMail({
-      from: emailFrom,
-      to,
-      subject: 'Redefinição de Senha — Dex Gestão Jurídica',
-      html,
-      text
-    });
+    const info = await transporter587.sendMail(mailOptions);
     return { success: true, messageId: info.messageId };
   }
 }

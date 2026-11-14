@@ -351,6 +351,15 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                       ? 'Por segurança institucional, sua conta ficará pendente de ativação até a confirmação do e-mail. Em seguida, você terá acesso à finalização segura pelo Stripe.' 
                       : 'Por segurança institucional, sua conta de avaliação ficará pendente de ativação até a confirmação do e-mail (válido por 24 horas).'}
                   </p>
+
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-left max-w-md mx-auto text-xs text-dex-navy-950/90 dark:text-white/90">
+                    <p className="font-semibold text-amber-700 dark:text-amber-400 mb-1 flex items-center gap-1.5">
+                      <span>💡 Dica de recebimento:</span>
+                    </p>
+                    <p className="leading-relaxed text-[11px] text-dex-navy-950/80 dark:text-white/80">
+                      Caso não encontre a mensagem na sua <strong>Caixa de Entrada</strong> em até 1 minuto, consulte a pasta de <strong>Spam</strong> ou <strong>Lixo Eletrônico</strong> e clique em <strong>&ldquo;Não é spam&rdquo;</strong> para liberar seus próximos avisos institucionais.
+                    </p>
+                  </div>
                 </div>
 
                 <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">

@@ -30,13 +30,14 @@ function getEmailCredentials() {
 
   const cleanUser = rawUser.trim().replace(/^["']|["']$/g, '');
   const cleanPass = rawPass.trim().replace(/\s+/g, '').replace(/^["']|["']$/g, '');
-  const emailFrom = process.env.EMAIL_FROM || `Dex Jurídico <${cleanUser || 'confirm.dex@gmail.com'}>`;
+  const senderAddress = cleanUser || 'confirm.dex@gmail.com';
+  const emailFrom = `"Dex Jurídico" <${senderAddress}>`;
 
-  return { cleanUser, cleanPass, emailFrom };
+  return { cleanUser, cleanPass, senderAddress, emailFrom };
 }
 
 async function sendVerificationEmail(to: string, confirmUrl: string, name?: string) {
-  const { cleanUser, cleanPass, emailFrom } = getEmailCredentials();
+  const { cleanUser, cleanPass, senderAddress, emailFrom } = getEmailCredentials();
 
   if (!cleanUser || !cleanPass) {
     console.warn('[Send Verification] SMTP_USER ou SMTP_PASS ausentes no ambiente. Simulação ativada.');
@@ -49,48 +50,49 @@ async function sendVerificationEmail(to: string, confirmUrl: string, name?: stri
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Confirme seu e-mail — Dex Gestão Jurídica</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #F9ECE2; font-family: 'Georgia', Cambria, serif;">
+<body style="margin: 0; padding: 0; background-color: #F9ECE2; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <!-- Preheader oculto para melhorar entregabilidade nos filtros do Gmail/Outlook -->
+  <div style="display: none; max-height: 0px; overflow: hidden; mso-hide: all; font-size: 1px; line-height: 1px; color: #fff; opacity: 0;">
+    Confirmação de acesso ao Dex — Sistema de Gestão Jurídica Inteligente. Ative sua conta em um clique.
+  </div>
   <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F9ECE2; padding: 32px 12px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #FFFFFF; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 30px rgba(15, 39, 51, 0.08); border: 1px solid #EAE0DA;">
+        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #FFFFFF; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 24px rgba(15, 39, 51, 0.06); border: 1px solid #EAE0DA;">
           <tr>
-            <td style="padding: 32px 36px 20px; background-color: #FAF5F0; border-bottom: 2px solid #F0CBAE; text-align: center;">
+            <td style="padding: 28px 32px 20px; background-color: #FAF5F0; border-bottom: 2px solid #F0CBAE; text-align: center;">
               <span style="font-family: 'Georgia', serif; font-size: 26px; font-weight: bold; color: #0F2733; vertical-align: middle;">⚖️ Dex</span>
-              <p style="margin: 4px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #8F8A87; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Gestão Jurídica Inteligente</p>
+              <p style="margin: 4px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #8F8A87;">Gestão Jurídica Inteligente</p>
             </td>
           </tr>
           <tr>
-            <td style="padding: 36px 36px 28px; text-align: left;">
-              <h1 style="margin: 0 0 18px; font-family: 'Georgia', serif; font-size: 22px; font-weight: bold; color: #0F2733;">Confirmação de Acesso à sua Banca</h1>
-              <p style="margin: 0 0 16px; font-size: 15px; line-height: 1.6; color: #35474B; font-weight: 600;">${greeting}</p>
-              <p style="margin: 0 0 16px; font-size: 15px; line-height: 1.6; color: #35474B;">Seu cadastro no Dex — Gestão Jurídica Inteligente com IA está quase concluído.</p>
-              <p style="margin: 0 0 16px; font-size: 15px; line-height: 1.6; color: #35474B;">Para ativar sua conta e liberar o acesso com segurança à plataforma forense, clique no botão abaixo para confirmar seu endereço de e-mail:</p>
+            <td style="padding: 32px 32px 24px; text-align: left;">
+              <h1 style="margin: 0 0 16px; font-family: 'Georgia', serif; font-size: 21px; font-weight: bold; color: #0F2733;">Confirmação de Acesso à sua Banca</h1>
+              <p style="margin: 0 0 14px; font-size: 15px; line-height: 1.5; color: #35474B; font-weight: 600;">${greeting}</p>
+              <p style="margin: 0 0 14px; font-size: 15px; line-height: 1.5; color: #35474B;">Seu cadastro no Dex foi iniciado com sucesso.</p>
+              <p style="margin: 0 0 14px; font-size: 15px; line-height: 1.5; color: #35474B;">Para ativar sua conta e liberar o acesso com segurança à plataforma forense, clique no botão abaixo:</p>
               
-              <div style="text-align: center; margin: 32px 0 24px;">
-                <a href="${confirmUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #0F2733; color: #FFFFFF; font-family: 'Georgia', serif; font-size: 15px; font-weight: bold; text-decoration: none; padding: 14px 32px; border-radius: 12px; box-shadow: 0 4px 12px rgba(15, 39, 51, 0.25);">
+              <div style="text-align: center; margin: 28px 0 20px;">
+                <a href="${confirmUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #0F2733; color: #FFFFFF; font-family: 'Georgia', serif; font-size: 15px; font-weight: bold; text-decoration: none; padding: 14px 32px; border-radius: 10px; box-shadow: 0 4px 12px rgba(15, 39, 51, 0.2);">
                   Confirmar meu e-mail
                 </a>
-                <p style="margin: 14px 0 0; font-size: 12px; color: #8F8A87; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                  Se o botão não funcionar, copie e cole este link no seu navegador:<br/>
-                  <a href="${confirmUrl}" style="color: #4A808E; text-decoration: underline; word-break: break-all;">${confirmUrl}</a>
-                </p>
               </div>
 
-              <div style="padding: 14px; background-color: #F9ECE2; border-radius: 10px; margin: 20px 0; border: 1px solid #EAE0DA; font-size: 13px; color: #6D6865; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                Este link é válido por 24 horas e pode ser utilizado apenas uma única vez.
+              <div style="padding: 12px 16px; background-color: #F9ECE2; border-radius: 8px; margin: 20px 0; border: 1px solid #EAE0DA; font-size: 13px; color: #6D6865; line-height: 1.4;">
+                Este link institucional é válido por 24 horas para uso único e seguro.
               </div>
 
-              <p style="margin: 24px 0 0; font-size: 12px; color: #8F8A87; border-top: 1px solid #EAE0DA; padding-top: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                <strong>Nota de segurança:</strong> Se você não solicitou este cadastro no Dex, desconsidere esta mensagem. Nenhuma ação será realizada na sua conta.
+              <p style="margin: 20px 0 0; font-size: 12px; color: #8F8A87; border-top: 1px solid #EAE0DA; padding-top: 14px; line-height: 1.4;">
+                Se não foi você quem solicitou este cadastro no Dex, por favor desconsidere este e-mail. Nenhuma ação será realizada na sua conta.
               </p>
             </td>
           </tr>
           <tr>
-            <td style="padding: 24px 36px 32px; background-color: #FAF5F0; border-top: 1px solid #EAE0DA; text-align: center;">
-              <p style="margin: 0; font-size: 12px; color: #8F8A87; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Dex — Sistema de Advocacia e Gestão Jurídica com IA</p>
+            <td style="padding: 20px 32px 24px; background-color: #FAF5F0; border-top: 1px solid #EAE0DA; text-align: center;">
+              <p style="margin: 0; font-size: 11px; color: #8F8A87;">Dex — Sistema de Advocacia e Gestão Jurídica com IA</p>
             </td>
           </tr>
         </table>
@@ -100,7 +102,21 @@ async function sendVerificationEmail(to: string, confirmUrl: string, name?: stri
 </body>
 </html>`;
 
-  const text = `DEX — GESTÃO JURÍDICA INTELIGENTE\nConfirmação de Acesso à sua Banca\n\n${greeting}\nSeu cadastro no Dex está quase concluído.\nPara confirmar seu e-mail e ativar sua conta, acesse o link abaixo:\n${confirmUrl}\n\nVálido por 24 horas. Se não solicitou, ignore.`;
+  const text = `DEX — GESTÃO JURÍDICA INTELIGENTE\nConfirmação de Acesso à sua Banca\n\n${greeting}\nSeu cadastro no Dex foi iniciado com sucesso.\nPara ativar sua conta com segurança, clique no link abaixo:\n${confirmUrl}\n\nEste link é válido por 24 horas. Se não solicitou, por favor desconsidere.`;
+
+  const mailOptions = {
+    from: emailFrom,
+    to,
+    replyTo: senderAddress,
+    subject: 'Confirme seu e-mail — Dex Gestão Jurídica',
+    headers: {
+      'X-Priority': '3',
+      'X-MSMail-Priority': 'Normal',
+      'Importance': 'Normal'
+    },
+    html,
+    text
+  };
 
   // Tenta porta 465 (SSL) com fallback para 587 (STARTTLS)
   try {
@@ -112,13 +128,7 @@ async function sendVerificationEmail(to: string, confirmUrl: string, name?: stri
       connectionTimeout: 5000,
       tls: { rejectUnauthorized: false }
     });
-    const info = await transporter465.sendMail({
-      from: emailFrom,
-      to,
-      subject: 'Confirme seu e-mail — Dex Gestão Jurídica',
-      html,
-      text
-    });
+    const info = await transporter465.sendMail(mailOptions);
     return { success: true, messageId: info.messageId };
   } catch (err465: any) {
     console.warn('[Send Verification] Porta 465 falhou, tentando porta 587...', err465?.message);
@@ -130,13 +140,7 @@ async function sendVerificationEmail(to: string, confirmUrl: string, name?: stri
       connectionTimeout: 5000,
       tls: { rejectUnauthorized: false }
     });
-    const info = await transporter587.sendMail({
-      from: emailFrom,
-      to,
-      subject: 'Confirme seu e-mail — Dex Gestão Jurídica',
-      html,
-      text
-    });
+    const info = await transporter587.sendMail(mailOptions);
     return { success: true, messageId: info.messageId };
   }
 }
