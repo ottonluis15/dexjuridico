@@ -37,6 +37,10 @@ export interface MaskedInputProps extends Omit<React.InputHTMLAttributes<HTMLInp
   helperText?: string;
   clientType?: 'PF' | 'PJ';
   containerClassName?: string;
+  labelClassName?: string;
+  inputClassName?: string;
+  helperClassName?: string;
+  variant?: 'modal' | 'card';
 }
 
 export const MaskedInput: React.FC<MaskedInputProps> = ({
@@ -48,6 +52,10 @@ export const MaskedInput: React.FC<MaskedInputProps> = ({
   helperText,
   clientType,
   containerClassName = '',
+  labelClassName,
+  inputClassName,
+  helperClassName,
+  variant = 'modal',
   id: customId,
   required,
   disabled,
@@ -185,12 +193,40 @@ export const MaskedInput: React.FC<MaskedInputProps> = ({
     });
   };
 
+  const isModal = variant === 'modal';
+
+  const resolvedLabelClass = labelClassName || (
+    isModal
+      ? 'block text-xs font-serif italic text-[#C2D6DC] mb-1.5'
+      : 'block text-xs font-serif font-bold text-dex-navy-950 dark:text-[#F9ECE2] mb-1.5'
+  );
+
+  const resolvedInputClass = isModal
+    ? `w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-navy-950/50 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif transition-all ${
+        error ? 'ring-2 ring-red-500 border border-red-500' : 'border border-transparent'
+      } ${disabled ? 'opacity-60 cursor-not-allowed bg-gray-300' : ''}`
+    : `w-full px-4 py-2.5 rounded-xl text-xs sm:text-sm font-serif transition-all bg-white dark:bg-[#0F2733] text-dex-navy-950 dark:text-[#F9ECE2] border ${
+        error 
+          ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' 
+          : 'border-[#D8C3B5] dark:border-[#214154] focus:border-[#4A808E] focus:ring-2 focus:ring-[#4A808E]/20'
+      } ${disabled ? 'opacity-60 cursor-not-allowed bg-gray-100 dark:bg-gray-800' : ''}`;
+
+  const resolvedHelperClass = helperClassName || (
+    isModal
+      ? 'text-[11px] text-[#A6C5CD] font-serif mt-1'
+      : 'text-[11px] text-dex-support dark:text-[#A7BAC5] font-serif mt-1'
+  );
+
+  const resolvedErrorClass = isModal
+    ? 'text-xs text-red-400 font-serif font-medium flex items-center gap-1 mt-1'
+    : 'text-xs text-red-600 dark:text-red-400 font-serif font-medium flex items-center gap-1 mt-1';
+
   return (
     <div className={`space-y-1.5 ${containerClassName}`}>
       {label && (
         <label 
           htmlFor={inputId} 
-          className="block text-xs font-serif font-bold text-dex-navy-950 dark:text-[#F9ECE2]"
+          className={resolvedLabelClass}
         >
           {label} {required && <span className="text-dex-coral" aria-hidden="true">*</span>}
         </label>
@@ -214,23 +250,19 @@ export const MaskedInput: React.FC<MaskedInputProps> = ({
               helperText ? helperId : null
             ].filter(Boolean).join(' ') || undefined
           }
-          className={`w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-serif transition-all bg-white dark:bg-[#0F2733] text-dex-navy-950 dark:text-[#F9ECE2] border ${
-            error 
-              ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' 
-              : 'border-[#D8C3B5] dark:border-[#214154] focus:border-[#4A808E] focus:ring-2 focus:ring-[#4A808E]/20'
-          } ${disabled ? 'opacity-60 cursor-not-allowed bg-gray-100 dark:bg-gray-800' : ''} ${className}`}
+          className={`${resolvedInputClass} ${inputClassName || ''} ${className}`}
           {...restProps}
         />
       </div>
 
       {helperText && !error && (
-        <p id={helperId} className="text-[11px] text-dex-support dark:text-[#A7BAC5] font-serif">
+        <p id={helperId} className={resolvedHelperClass}>
           {helperText}
         </p>
       )}
 
       {error && (
-        <p id={errorId} role="alert" className="text-xs text-red-600 dark:text-red-400 font-serif font-medium flex items-center gap-1">
+        <p id={errorId} role="alert" className={resolvedErrorClass}>
           <span>•</span>
           <span>{error}</span>
         </p>

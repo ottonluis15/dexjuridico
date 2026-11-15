@@ -207,7 +207,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               placeholder={type === 'PF' ? 'Ex: Carlos Alberto da Silva' : 'Ex: Metalúrgica Progresso S/A'}
               value={name}
               onChange={e => setName(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-navy-950/50 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             />
           </div>
 
@@ -240,7 +240,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 setEmail(e.target.value);
                 setEmailError(null);
               }}
-              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-navy-950/50 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             />
             {emailError && (
               <p className="text-xs text-red-400 font-serif">• {emailError}</p>
@@ -281,7 +281,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               placeholder="Ex: Av. Rio Branco"
               value={street}
               onChange={e => setStreet(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-navy-950/50 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             />
           </div>
 
@@ -294,7 +294,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               placeholder="Ex: 120, Sala 4"
               value={number}
               onChange={e => setNumber(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-navy-950/50 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             />
           </div>
         </div>
@@ -343,7 +343,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
             placeholder="Informações adicionais, indicações, observações..."
             value={notes}
             onChange={e => setNotes(e.target.value)}
-            className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+            className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-navy-950/50 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
           />
         </div>
 

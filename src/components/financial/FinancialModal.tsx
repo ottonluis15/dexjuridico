@@ -201,7 +201,7 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
               placeholder="Ex: Honorários Contratuais - Parcela 1/3"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-navy-950/50 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             />
           </div>
 

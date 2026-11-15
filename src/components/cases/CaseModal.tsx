@@ -175,7 +175,7 @@ export const CaseModal: React.FC<CaseModalProps> = ({
               placeholder="Ex: 2ª Vara Cível de Curitiba/PR"
               value={court}
               onChange={e => setCourt(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-navy-950/50 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             />
           </div>
         </div>
@@ -192,7 +192,7 @@ export const CaseModal: React.FC<CaseModalProps> = ({
               placeholder="Ex: Ação de Cobrança c/c Danos Morais"
               value={actionType}
               onChange={e => setActionType(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-support/70 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-navy-950/50 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             />
           </div>
 
@@ -299,7 +299,7 @@ export const CaseModal: React.FC<CaseModalProps> = ({
             placeholder="Descreva resumidamente a demanda fática..."
             value={description}
             onChange={e => setDescription(e.target.value)}
-            className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+            className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-navy-950/50 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
           />
         </div>
 
@@ -312,7 +312,7 @@ export const CaseModal: React.FC<CaseModalProps> = ({
             placeholder="Estratégia processual, testemunhas a arrolar, teses..."
             value={notes}
             onChange={e => setNotes(e.target.value)}
-            className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
+            className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm placeholder:text-dex-navy-950/50 focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
           />
         </div>
 

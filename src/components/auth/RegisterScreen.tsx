@@ -632,6 +632,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <MaskedInput
                       mask="cnpj"
+                      variant="card"
                       label="Cnpj"
                       value={cnpj}
                       onChange={(formatted) => setCnpj(formatted)}
@@ -640,6 +641,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
                     <MaskedInput
                       mask="phone"
+                      variant="card"
                       label="Telefone"
                       value={phone}
                       onChange={(formatted) => setPhone(formatted)}
@@ -769,6 +771,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
                 <MaskedInput
                   mask="oab"
+                  variant="card"
                   label="OAB"
                   required
                   value={oab}
@@ -781,6 +784,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               {accountType === 'LAWYER' && (
                 <MaskedInput
                   mask="phone"
+                  variant="card"
                   label="Telefone com DDD"
                   value={phone}
                   onChange={(formatted) => setPhone(formatted)}
