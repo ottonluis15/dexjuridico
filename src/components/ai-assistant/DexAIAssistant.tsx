@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Sparkles, 
   HelpCircle, 
@@ -21,6 +21,7 @@ import { AIAnalysisResult, LegalArea } from '../../types';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../common/Modal';
+import { ClientCombobox } from '../clients/ClientCombobox';
 import { AudioTranscriber } from './AudioTranscriber';
 import { DecorativeBars } from '../common/DecorativeBars';
 
@@ -30,7 +31,20 @@ interface DexAIAssistantProps {
 
 export const DexAIAssistant: React.FC<DexAIAssistantProps> = ({ onNavigateToCases }) => {
   const { currentUser } = useAuth();
-  const { clients, lawyers, addCase, clearPendingAiDraft, showToast, checkResourceLimit, limitsUsage } = useData();
+  const { userClients, lawyers, addCase, clearPendingAiDraft, showToast, checkResourceLimit, limitsUsage } = useData();
+
+  const currentLawyer = useMemo(
+    () => lawyers.find(l => l.userId === currentUser?.id) || null,
+    [lawyers, currentUser?.id]
+  );
+
+  const visibleLawyers = useMemo(() => {
+    if (!currentUser) return [];
+    if (currentUser.isIndependent || !currentUser.officeId) {
+      return lawyers.filter(l => l.userId === currentUser.id || l.id === currentLawyer?.id);
+    }
+    return lawyers.filter(l => l.officeId === currentUser.officeId);
+  }, [lawyers, currentUser, currentLawyer]);
 
   const [promptText, setPromptText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -113,8 +127,8 @@ export const DexAIAssistant: React.FC<DexAIAssistantProps> = ({ onNavigateToCase
     if (!analysisResult) return;
     const randomCNJ = `10${Math.floor(10000 + Math.random() * 90000)}-${Math.floor(10 + Math.random() * 89)}.2026.8.26.0100`;
     setCustomCNJ(randomCNJ);
-    setSelectedClientId(clients[0]?.id || '');
-    setSelectedLawyerId(lawyers[0]?.id || '');
+    setSelectedClientId(userClients[0]?.id || '');
+    setSelectedLawyerId(currentLawyer?.id || visibleLawyers[0]?.id || '');
     setCustomActionType(analysisResult.suggestedActionType);
     setCustomLegalArea(analysisResult.suggestedLegalArea);
     setCustomValue((analysisResult.estimatedValue || 50000).toString());
@@ -131,31 +145,41 @@ export const DexAIAssistant: React.FC<DexAIAssistantProps> = ({ onNavigateToCase
       return;
     }
 
-    const newCase = addCase({
-      caseNumber: customCNJ.trim(),
-      court: customCourt.trim() || 'Vara Cível / Especializada',
-      clientId: selectedClientId,
-      lawyerId: selectedLawyerId,
-      legalArea: customLegalArea,
-      actionType: customActionType.trim(),
-      status: 'INICIAL',
-      value: parseFloat(customValue) || 0,
-      distributionDate: new Date().toISOString().substring(0, 10),
-      description: analysisResult.factsSummary,
-      notes: `[Triagem Dex AI]\nEnquadramento: ${analysisResult.legalFraming}\n\nPerguntas pendentes:\n- ${analysisResult.clarificationQuestions.join('\n- ')}\n\nChecklist Documental:\n- ${analysisResult.requiredDocuments.join('\n- ')}`
-    });
+    try {
+      const newCase = addCase({
+        caseNumber: customCNJ.trim(),
+        court: customCourt.trim() || 'Vara Cível / Especializada',
+        clientId: selectedClientId,
+        lawyerId: selectedLawyerId,
+        legalArea: customLegalArea,
+        actionType: customActionType.trim(),
+        status: 'INICIAL',
+        value: parseFloat(customValue) || 0,
+        distributionDate: new Date().toISOString().substring(0, 10),
+        description: analysisResult.factsSummary,
+        notes: `[Triagem Dex AI]\nEnquadramento: ${analysisResult.legalFraming}\n\nPerguntas pendentes:\n- ${analysisResult.clarificationQuestions.join('\n- ')}\n\nChecklist Documental:\n- ${analysisResult.requiredDocuments.join('\n- ')}`
+      });
 
-    clearPendingAiDraft();
-    setIsCreateModalOpen(false);
-    showToast(`Processo ${newCase.caseNumber} salvo com sucesso no banco de dados!`, 'success');
-    onNavigateToCases();
+      clearPendingAiDraft();
+      setIsCreateModalOpen(false);
+      showToast(`Processo ${newCase.caseNumber} salvo com sucesso no banco de dados!`, 'success');
+      onNavigateToCases();
+    } catch (err: any) {
+      showToast(err?.message || 'Não foi possível salvar o processo.', 'error');
+    }
   };
 
   const handleQuickSaveProcess = () => {
     if (!analysisResult) return;
+    const defaultClientId = userClients[0]?.id || '';
+    const defaultLawyerId = currentLawyer?.id || visibleLawyers[0]?.id || '';
+    if (!defaultClientId) {
+      // Se não houver cliente na carteira ainda, abre o modal completo para permitir criar cliente na hora
+      openCreateModal();
+      showToast('Selecione ou cadastre um cliente para vincular a este processo.', 'info');
+      return;
+    }
     const randomCNJ = `10${Math.floor(10000 + Math.random() * 90000)}-${Math.floor(10 + Math.random() * 89)}.2026.8.26.0100`;
-    const defaultClientId = clients[0]?.id || '';
-    const defaultLawyerId = lawyers[0]?.id || '';
 
     const newCase = addCase({
       caseNumber: randomCNJ,
@@ -587,24 +611,13 @@ export const DexAIAssistant: React.FC<DexAIAssistantProps> = ({ onNavigateToCase
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-serif italic text-[#C2D6DC] mb-1.5">
-                Cliente Vinculado *
-              </label>
-              <select
-                required
-                value={selectedClientId}
-                onChange={e => setSelectedClientId(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
-              >
-                <option value="">Selecione o cliente...</option>
-                {clients.map(client => (
-                  <option key={client.id} value={client.id}>
-                    {client.name} ({client.document})
-                  </option>
-                ))}
-              </select>
-            </div>
+            <ClientCombobox
+              label="Cliente Vinculado"
+              required
+              value={selectedClientId}
+              onChange={(nextId) => setSelectedClientId(nextId)}
+              createContextNotice="O cliente será salvo na aba Clientes e já ficará vinculado a este processo gerado pela triagem do Dex AI."
+            />
 
             <div>
               <label className="block text-xs font-serif italic text-[#C2D6DC] mb-1.5">
@@ -617,7 +630,7 @@ export const DexAIAssistant: React.FC<DexAIAssistantProps> = ({ onNavigateToCase
                 className="w-full px-3.5 py-2.5 bg-dex-input text-dex-navy-950 font-serif rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-dex-coral"
               >
                 <option value="">Selecione o advogado...</option>
-                {lawyers.map(lawyer => (
+                {visibleLawyers.map(lawyer => (
                   <option key={lawyer.id} value={lawyer.id}>
                     {lawyer.name} ({lawyer.oab})
                   </option>

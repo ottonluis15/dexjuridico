@@ -27,6 +27,11 @@ import {
 } from '../mock/initialData';
 import { cryptoService } from './cryptoService';
 import { supabaseService } from './supabaseService';
+import { validateCPFOrCNPJ, validateEmail, validatePhone, validateCEP } from '../utils/validators';
+import { unmaskDigits, unmaskAlphanumeric } from '../utils/masks';
+
+// Cache de idempotência em memória para impedir criação dupla em cliques repetidos
+const recentClientIdempotencyCache = new Map<string, { client: Client; expiresAt: number }>();
 
 const STORAGE_KEYS = {
   USERS: 'dex_users',
@@ -733,26 +738,130 @@ export const storageService = {
     return { client, status: 200 };
   },
 
-  // Cadastro de cliente com vinculação automática e validação
+  // Cadastro de cliente com vinculação automática, validação forense, duplicidade por escritório e idempotência
   addClientForUser(
     clientData: Omit<Client, 'id' | 'createdAt'>,
     currentUser: User | null,
-    currentLawyer?: Lawyer | null
-  ): { client?: Client; error?: string; status: 200 | 403 } {
+    currentLawyer?: Lawyer | null,
+    options?: { idempotencyKey?: string }
+  ): { client?: Client; duplicateClient?: Client; error?: string; status: 200 | 400 | 403 | 409 } {
     if (!currentUser) {
-      return { error: 'Usuário não autenticado', status: 403 };
+      return { error: 'Usuário não autenticado.', status: 403 };
     }
+
+    if (currentUser.role !== 'ADMIN' && currentUser.role !== 'LAWYER') {
+      return { error: 'Seu perfil não possui permissão para cadastrar novos clientes.', status: 403 };
+    }
+
+    // Proteção de idempotência contra duplo clique / reenvio
+    const idemKey = options?.idempotencyKey?.trim();
+    if (idemKey) {
+      const now = Date.now();
+      const cached = recentClientIdempotencyCache.get(idemKey);
+      if (cached && cached.expiresAt > now) {
+        return { client: cached.client, status: 200 };
+      }
+    }
+
+    // Validação forense de entrada (nunca confia apenas no navegador)
+    const cleanName = (clientData.name || '').replace(/\s+/g, ' ').trim();
+    if (cleanName.length < 2) {
+      return { error: 'Informe o nome completo ou razão social do cliente.', status: 400 };
+    }
+
+    const docValidation = validateCPFOrCNPJ(clientData.document || '', clientData.type);
+    if (!docValidation.isValid) {
+      return { error: docValidation.error || 'CPF ou CNPJ inválido.', status: 400 };
+    }
+
+    const phoneValidation = validatePhone(clientData.phone || '');
+    if (!phoneValidation.isValid) {
+      return { error: phoneValidation.error || 'Telefone inválido.', status: 400 };
+    }
+
+    const emailValidation = validateEmail(clientData.email || '');
+    if (!emailValidation.isValid) {
+      return { error: emailValidation.error || 'E-mail inválido.', status: 400 };
+    }
+
+    if (clientData.address?.zipCode && clientData.address.zipCode.trim()) {
+      const cepVal = validateCEP(clientData.address.zipCode);
+      if (!cepVal.isValid) {
+        return { error: cepVal.error || 'CEP inválido.', status: 400 };
+      }
+    }
+
+    // Normalização canônica de documento (suporta CPF numérico e CNPJ numérico/alfanumérico 2026)
+    const normalizedDoc =
+      clientData.type === 'PJ' || /[A-Za-z]/.test(clientData.document || '')
+        ? unmaskAlphanumeric(clientData.document || '')
+        : unmaskDigits(clientData.document || '');
+
     const all = this.getClients();
+
+    // Verificação de duplicidade estrita dentro do escopo do escritório ou do advogado autônomo
+    const myLawyerId = currentLawyer?.id || currentUser.id;
+    const scopeClients = all.filter(c => {
+      if (currentUser.isIndependent || !currentUser.officeId) {
+        return !c.officeId && (c.linkedLawyerId === myLawyerId || c.linkedLawyerId === currentUser.id);
+      }
+      return c.officeId === currentUser.officeId;
+    });
+
+    const duplicate = scopeClients.find(c => {
+      const existingNorm = unmaskAlphanumeric(c.document || '');
+      return existingNorm.length > 0 && existingNorm === normalizedDoc;
+    });
+
+    if (duplicate) {
+      // Verifica se o usuário atual tem acesso ao cliente duplicado para oferecer seleção direta
+      const canSeeDuplicate =
+        currentUser.role === 'ADMIN' ||
+        currentUser.isIndependent ||
+        duplicate.linkedLawyerId === myLawyerId ||
+        duplicate.linkedLawyerId === currentUser.id;
+
+      return {
+        status: 409,
+        duplicateClient: canSeeDuplicate ? duplicate : undefined,
+        error: canSeeDuplicate
+          ? `Este cliente já existe (${duplicate.name}) com o mesmo CPF/CNPJ no seu escritório.`
+          : 'Já existe um cliente cadastrado com este CPF/CNPJ vinculado a outro advogado do escritório.'
+      };
+    }
+
     const newClient: Client = {
       ...clientData,
-      id: `cli_${Date.now()}`,
+      name: cleanName,
+      document: normalizedDoc,
+      email: (clientData.email || '').trim().toLowerCase(),
+      phone: unmaskDigits(clientData.phone || ''),
+      address: {
+        street: clientData.address?.street?.trim() || 'Rua Principal',
+        number: clientData.address?.number?.trim() || 'S/N',
+        complement: clientData.address?.complement?.trim() || '',
+        neighborhood: clientData.address?.neighborhood?.trim() || 'Centro',
+        city: clientData.address?.city?.trim() || 'São Paulo',
+        state: clientData.address?.state?.trim() || 'SP',
+        zipCode: unmaskDigits(clientData.address?.zipCode || '') || '01000000'
+      },
+      id: `cli_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       createdAt: new Date().toISOString().substring(0, 10),
       officeId: currentUser.isIndependent ? undefined : currentUser.officeId,
-      linkedLawyerId: currentUser.isIndependent 
-        ? (currentLawyer?.id || currentUser.id)
-        : (clientData.linkedLawyerId || currentLawyer?.id)
+      linkedLawyerId: currentUser.isIndependent
+        ? myLawyerId
+        : (clientData.linkedLawyerId || myLawyerId)
     };
+
     this.saveClients([newClient, ...all]);
+
+    if (idemKey) {
+      recentClientIdempotencyCache.set(idemKey, {
+        client: newClient,
+        expiresAt: Date.now() + 20_000
+      });
+    }
+
     return { client: newClient, status: 200 };
   },
 

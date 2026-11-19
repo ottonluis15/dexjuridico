@@ -43,6 +43,14 @@ export interface LimitsUsageSummary {
   aiRequests: PlanResourceUsage;
 }
 
+export interface CreateClientResult {
+  success: boolean;
+  client?: Client;
+  duplicateClient?: Client;
+  error?: string;
+  code?: 'PLAN_LIMIT' | 'DUPLICATE' | 'VALIDATION' | 'FORBIDDEN';
+}
+
 interface DataContextType {
   // Dados brutos
   clients: Client[];
@@ -82,7 +90,12 @@ interface DataContextType {
   };
 
   // Operações de Clientes
+  canCreateClient: boolean;
   addClient: (client: Omit<Client, 'id' | 'createdAt'>) => Client;
+  createClientSafe: (
+    client: Omit<Client, 'id' | 'createdAt'>,
+    options?: { idempotencyKey?: string; customToast?: string; silentToast?: boolean }
+  ) => CreateClientResult;
   updateClient: (id: string, updates: Partial<Client>) => void;
   deleteClient: (id: string) => void;
   exportClientsCsv: () => void;
@@ -435,20 +448,68 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { allowed: true };
   };
 
-  // CRUD Clientes com Validação Rigorosa de Escritório / Proprietário (Item 6)
-  const addClient = (clientData: Omit<Client, 'id' | 'createdAt'>): Client => {
-    const limitCheck = checkResourceLimit('clients');
-    if (!limitCheck.allowed) {
-      showToast(limitCheck.message!, 'error');
-      throw new Error(limitCheck.message);
+  // Permissão de criação de cliente (mesma regra da aba Clientes)
+  const canCreateClient = Boolean(
+    currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'LAWYER')
+  );
+
+  // Validação de pertencimento do cliente ao escritório / advogado autônomo logado (nunca confia no ID do navegador)
+  const assertClientBelongsToCurrentUser = (clientId?: string): { ok: boolean; error?: string } => {
+    if (!clientId) return { ok: true };
+    const check = storageService.getClientById(clientId, currentUser, currentLawyer, userCases);
+    if (check.status !== 200 || !check.client) {
+      return {
+        ok: false,
+        error:
+          check.status === 404
+            ? 'Cliente selecionado não encontrado.'
+            : '403 Proibido: O cliente selecionado não pertence ao seu escritório ou carteira.'
+      };
+    }
+    return { ok: true };
+  };
+
+  // CRUD Clientes com Validação Rigorosa de Escritório, Duplicidade, Limite de Plano e Idempotência
+  const createClientSafe = (
+    clientData: Omit<Client, 'id' | 'createdAt'>,
+    options?: { idempotencyKey?: string; customToast?: string; silentToast?: boolean }
+  ): CreateClientResult => {
+    if (!canCreateClient) {
+      const msg = 'Seu perfil não possui permissão para cadastrar novos clientes.';
+      if (!options?.silentToast) showToast(msg, 'error');
+      return { success: false, error: msg, code: 'FORBIDDEN' };
     }
 
-    const res = storageService.addClientForUser(clientData, currentUser, currentLawyer);
-    if (res.status !== 200 || !res.client) {
-      showToast(res.error || 'Erro ao cadastrar cliente.', 'error');
-      throw new Error(res.error || 'Acesso negado');
+    const limitCheck = checkResourceLimit('clients');
+    if (!limitCheck.allowed) {
+      if (!options?.silentToast) showToast(limitCheck.message!, 'error');
+      return { success: false, error: limitCheck.message, code: 'PLAN_LIMIT' };
     }
+
+    const res = storageService.addClientForUser(clientData, currentUser, currentLawyer, {
+      idempotencyKey: options?.idempotencyKey
+    });
+
+    if (res.status !== 200 || !res.client) {
+      const code =
+        res.status === 409
+          ? 'DUPLICATE'
+          : res.status === 400
+          ? 'VALIDATION'
+          : 'FORBIDDEN';
+      if (!options?.silentToast && code !== 'DUPLICATE') {
+        showToast(res.error || 'Erro ao cadastrar cliente.', 'error');
+      }
+      return {
+        success: false,
+        duplicateClient: res.duplicateClient,
+        error: res.error || 'Não foi possível cadastrar o cliente.',
+        code
+      };
+    }
+
     const newClient = res.client;
+    // Atualiza imediatamente o estado reativo de clientes (aba Clientes, Busca Global, Comboboxes e KPI do Dashboard)
     setClients(storageService.getClients());
 
     if (isSupabaseConfigured()) {
@@ -466,8 +527,22 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       officeId: currentUser?.officeId
     });
     setAuditLogs(storageService.getAuditLogs());
-    showToast(`Cliente "${newClient.name}" cadastrado com sucesso!`, 'success');
-    return newClient;
+
+    if (!options?.silentToast) {
+      showToast(
+        options?.customToast || `Cliente "${newClient.name}" cadastrado com sucesso!`,
+        'success'
+      );
+    }
+    return { success: true, client: newClient };
+  };
+
+  const addClient = (clientData: Omit<Client, 'id' | 'createdAt'>): Client => {
+    const result = createClientSafe(clientData);
+    if (!result.success || !result.client) {
+      throw new Error(result.error || 'Não foi possível cadastrar o cliente.');
+    }
+    return result.client;
   };
 
   const updateClient = (id: string, updates: Partial<Client>) => {
@@ -671,6 +746,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error(limitCheck.message);
     }
 
+    // Validação de isolamento: o cliente vinculado DEVE pertencer ao escritório/carteira do usuário
+    const clientAccess = assertClientBelongsToCurrentUser(caseData.clientId);
+    if (!clientAccess.ok) {
+      showToast(clientAccess.error!, 'error');
+      throw new Error(clientAccess.error);
+    }
+
     const newCase: LegalCase = {
       ...caseData,
       id: `case_${Date.now()}`,
@@ -702,6 +784,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateCase = (id: string, updates: Partial<LegalCase>) => {
+    if (updates.clientId) {
+      const clientAccess = assertClientBelongsToCurrentUser(updates.clientId);
+      if (!clientAccess.ok) {
+        showToast(clientAccess.error!, 'error');
+        throw new Error(clientAccess.error);
+      }
+    }
+
     const updated = cases.map(c => c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString().substring(0, 10) } : c);
     setCases(updated);
     storageService.saveCases(updated);
@@ -828,6 +918,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // CRUD Financeiro
   const addFinancial = (entryData: Omit<FinancialEntry, 'id'>): FinancialEntry => {
+    const clientAccess = assertClientBelongsToCurrentUser(entryData.clientId);
+    if (!clientAccess.ok) {
+      showToast(clientAccess.error!, 'error');
+      throw new Error(clientAccess.error);
+    }
+
     const newEntry: FinancialEntry = {
       ...entryData,
       id: `fin_${Date.now()}`,
@@ -858,6 +954,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateFinancial = (id: string, updates: Partial<FinancialEntry>) => {
+    if (updates.clientId) {
+      const clientAccess = assertClientBelongsToCurrentUser(updates.clientId);
+      if (!clientAccess.ok) {
+        showToast(clientAccess.error!, 'error');
+        throw new Error(clientAccess.error);
+      }
+    }
+
     const updated = financial.map(f => f.id === id ? { ...f, ...updates } : f);
     setFinancial(updated);
     storageService.saveFinancial(updated);
@@ -1166,7 +1270,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         personalDeadlines,
         personalClients,
         stats,
+        canCreateClient,
         addClient,
+        createClientSafe,
         updateClient,
         deleteClient,
         exportClientsCsv,

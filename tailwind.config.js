@@ -58,6 +58,37 @@ export default {
             despesas: '#F56565',
           }
         },
+        urgency: {
+          critical: {
+            bg: 'var(--urgency-critical-bg)',
+            fg: 'var(--urgency-critical-fg)',
+            border: 'var(--urgency-critical-border)',
+            bar: 'var(--urgency-critical-bar)',
+          },
+          high: {
+            bg: 'var(--urgency-high-bg)',
+            fg: 'var(--urgency-high-fg)',
+            border: 'var(--urgency-high-border)',
+            bar: 'var(--urgency-high-bar)',
+          },
+          medium: {
+            bg: 'var(--urgency-medium-bg)',
+            fg: 'var(--urgency-medium-fg)',
+            border: 'var(--urgency-medium-border)',
+            bar: 'var(--urgency-medium-bar)',
+          },
+          low: {
+            bg: 'var(--urgency-low-bg)',
+            fg: 'var(--urgency-low-fg)',
+            border: 'var(--urgency-low-border)',
+            bar: 'var(--urgency-low-bar)',
+          },
+        },
+        landing: {
+          muted: 'var(--landing-muted)',
+          border: 'var(--landing-card-border)',
+          accent: 'var(--landing-accent-text)',
+        },
         brand: {
           50: '#f0f7ff',
           100: '#e0effe',

@@ -41,9 +41,20 @@ export const Header: React.FC<HeaderProps> = ({
   const { userDeadlines } = useData();
 
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const { themeMode, effectiveTheme, setThemeMode, isDark } = useTheme();
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const themeMenuRef = useRef<HTMLDivElement>(null);
+
+  // Detecta rolagem para aplicar sombra suave na topbar sticky
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 8);
+    };
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Fechar menu de tema ao clicar fora
   useEffect(() => {
@@ -109,32 +120,37 @@ export const Header: React.FC<HeaderProps> = ({
   ).length;
 
   return (
-    <div className="w-full pt-4 pb-2 px-4 sm:px-6 lg:px-8">
-      {/* Topbar: Barra arredondada em azul-marinho escuro (#162B37) fiel ao Anexo 4 & 5 */}
-      <header className="w-full bg-[#162B37] rounded-[24px] sm:rounded-[28px] px-4 sm:px-6 py-3.5 shadow-xl border border-[#214154]/50 flex items-center justify-between gap-4">
+    <div
+      className={`sticky top-0 z-30 w-full pt-[calc(0.5rem+env(safe-area-inset-top))] sm:pt-3 pb-2 px-3 sm:px-6 lg:px-8 bg-[#4A808E]/92 dark:bg-[#0A1922]/92 backdrop-blur-md transition-shadow duration-200 motion-reduce:transition-none ${
+        isScrolled ? 'shadow-md dark:shadow-[0_6px_24px_rgba(0,0,0,0.45)]' : ''
+      }`}
+    >
+      {/* Topbar Sticky: Barra arredondada em azul-marinho escuro (#162B37) fiel ao Anexo 4 & 5 */}
+      <header className="w-full bg-[#162B37] rounded-[20px] sm:rounded-[26px] px-3 sm:px-5 py-2.5 sm:py-3 shadow-xl border border-[#214154]/70 flex items-center justify-between gap-2.5 sm:gap-4">
         
         {/* Esquerda: Botão Mobile & Título com Saudação */}
-        <div className="flex items-center gap-3.5 min-w-0">
+        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
           <button
+            type="button"
             onClick={onOpenMobileMenu}
-            className="p-2 text-white/80 hover:text-white rounded-full bg-white/10 lg:hidden cursor-pointer shrink-0"
+            className="p-2 text-white/85 hover:text-white rounded-full bg-white/10 lg:hidden cursor-pointer shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-dex-coral"
             aria-label="Abrir menu lateral"
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
 
-          <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3 min-w-0">
-            <h1 className="text-lg sm:text-xl font-display font-bold text-white tracking-tight truncate">
+          <div className="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-3 min-w-0">
+            <h1 className="text-base sm:text-lg lg:text-xl font-display font-bold text-white tracking-tight truncate">
               {currentTitle}
             </h1>
-            <span className="text-xs text-[#EAE0DA]/90 font-serif hidden md:inline truncate">
+            <span className="text-xs text-[#EAE0DA]/90 font-serif hidden xl:inline truncate">
               {getGreeting()}
             </span>
           </div>
         </div>
 
         {/* Centro: Campo de Busca Global Funcional (Processos, Clientes, Modelos, Finanças, Equipe, Mural) */}
-        <div className="flex items-center flex-1 max-w-md mx-2">
+        <div className="flex items-center flex-1 max-w-md mx-1 sm:mx-2 min-w-0">
           <GlobalSearch
             onNavigateToTab={(tab) => setActiveTab(tab)}
             onOpenCaseDetail={onOpenCaseDetail}
@@ -142,15 +158,15 @@ export const Header: React.FC<HeaderProps> = ({
           />
         </div>
 
-        {/* Direita: 4 Botões Circulares Claros com Ícones (Anexo 4) */}
-        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-          {/* 1. Tela Cheia */}
+        {/* Direita: Botões Circulares Claros com Ícones (Anexo 4) */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          {/* 1. Tela Cheia (oculto no mobile estreito para economizar espaço) */}
           <button
             type="button"
             onClick={toggleFullscreen}
             title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
             aria-label="Alternar tela cheia"
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#EAE0DA] hover:bg-white text-dex-navy-950 flex items-center justify-center shadow transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            className="hidden sm:flex w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#EAE0DA] hover:bg-white text-dex-navy-950 items-center justify-center shadow transition-all hover:scale-105 active:scale-95 motion-reduce:transform-none cursor-pointer"
           >
             {isFullscreen ? (
               <Minimize2 className="w-4 h-4" />

@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { FolderPlus, Scale, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { FolderPlus, Sparkles, AlertTriangle } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { MaskedInput } from '../common/MaskedInput';
+import { ClientCombobox } from '../clients/ClientCombobox';
 import { LegalCase, LegalArea, CaseStatus } from '../../types';
 import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
 import { validateCNJ } from '../../utils/validators';
 import { maskCNJ, maskCurrency, unmaskCurrencyToFloat } from '../../utils/masks';
 
@@ -21,7 +23,22 @@ export const CaseModal: React.FC<CaseModalProps> = ({
   initialCase
 }) => {
   const activeCase = caseToEdit || initialCase || null;
-  const { clients, lawyers, addCase, updateCase, pendingAiDraft, clearPendingAiDraft } = useData();
+  const { userClients, lawyers, addCase, updateCase, pendingAiDraft, clearPendingAiDraft } = useData();
+  const { currentUser } = useAuth();
+
+  const currentLawyer = useMemo(
+    () => lawyers.find(l => l.userId === currentUser?.id) || null,
+    [lawyers, currentUser?.id]
+  );
+
+  // Filtra advogados visíveis apenas do mesmo escritório (ou o próprio autônomo)
+  const visibleLawyers = useMemo(() => {
+    if (!currentUser) return [];
+    if (currentUser.isIndependent || !currentUser.officeId) {
+      return lawyers.filter(l => l.userId === currentUser.id || l.id === currentLawyer?.id);
+    }
+    return lawyers.filter(l => l.officeId === currentUser.officeId);
+  }, [lawyers, currentUser, currentLawyer]);
 
   const [caseNumber, setCaseNumber] = useState('');
   const [court, setCourt] = useState('');
@@ -35,9 +52,17 @@ export const CaseModal: React.FC<CaseModalProps> = ({
   const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
   const [cnjError, setCnjError] = useState<string | null>(null);
+  const [clientError, setClientError] = useState<string | null>(null);
+  const [generalError, setGeneralError] = useState<string | null>(null);
 
-  // Pre-fill form when editing or when coming from Dex AI
+  // Pre-fill form ONLY when modal opens or activeCase/pendingAiDraft changes.
+  // NUNCA depende de userClients/lawyers para não apagar o que foi preenchido ao criar um cliente novo na hora!
   useEffect(() => {
+    if (!isOpen) return;
+
+    const defaultLawyerId = currentLawyer?.id || visibleLawyers[0]?.id || '';
+    const defaultClientId = userClients[0]?.id || '';
+
     if (activeCase) {
       setCaseNumber(maskCNJ(activeCase.caseNumber));
       setCourt(activeCase.court);
@@ -59,13 +84,13 @@ export const CaseModal: React.FC<CaseModalProps> = ({
       setDescription(pendingAiDraft.analysis.factsSummary);
       setNotes(`[Triagem Dex AI]\nEnquadramento: ${pendingAiDraft.analysis.legalFraming}\n\nPerguntas pendentes:\n- ${pendingAiDraft.analysis.clarificationQuestions.join('\n- ')}`);
       setCourt('Foro Central da Comarca da Capital / SP');
-      if (clients.length > 0) setClientId(clients[0].id);
-      if (lawyers.length > 0) setLawyerId(lawyers[0].id);
+      setClientId(defaultClientId);
+      setLawyerId(defaultLawyerId);
     } else {
       setCaseNumber('');
       setCourt('');
-      setClientId(clients[0]?.id || '');
-      setLawyerId(lawyers[0]?.id || '');
+      setClientId(defaultClientId);
+      setLawyerId(defaultLawyerId);
       setLegalArea('Cível');
       setActionType('');
       setStatus('INICIAL');
@@ -75,14 +100,23 @@ export const CaseModal: React.FC<CaseModalProps> = ({
       setNotes('');
     }
     setCnjError(null);
-  }, [activeCase, pendingAiDraft, isOpen, clients, lawyers]);
+    setClientError(null);
+    setGeneralError(null);
+  }, [activeCase, pendingAiDraft, isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setCnjError(null);
+    setClientError(null);
+    setGeneralError(null);
 
-    if (!caseNumber.trim() || !clientId || !lawyerId || !actionType.trim()) {
-      alert('Por favor, preencha todos os campos obrigatórios (*).');
+    if (!clientId) {
+      setClientError('Selecione um cliente outorgante ou adicione um novo cliente.');
+      return;
+    }
+
+    if (!caseNumber.trim() || !lawyerId || !actionType.trim()) {
+      setGeneralError('Por favor, preencha todos os campos obrigatórios (*).');
       return;
     }
 
@@ -108,16 +142,19 @@ export const CaseModal: React.FC<CaseModalProps> = ({
       notes: notes.trim()
     };
 
-    if (activeCase) {
-      updateCase(activeCase.id, payload);
-    } else {
-      addCase(payload);
-      if (pendingAiDraft) {
-        clearPendingAiDraft();
+    try {
+      if (activeCase) {
+        updateCase(activeCase.id, payload);
+      } else {
+        addCase(payload);
+        if (pendingAiDraft) {
+          clearPendingAiDraft();
+        }
       }
+      onClose();
+    } catch (err: any) {
+      setGeneralError(err?.message || 'Não foi possível salvar o processo.');
     }
-
-    onClose();
   };
 
   const legalAreas: LegalArea[] = [
@@ -141,7 +178,17 @@ export const CaseModal: React.FC<CaseModalProps> = ({
       maxWidth="3xl"
       icon={<FolderPlus className="w-5 h-5 text-dex-coral" />}
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+        {generalError && (
+          <div
+            role="alert"
+            className="p-3.5 rounded-xl bg-red-500/20 border border-red-400/60 text-red-100 text-xs font-serif flex items-start gap-2.5"
+          >
+            <AlertTriangle className="w-4 h-4 text-red-300 shrink-0 mt-0.5" aria-hidden="true" />
+            <span>{generalError}</span>
+          </div>
+        )}
+
         {pendingAiDraft && !activeCase && (
           <div className="p-3.5 rounded-2xl bg-white/10 border border-dex-coral/40 flex items-center gap-3">
             <Sparkles className="w-5 h-5 text-dex-coral shrink-0" />
@@ -212,23 +259,19 @@ export const CaseModal: React.FC<CaseModalProps> = ({
           </div>
         </div>
 
-        {/* Linha 3: Cliente e Advogado Responsável */}
+        {/* Linha 3: Cliente Outorgante (Combobox Pesquisável + Criar Novo Cliente) e Advogado Responsável */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="block text-xs italic font-serif text-[#C2D6DC]">
-              Cliente Outorgante*
-            </label>
-            <select
-              required
-              value={clientId}
-              onChange={e => setClientId(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
-            >
-              {clients.map(c => (
-                <option key={c.id} value={c.id}>{c.name} ({c.document})</option>
-              ))}
-            </select>
-          </div>
+          <ClientCombobox
+            label="Cliente Outorgante"
+            required
+            value={clientId}
+            onChange={(nextId) => {
+              setClientId(nextId);
+              if (clientError) setClientError(null);
+            }}
+            error={clientError}
+            createContextNotice="O cliente será salvo na aba Clientes e já ficará selecionado neste processo (mesmo se você cancelar o processo depois)."
+          />
 
           <div className="space-y-1">
             <label className="block text-xs italic font-serif text-[#C2D6DC]">
@@ -240,7 +283,7 @@ export const CaseModal: React.FC<CaseModalProps> = ({
               onChange={e => setLawyerId(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             >
-              {lawyers.map(l => (
+              {visibleLawyers.map(l => (
                 <option key={l.id} value={l.id}>{l.name} ({l.oab})</option>
               ))}
             </select>

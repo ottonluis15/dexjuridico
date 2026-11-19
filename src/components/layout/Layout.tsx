@@ -64,7 +64,7 @@ export const Layout: React.FC<LayoutProps> = ({
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto focus:outline-none"
+          className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto scroll-mt-24 focus:outline-none"
         >
           {children}
         </main>

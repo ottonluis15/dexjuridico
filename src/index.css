@@ -9,19 +9,80 @@
      ========================================================================== */
   --escala-ui: 110%;
   --escala-ui-notebook: 105%;
+
+  /* Tokens semânticos de urgência — Tema Claro (WCAG AA/AAA: texto >= 4.5:1, bordas/ícones >= 3:1) */
+  --urgency-critical-bg: #FDE4E1;
+  --urgency-critical-fg: #8F1D14;
+  --urgency-critical-border: #B82E24;
+  --urgency-critical-bar: #B82E24;
+
+  --urgency-high-bg: #FEF0D7;
+  --urgency-high-fg: #7C3405;
+  --urgency-high-border: #B45309;
+  --urgency-high-bar: #B45309;
+
+  --urgency-medium-bg: #DDEEEF;
+  --urgency-medium-fg: #143D48;
+  --urgency-medium-border: #2A5E6B;
+  --urgency-medium-bar: #2A5E6B;
+
+  --urgency-low-bg: #DEF5E8;
+  --urgency-low-fg: #134E31;
+  --urgency-low-border: #1F6E47;
+  --urgency-low-bar: #1F6E47;
+
+  /* Tokens semânticos de texto secundário e borda na Landing */
+  --landing-muted: #554F4B;
+  --landing-card-border: rgba(34, 34, 34, 0.72);
+  --landing-accent-text: #C4362C;
+}
+
+.dark {
+  /* Tokens semânticos de urgência — Tema Escuro (WCAG AAA: texto >= 9.9:1, bordas/ícones >= 5.4:1 sobre #0F2733) */
+  --urgency-critical-bg: #4A171A;
+  --urgency-critical-fg: #FECACA;
+  --urgency-critical-border: #F87171;
+  --urgency-critical-bar: #F87171;
+
+  --urgency-high-bg: #452708;
+  --urgency-high-fg: #FDE68A;
+  --urgency-high-border: #FBBF24;
+  --urgency-high-bar: #FBBF24;
+
+  --urgency-medium-bg: #133845;
+  --urgency-medium-fg: #CBEBF2;
+  --urgency-medium-border: #6BA7B5;
+  --urgency-medium-bar: #6BA7B5;
+
+  --urgency-low-bg: #103828;
+  --urgency-low-fg: #BBF7D0;
+  --urgency-low-border: #4ADE80;
+  --urgency-low-bar: #4ADE80;
+
+  /* Tokens semânticos de texto secundário e borda na Landing (Escuro) */
+  --landing-muted: #BDD1DB;
+  --landing-card-border: #366076;
+  --landing-accent-text: #FF857B;
 }
 
 @layer base {
   html {
     font-family: 'Lora', Georgia, serif;
     scroll-behavior: smooth;
+    scroll-padding-top: 5.5rem;
+  }
+
+  @media (min-width: 768px) {
+    html {
+      scroll-padding-top: 6rem;
+    }
   }
   
   body {
     @apply antialiased font-serif text-dex-navy-950;
     background-color: #F9ECE2;
     font-feature-settings: "kern", "liga", "calt";
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   h1, h2, h3, h4, h5, h6 {

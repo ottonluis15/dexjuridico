@@ -424,6 +424,14 @@ SELECT 'dex_financial' AS tabela, id, "officeId", title AS identificador FROM pu
 WHERE ("officeId" NOT IN ('off_dex_principal', 'off_demo_sandbox') AND id ~ '^fin_[0-9]{1,2}$');
 */
 
+-- 15. Migração Segura: Índice composto para busca rápida e detecção de duplicidade por escritório/documento normalizado
+CREATE INDEX IF NOT EXISTS idx_dex_clients_office_document
+  ON public.dex_clients ("officeId", UPPER(REGEXP_REPLACE(COALESCE(document, ''), '[^0-9A-Za-z]', '', 'g')));
+
+CREATE INDEX IF NOT EXISTS idx_dex_clients_lawyer_document
+  ON public.dex_clients ("linkedLawyerId", UPPER(REGEXP_REPLACE(COALESCE(document, ''), '[^0-9A-Za-z]', '', 'g')));
+
+
 
 
 

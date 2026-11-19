@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { DollarSign, Upload, FileText, Image as ImageIcon, Trash2, Paperclip, AlertTriangle } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { MaskedInput } from '../common/MaskedInput';
+import { ClientCombobox } from '../clients/ClientCombobox';
 import { FinancialEntry, FinancialType, FinancialStatus, PaymentMethod } from '../../types';
 import { useData } from '../../context/DataContext';
 import { maskCurrency, unmaskCurrencyToFloat } from '../../utils/masks';
@@ -30,7 +31,7 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
   initialEntry
 }) => {
   const activeEntry = entryToEdit || initialEntry || null;
-  const { clients, cases, lawyers, addFinancial, updateFinancial } = useData();
+  const { userClients, userCases, addFinancial, updateFinancial } = useData();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [title, setTitle] = useState('');
@@ -39,6 +40,8 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
   const [caseId, setCaseId] = useState('');
   const [amount, setAmount] = useState<string>('R$ 0,00');
   const [amountError, setAmountError] = useState<string | null>(null);
+  const [clientError, setClientError] = useState<string | null>(null);
+  const [generalError, setGeneralError] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState(new Date().toISOString().substring(0, 10));
   const [paymentDate, setPaymentDate] = useState('');
   const [status, setStatus] = useState<FinancialStatus>('PENDENTE');
@@ -51,7 +54,9 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
   const [receiptUrl, setReceiptUrl] = useState<string>('');
   const [fileError, setFileError] = useState<string | null>(null);
 
+  // Inicializa apenas ao abrir/trocar registro — NUNCA depende de userClients/userCases para preservar o formulário ao criar cliente
   useEffect(() => {
+    if (!isOpen) return;
     if (activeEntry) {
       setTitle(activeEntry.title);
       setType(activeEntry.type);
@@ -66,13 +71,11 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
       setHasReceipt(!!activeEntry.hasReceipt);
       setReceiptName(activeEntry.receiptName || '');
       setReceiptUrl(activeEntry.receiptUrl || '');
-      setFileError(null);
-      setAmountError(null);
     } else {
       setTitle('');
       setType('HONORARIOS_INICIAIS');
-      setClientId(clients[0]?.id || '');
-      setCaseId(cases[0]?.id || '');
+      setClientId(userClients[0]?.id || '');
+      setCaseId(userCases[0]?.id || '');
       setAmount(maskCurrency(2500));
       setDueDate(new Date().toISOString().substring(0, 10));
       setPaymentDate('');
@@ -82,10 +85,12 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
       setHasReceipt(false);
       setReceiptName('');
       setReceiptUrl('');
-      setFileError(null);
-      setAmountError(null);
     }
-  }, [activeEntry, isOpen, clients, cases]);
+    setFileError(null);
+    setAmountError(null);
+    setClientError(null);
+    setGeneralError(null);
+  }, [activeEntry, isOpen]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFileError(null);
@@ -114,6 +119,8 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setAmountError(null);
+    setClientError(null);
+    setGeneralError(null);
 
     const numericAmount = unmaskCurrencyToFloat(amount);
     if (numericAmount <= 0) {
@@ -121,8 +128,13 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
       return;
     }
 
-    if (!title.trim() || !clientId || !dueDate) {
-      alert('Por favor, preencha todos os campos obrigatórios (*).');
+    if (!clientId) {
+      setClientError('Selecione um cliente vinculado ou adicione um novo cliente.');
+      return;
+    }
+
+    if (!title.trim() || !dueDate) {
+      setGeneralError('Por favor, preencha todos os campos obrigatórios (*).');
       return;
     }
 
@@ -142,13 +154,16 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
       receiptUrl: hasReceipt ? receiptUrl : undefined,
     };
 
-    if (activeEntry) {
-      updateFinancial(activeEntry.id, payload);
-    } else {
-      addFinancial(payload);
+    try {
+      if (activeEntry) {
+        updateFinancial(activeEntry.id, payload);
+      } else {
+        addFinancial(payload);
+      }
+      onClose();
+    } catch (err: any) {
+      setGeneralError(err?.message || 'Não foi possível salvar o lançamento financeiro.');
     }
-
-    onClose();
   };
 
   const isRevenue = type !== 'DESPESA' && type !== 'CUSTAS';
@@ -162,7 +177,16 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
       maxWidth="3xl"
       icon={<DollarSign className="w-5 h-5 text-dex-coral" />}
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        {generalError && (
+          <div
+            role="alert"
+            className="p-3.5 rounded-xl bg-red-500/20 border border-red-400/60 text-red-100 text-xs font-serif flex items-start gap-2.5"
+          >
+            <AlertTriangle className="w-4 h-4 text-red-300 shrink-0 mt-0.5" aria-hidden="true" />
+            <span>{generalError}</span>
+          </div>
+        )}
         {/* Tipo (Receita vs Despesa) */}
         <div className="flex items-center gap-3">
           <button
@@ -223,23 +247,19 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
           </div>
         </div>
 
-        {/* Linha 2: Cliente e Processo Vinculado */}
+        {/* Linha 2: Cliente Vinculado (Combobox Pesquisável + Criar Novo Cliente) e Processo Vinculado */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="block text-xs italic font-serif text-[#C2D6DC]">
-              Cliente Vinculado*
-            </label>
-            <select
-              required
-              value={clientId}
-              onChange={e => setClientId(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
-            >
-              {clients.map(c => (
-                <option key={c.id} value={c.id}>{c.name} ({c.document})</option>
-              ))}
-            </select>
-          </div>
+          <ClientCombobox
+            label="Cliente Vinculado"
+            required
+            value={clientId}
+            onChange={(nextId) => {
+              setClientId(nextId);
+              if (clientError) setClientError(null);
+            }}
+            error={clientError}
+            createContextNotice="O cliente será salvo na aba Clientes e já ficará vinculado a este lançamento financeiro (mesmo se você cancelar depois)."
+          />
 
           <div className="space-y-1">
             <label className="block text-xs italic font-serif text-[#C2D6DC]">
@@ -251,7 +271,7 @@ export const FinancialModal: React.FC<FinancialModalProps> = ({
               className="w-full px-4 py-2.5 rounded-xl bg-dex-input text-dex-navy-950 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-dex-coral font-serif"
             >
               <option value="">Sem vínculo direto</option>
-              {cases.map(c => (
+              {userCases.map(c => (
                 <option key={c.id} value={c.id}>{c.caseNumber} - {c.actionType}</option>
               ))}
             </select>

@@ -84,31 +84,40 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-dex-cream dark:bg-[#0A1922] flex flex-col justify-center items-center py-8 px-4 sm:px-6 lg:px-8 relative font-serif text-dex-navy-950 dark:text-[#F9ECE2] overflow-x-hidden selection:bg-dex-coral selection:text-white transition-colors duration-200">
-      {/* Navegação Superior */}
-      <div className="max-w-[60rem] w-full mx-auto mb-4 flex items-center justify-between px-2 relative z-10">
-        {onNavigateToLanding ? (
+    <div className="min-h-screen bg-dex-cream dark:bg-[#0A1922] flex flex-col relative font-serif text-dex-navy-950 dark:text-[#F9ECE2] overflow-x-clip selection:bg-dex-coral selection:text-white transition-colors duration-200">
+      {/* Skip Link */}
+      <a href="#login-main" className="skip-link">
+        Pular para o conteúdo principal
+      </a>
+
+      {/* Header Sticky Superior */}
+      <header className="sticky top-0 z-40 w-full pt-[env(safe-area-inset-top)] bg-dex-cream/92 dark:bg-[#0A1922]/92 backdrop-blur-md border-b border-[#D8C3B5]/80 dark:border-[#214154] transition-colors motion-reduce:transition-none">
+        <div className="max-w-[60rem] w-full mx-auto h-14 px-4 sm:px-6 flex items-center justify-between">
+          {onNavigateToLanding ? (
+            <button
+              type="button"
+              onClick={onNavigateToLanding}
+              className="flex items-center gap-1.5 text-xs text-landing-muted hover:text-dex-navy-950 dark:hover:text-white transition-colors cursor-pointer py-1.5 px-2 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-dex-coral"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Voltar ao início</span>
+            </button>
+          ) : <div />}
+
+          {/* Botão Alternador de Tema */}
           <button
-            onClick={onNavigateToLanding}
-            className="flex items-center gap-1.5 text-xs text-dex-support dark:text-[#A6C5CD] hover:text-dex-navy-950 dark:hover:text-white transition-colors cursor-pointer"
+            type="button"
+            onClick={toggleTheme}
+            title={`Tema: ${isDark ? 'Escuro (clique para Claro)' : 'Claro (clique para Escuro)'}`}
+            aria-label="Alternar tema claro e escuro"
+            className="p-2 rounded-full bg-white/70 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 text-dex-navy-950 dark:text-[#F9ECE2] border border-dex-border/60 dark:border-[#366076] transition-all cursor-pointer shadow-xs"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Voltar ao início</span>
+            {isDark ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-dex-navy-900" />}
           </button>
-        ) : <div />}
+        </div>
+      </header>
 
-        {/* Botão Alternador de Tema */}
-        <button
-          type="button"
-          onClick={toggleTheme}
-          title={`Tema: ${isDark ? 'Escuro (clique para Claro)' : 'Claro (clique para Escuro)'}`}
-          aria-label="Alternar tema claro e escuro"
-          className="p-2 rounded-full bg-white/60 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 text-dex-navy-950 dark:text-[#F9ECE2] transition-all cursor-pointer shadow-xs"
-        >
-          {isDark ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-dex-navy-900" />}
-        </button>
-      </div>
-
+      <main id="login-main" tabIndex={-1} className="flex-1 flex flex-col justify-center items-center py-8 px-4 sm:px-6 lg:px-8 focus:outline-none">
       {/* CONTAINER FLEX: COLUNA DE PENAS ESQUERDA + CARD CENTRAL + COLUNA DE PENAS DIREITA */}
       <div className="w-full max-w-[83.75rem] mx-auto flex flex-col sm:flex-row items-center sm:items-stretch justify-center gap-4 md:gap-6 lg:gap-8">
         {/* Penas do Topo no Mobile (< sm) */}
@@ -431,6 +440,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           />
         </div>
       </div>
+      </main>
     </div>
   );
 };
